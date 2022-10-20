@@ -1,0 +1,25 @@
+name: ib-dev
+channels:
+  - conda-forge
+  - openeye
+dependencies:
+  - python =3.9
+  - pip
+  - qcfractal =0.15.8.1
+  - qcengine =0.24.1
+  - qcelemental =0.25.0
+  - qcportal
+  - openff-qcsubmit
+
+  - openff-toolkit =0.11.2
+  - openmmforcefields =0.11.2
+
+  - ipython
+  - ipdb
+
+  - openeye-toolkits
+
+  - pip:
+    - git+https://github.com/mattwthompson/openff-models
+    - git+https://github.com/openforcefield/openff-qcsubmit@toolkit_011_support
+    - git+https://github.com/MolSSI/QCEngine@master

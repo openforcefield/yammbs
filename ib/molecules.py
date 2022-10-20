@@ -1,5 +1,6 @@
 import abc
 import json
+from typing import List
 
 from openff.models.models import DefaultModel
 from openff.toolkit import Molecule, Topology
@@ -33,7 +34,7 @@ class OpenFFMolecule(TopologyComponent):
 
 class TopologyProvider(DefaultModel, abc.ABC):
     identifier: str
-    components: list[TopologyComponent]
+    components: List[TopologyComponent]
     is_periodic: bool
 
     @classmethod
@@ -55,7 +56,7 @@ class OpenFFSingleMoleculeTopologyProvider(TopologyProvider):
     def allowed_components(cls):
         return [OpenFFMolecule]
 
-    def to_topology(self):
+    def to_topology(self) -> Topology:
         return Topology.from_molecules([self.components[0].molecule])
 
     def to_json(self):
