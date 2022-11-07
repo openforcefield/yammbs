@@ -11,13 +11,16 @@ dependencies:
   - qcportal
   - openff-qcsubmit
   - pint =0.19
-  - openff-toolkit =0.11.2
+  - openff-toolkit =0.10.6
   - openmmforcefields =0.11.2
+  - geometric <1
 
   - ipython
   - ipdb
 
   - openeye-toolkits
+
+  - ipywidgets =7
 
   - pip:
     - git+https://github.com/mattwthompson/openff-models
