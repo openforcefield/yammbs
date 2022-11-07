@@ -131,6 +131,9 @@ def dataset_to_sdf(
 
             outfile = output_path / specification / f"{index}.sdf"
 
+            if outfile.exists():
+                continue
+
             if not delete_existing:
                 if pathlib.Path(outfile).exists():
                     continue
