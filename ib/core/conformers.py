@@ -2,7 +2,7 @@
 from typing import List
 
 from openff.models.models import DefaultModel
-from openff.toolkit import Molecule
+from openff.toolkit.topology.molecule import Molecule
 from openff.units import Quantity, unit
 from rdkit.Chem import rdMolAlign
 
