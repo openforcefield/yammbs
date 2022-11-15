@@ -22,6 +22,8 @@ dependencies:
 
   - ipywidgets =7
 
+  - seaborn
+
   - pip:
     - git+https://github.com/mattwthompson/openff-models
     - git+https://github.com/openforcefield/openff-qcsubmit@toolkit_011_support
