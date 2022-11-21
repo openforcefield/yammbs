@@ -4,6 +4,13 @@ from openff.toolkit.topology.molecule import Molecule
 
 
 def _minimize(molecule: Molecule, force_field: str) -> Molecule:
+    if "openff" in force_field:
+        basis = "smirnoff"
+    elif "gaff" in force_field:
+        basis = "antechamber"
+    else:
+        raise ValueError("Do not know what `basis` to use for this force field")
+
     return Molecule.from_qcschema(
         qcengine.compute_procedure(
             input_data=qcelemental.models.OptimizationInput(
@@ -12,7 +19,7 @@ def _minimize(molecule: Molecule, force_field: str) -> Molecule:
                     "driver": "gradient",
                     "model": {
                         "method": force_field,
-                        "basis": "smirnoff",
+                        "basis": basis,
                     },
                 },
                 keywords={

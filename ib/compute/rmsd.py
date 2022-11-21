@@ -23,5 +23,8 @@ def _run_rmsd(
         rmsd[sdf_file.stem] = _calc_rmsd(molecule, _minimize(molecule, offxml))
 
         with open(outfile, "w") as out_file:
+
+            out_file.write("id,rmsd\n")
+
             for key, value in rmsd.items():
                 out_file.write(f"{key},{value.m_as(unit.angstrom)}\n")
