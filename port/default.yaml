@@ -1,0 +1,38 @@
+steps:
+  download_qcarchive:
+    collection_type: OptimizationResultCollection
+    data_set: "OpenFF Full Optimization Benchmark 1"
+    cache_file: full-optimization-benchmark-1.json
+    filter_smiles: ["NH+"]
+  filter_collection:
+    collection_type: OptimizationResultCollection
+    file: 01-processed-qm.json
+    file: full-optimization-benchmark-1.json
+    filtered_file: filtered.json
+    filters:
+      - invalid_cmiles
+      - incomplete_record
+      - connectivity_change
+      - unambiguous_stereo
+      # can_parametrize 
+        # this often fails b/c of conformer generation failures, maybe that could
+        # be a separate filter check, also other possible failures with missing BCCs or AmberTools
+        # convergences
+        # this particular filter might also benefit from knowing which force field it's later going
+        # to be used with
+  group_to_sdf:
+    collection_type: OptimizationResultCollection
+    file: filtered.json
+    sdf_file: 01-processed-qm.sdf
+  chunk_qm:
+    input_path: 01-processed-qm.sdf
+    output_name: 01-processed-qm
+    output_directory: 02-chunks/
+    n_chunks: 250
+  minimize:
+    n_chunks: 250
+    input_path: 02-chunks
+    input_name: 01-processed-qm
+    force_field_path: openff_unconstrained-1.2.0.offxml
+    force_field_type: SMIRNOFF
+    output_directory: 02-outputs/
