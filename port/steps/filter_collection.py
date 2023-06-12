@@ -16,7 +16,11 @@ from openff.qcsubmit.results.filters import (
     SMILESFilter,
     UnperceivableStereoFilter,
 )
+from openff.toolkit import ForceField
 from openff.toolkit.topology.molecule import Molecule, SmilesParsingError
+from openff.toolkit.utils.exceptions import OpenFFToolkitException
+from openff.toolkit.utils.openeye_wrapper import OpenEyeToolkitWrapper
+from openff.toolkit.utils.toolkits import GLOBAL_TOOLKIT_REGISTRY
 from qcportal.models.records import RecordStatusEnum
 from tqdm import tqdm
 
@@ -36,7 +40,7 @@ def _can_parameterize(smiles: str) -> tuple[str, bool]:
 
         force_field.create_openmm_system(molecule.to_topology())
 
-    except:
+    except OpenFFToolkitException:
         return smiles, False
 
     return smiles, True

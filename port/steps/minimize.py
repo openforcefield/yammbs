@@ -1,22 +1,22 @@
 import logging
-from tqdm import tqdm
 import os
 from multiprocessing import get_context
 from pathlib import Path
-import click
+
 import numpy
-from openeye import oechem
-from openff.toolkit import Molecule, ForceField
-from openff.toolkit.utils import GLOBAL_TOOLKIT_REGISTRY, OpenEyeToolkitWrapper
-from openmmforcefields.generators import GAFFTemplateGenerator
-from openff.units import unit
-from openff.units.openmm import ensure_quantity
 import openmm
 import openmm.app
 import openmm.unit
-
+from openeye import oechem
+from openff.toolkit import ForceField, Molecule
+from openff.toolkit.utils import GLOBAL_TOOLKIT_REGISTRY, OpenEyeToolkitWrapper
+from openff.units import unit
+from openff.units.openmm import ensure_quantity
+from openmmforcefields.generators import GAFFTemplateGenerator
+from tqdm import tqdm
 
 N_PROCESSES = 16
+
 
 def _run_openmm(molecule: Molecule, system: openmm.System):
     """
@@ -36,7 +36,9 @@ def _run_openmm(molecule: Molecule, system: openmm.System):
 
     openmm_context = openmm.Context(system, integrator, platform)
     openmm_context.setPositions(molecule.conformers[0].to(unit.nanometer).to_openmm())
-    print(f"made objects, starting minimization on a molecule with {molecule.n_atoms} atoms")
+    print(
+        f"made objects, starting minimization on a molecule with {molecule.n_atoms} atoms"
+    )
     openmm.LocalEnergyMinimizer.minimize(openmm_context, 5.0e-9, 1500)
     print("minimization complete, getting results")
 
@@ -58,14 +60,16 @@ def minimize(
 
     with get_context("spawn").Pool(processes=N_PROCESSES) as pool:
         TASKS = [
-                    (
-                        os.path.join(input_path, input_name) + f"-{index + 1}.sdf",
-                        force_field_path,
-                        force_field_type,
-                        os.path.join(
-                            output_directory, f"{Path(force_field_path).stem}-{index + 1}.sdf"
-                        ),
-                    ) for index in range(n_chunks)]
+            (
+                os.path.join(input_path, input_name) + f"-{index + 1}.sdf",
+                force_field_path,
+                force_field_type,
+                os.path.join(
+                    output_directory, f"{Path(force_field_path).stem}-{index + 1}.sdf"
+                ),
+            )
+            for index in range(n_chunks)
+        ]
 
         tqdm(
             iterable=pool.starmap(
@@ -98,10 +102,15 @@ def _minimize(input_path, force_field_path, force_field_type: str, output_path):
             )
 
             off_molecule._conformers = [
-                numpy.array(
-                    [oe_molecule.GetCoords()[i] for i in range(off_molecule.n_atoms)]
+                unit.Quantity(
+                    numpy.array(
+                        [
+                            oe_molecule.GetCoords()[i]
+                            for i in range(off_molecule.n_atoms)
+                        ]
+                    ),
+                    unit.angstrom,
                 )
-                * unit.angstrom
             ]
 
             if force_field_type.lower() == "smirnoff":

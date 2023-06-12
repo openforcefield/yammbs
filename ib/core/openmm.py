@@ -20,7 +20,6 @@ def _get_energy(molecule: Molecule, force_field: ForceField) -> Quantity:
 
 
 def _minimize(system_provider) -> Quantity:
-
     system = system_provider.to_system()
     integrator = openmm.VerletIntegrator(1.0 * openmm_unit.femtoseconds)
     platform = openmm.Platform.getPlatformByName("CPU")

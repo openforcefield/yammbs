@@ -1,3 +1,4 @@
+# flake8: noqa
 from steps.chunk_qm import chunk_qm
 from steps.download_qcarchive import download_qcarchive
 from steps.filter_collection import filter_collection

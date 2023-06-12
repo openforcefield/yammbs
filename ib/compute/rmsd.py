@@ -17,13 +17,11 @@ def _run_rmsd(
     rmsd: dict[str, unit.Quantity] = dict()
 
     for sdf_file in sdf_path.glob("*.sdf"):
-
         molecule = Molecule.from_file(sdf_file.as_posix(), "sdf")
 
         rmsd[sdf_file.stem] = _calc_rmsd(molecule, _minimize(molecule, offxml))
 
         with open(outfile, "w") as out_file:
-
             out_file.write("id,rmsd\n")
 
             for key, value in rmsd.items():

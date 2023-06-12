@@ -1,9 +1,8 @@
 from typing import Union
-import click
-import yaml
-import importlib
 
+import click
 import steps
+import yaml
 
 functions: dict[str, callable] = {
     name: getattr(steps, name)
@@ -12,13 +11,14 @@ functions: dict[str, callable] = {
 
 
 def load_yaml(file_path) -> dict[str, Union[dict, str]]:
-    with open(file_path, "r") as file:
+    with open(file_path) as file:
         try:
             data = yaml.safe_load(file)
         except yaml.YAMLError as e:
             click.echo(f"Error loading YAML file: {e}")
 
     return data["steps"]
+
 
 # This could be set up differently by parsing each block into a Pydantic class that defines the
 # arguments, types, etc. Similar results, but each step is more structured and uses Pydantic
@@ -27,9 +27,10 @@ def load_yaml(file_path) -> dict[str, Union[dict, str]]:
 @click.argument("file_path", type=click.Path(exists=True))
 def main(file_path):
     for step in load_yaml(file_path):
-        name = step.pop('name')
+        name = step.pop("name")
         click.echo(f"Running step: {name}")
         functions[name](**step)
+
 
 if __name__ == "__main__":
     main()

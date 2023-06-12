@@ -63,7 +63,6 @@ def _process_final_mol(
     program: Optional[str] = None,
     energies: list[float] = None,
 ) -> Molecule:
-
     qc_geometry = unit.Quantity(numpy.array(qcmolecule.geometry, float), unit.bohr)
     molecule._conformers = [qc_geometry.to(unit.angstrom)]
 
@@ -91,7 +90,6 @@ def _load_dataset_from_server(collection_name: str, client: qcportal.FractalClie
     dataset.status()
 
     with open("dataset.json", "w") as file:
-
         data = dataset.to_json()
         data.pop("history")
 
@@ -106,7 +104,6 @@ def dataset_to_sdf(
     output_path: pathlib.Path,
     delete_existing: bool = False,
 ):
-
     if not delete_existing:
         if pathlib.Path(output_path).exists():
             raise Exception("Output path already exists.")
@@ -118,11 +115,9 @@ def dataset_to_sdf(
     specifications = list(dataset.list_specifications().index)
 
     for specification in specifications:
-
         print(f"Starting specification {specification} ...")
 
         for _, record in tqdm.tqdm(dataset.df[specification].items()):
-
             print(f"Processing record {record} ...")
 
             index = record.final_molecule

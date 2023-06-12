@@ -17,7 +17,7 @@ steps:
       - incomplete_record
       - connectivity_change
       - unambiguous_stereo
-      # can_parametrize 
+      # can_parametrize
         # this often fails b/c of conformer generation failures, maybe that could
         # be a separate filter check, also other possible failures with missing BCCs or AmberTools
         # convergences
