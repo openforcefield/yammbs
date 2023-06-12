@@ -12,13 +12,13 @@ def run():
 
 
 @run.command()
-@click.option("--offxml", required=True, help="A SMIRNOFF force field file.")
+@click.option("--force-field", required=True, help="An identifier of a force field.")
 @click.option("--molecules", required=True, help="A directory containing SDF files.")
 @click.option("--outfile", default="rmsd.csv", help="The file to write RMSDs to.")
-def rmsd(offxml, molecules, outfile):
+def rmsd(force_field, molecules, outfile):
     from ib.compute.rmsd import _run_rmsd
 
-    _run_rmsd(offxml, molecules, outfile)
+    _run_rmsd(force_field, molecules, outfile)
 
 
 if __name__ == "__main__":

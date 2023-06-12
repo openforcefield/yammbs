@@ -1,7 +1,8 @@
 import logging
+from tqdm import tqdm
 import os
+from multiprocessing import get_context
 from pathlib import Path
-
 import click
 import numpy
 from openeye import oechem
@@ -14,6 +15,8 @@ import openmm
 import openmm.app
 import openmm.unit
 
+
+N_PROCESSES = 16
 
 def _run_openmm(molecule: Molecule, system: openmm.System):
     """
@@ -53,14 +56,23 @@ def minimize(
 ):
     os.makedirs(output_directory, exist_ok=True)
 
-    for index in range(n_chunks):
-        _minimize(
-            input_path=os.path.join(input_path, input_name) + f"-{index + 1}.sdf",
-            force_field_path=force_field_path,
-            force_field_type=force_field_type,
-            output_path=os.path.join(
-                output_directory, f"{Path(force_field_path).stem}-{index + 1}.sdf"
+    with get_context("spawn").Pool(processes=N_PROCESSES) as pool:
+        TASKS = [
+                    (
+                        os.path.join(input_path, input_name) + f"-{index + 1}.sdf",
+                        force_field_path,
+                        force_field_type,
+                        os.path.join(
+                            output_directory, f"{Path(force_field_path).stem}-{index + 1}.sdf"
+                        ),
+                    ) for index in range(n_chunks)]
+
+        tqdm(
+            iterable=pool.starmap(
+                _minimize,
+                TASKS,
             ),
+            total=len(TASKS),
         )
 
 

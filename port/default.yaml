@@ -36,6 +36,6 @@ steps:
     n_chunks: 20
     input_path: 02-chunks
     input_name: 01-processed-qm
-    force_field_path: openff_unconstrained-1.2.0.offxml
+    force_field_path: openff_unconstrained-2.1.0.offxml
     force_field_type: SMIRNOFF
     output_directory: 02-outputs/

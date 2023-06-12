@@ -17,6 +17,8 @@ dependencies:
   - openmmforcefields =0.11.2
   - geometric <1
 
+  - click
+
   - ipython
   - ipdb
   - pre-commit
