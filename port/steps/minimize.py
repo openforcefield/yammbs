@@ -51,7 +51,7 @@ def _run_openmm(molecule: Molecule, system: openmm.System):
 def minimize(
     input_path,
     input_name,
-    force_field_path,
+    force_field_paths: list[str],
     force_field_type: str,
     output_directory,
     n_chunks: int,
@@ -69,6 +69,7 @@ def minimize(
                 ),
             )
             for index in range(n_chunks)
+            for force_field_path in force_field_paths
         ]
 
         tqdm(
@@ -80,7 +81,9 @@ def minimize(
         )
 
 
-def _minimize(input_path, force_field_path, force_field_type: str, output_path):
+def _minimize(
+    input_path, force_field_path: list[str], force_field_type: str, output_path
+):
     print(f"trying to minimize {input_path} with {force_field_path} ... ")
     input_stream = oechem.oemolistream(input_path)
     output_stream = oechem.oemolostream(output_path)

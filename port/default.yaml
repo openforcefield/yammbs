@@ -14,9 +14,9 @@ steps:
     filtered_file: filtered.json
     filters:
       - invalid_cmiles
-      - incomplete_record
-      - connectivity_change
-      - unambiguous_stereo
+      # incomplete_record
+      # connectivity_change
+      # unambiguous_stereo
       # can_parametrize
         # this often fails b/c of conformer generation failures, maybe that could
         # be a separate filter check, also other possible failures with missing BCCs or AmberTools
@@ -31,11 +31,24 @@ steps:
     input_path: 01-processed-qm.sdf
     output_name: 01-processed-qm
     output_directory: 02-chunks/
-    n_chunks: 20
+    n_chunks: 8
   - name: minimize
-    n_chunks: 20
+    n_chunks: 8
     input_path: 02-chunks
     input_name: 01-processed-qm
-    force_field_path: openff_unconstrained-2.1.0.offxml
+    force_field_paths:
+      - openff_unconstrained-1.0.0.offxml
+      - openff_unconstrained-1.1.0.offxml
+      - openff_unconstrained-1.2.0.offxml
+      - openff_unconstrained-1.3.0.offxml
+      - openff_unconstrained-2.0.0.offxml
+      - openff_unconstrained-2.1.0.offxml
     force_field_type: SMIRNOFF
     output_directory: 02-outputs/
+  - name: compute_metrics
+    n_chunks: 8
+    options: force-fields.json
+    input_path: 02-outputs
+    output_path: 03-metrics
+  - name: plot
+    input_path: 03-metrics/metrics.csv
