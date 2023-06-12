@@ -26,9 +26,10 @@ def load_yaml(file_path) -> dict[str, Union[dict, str]]:
 @click.command()
 @click.argument("file_path", type=click.Path(exists=True))
 def main(file_path):
-    for name, args in load_yaml(file_path).items():
+    for step in load_yaml(file_path):
+        name = step.pop('name')
         click.echo(f"Running step: {name}")
-        functions[name](**args)
+        functions[name](**step)
 
 if __name__ == "__main__":
     main()
