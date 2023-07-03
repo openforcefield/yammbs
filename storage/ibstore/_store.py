@@ -2,23 +2,22 @@ import logging
 import pathlib
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import ContextManager, Dict, List, Optional, Tuple
+from typing import ContextManager, Dict, List, Tuple
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from tqdm import tqdm
-
-from ibstore._db import DBBase, DBMoleculeRecord, DBPartialChargeSet
+from ibstore._db import DBBase, DBMoleculeRecord
 from ibstore._session import DBSessionManager
 from ibstore._types import Pathlike
 from ibstore.record import MoleculeRecord
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+from tqdm import tqdm
 
 LOGGER = logging.getLogger(__name__)
 
 
 class MoleculeStore:
-    """A class used to store and retrieve calculated sets of partial charges and
-    Wiberg bond orders for sets of molecules.
+    """
+    A class used to store and process molecule datasets.
     """
 
     def __len__(self):
@@ -85,38 +84,12 @@ class MoleculeStore:
             self.general_provenance = db.get_general_provenance()
             self.software_provenance = db.get_software_provenance()
 
-    def get_charge_methods(self) -> List[str]:
-        """A list of the methods used to compute the partial charges in the store."""
-
-        with self._get_session() as db:
-            return [
-                method
-                for (method,) in db.db.query(DBPartialChargeSet.method).distinct()
-            ]
-
     def get_smiles(self) -> List[str]:
         with self._get_session() as db:
             return [
                 smiles
                 for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles).distinct()
             ]
-
-    def retrieve(
-        self,
-        qcarchive_id: Optional[str] = None,
-    ) -> List[MoleculeRecord]:
-        """Retrieve records stored in this data store
-
-        Args:
-            partial_charge_methods: The (optional) list of charge methods to retrieve
-                from the store. By default (`None`) all charges will be returned.
-            bond_order_methods: The (optional) list of bond order methods to retrieve
-                from the store. By default (`None`) all bond orders will be returned.
-
-        Returns:
-            The retrieved records.
-        """
-        raise NotImplementedError()
 
     def store(
         self,

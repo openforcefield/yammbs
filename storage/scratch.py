@@ -1,11 +1,11 @@
-from openff.qcsubmit.results import OptimizationResultCollection
-from openff.toolkit import Molecule
-from qcportal import FractalClient
-
+import qcportal
 from ibstore._store import MoleculeStore
 from ibstore.record import MoleculeRecord
+from openff.qcsubmit.results import OptimizationResultCollection
+from openff.toolkit import Molecule
+from qcelemental.constants import hartree2kcalmol
 
-client = FractalClient()
+client = qcportal.FractalClient()
 
 dataset = OptimizationResultCollection.from_server(
     client,
@@ -25,6 +25,7 @@ for record_and_molecule in dataset.to_records():
         MoleculeRecord.from_qcsubmit_record(
             qcarchive_id=record.id,
             molecule=molecule,
+            qcarchive_energy=record.get_final_energy() * hartree2kcalmol,
         )
     )
 

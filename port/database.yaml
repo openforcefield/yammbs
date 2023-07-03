@@ -1,0 +1,13 @@
+steps:
+  - name: download_to_database
+    collection_type: OptimizationResultCollection
+    data_set: "OpenFF Gen 2 Opt Set 3 Pfizer Discrepancy"
+    database: test.sqlite
+    filter_smiles: ["NH+"]
+  - name: minimize_from_database
+    database: test.sqlite
+    force_field_paths:
+      - openff_unconstrained-1.0.0.offxml
+      - openff_unconstrained-1.3.0.offxml
+      - openff_unconstrained-2.0.0.offxml
+      - openff_unconstrained-2.1.0.offxml

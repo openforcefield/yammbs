@@ -40,8 +40,6 @@ class ConformerRecord(Record):
     def _validate_coordinate_type(cls, v):
         if isinstance(v, unit.Quantity):
             v = v.m_as(unit.angstrom)
-        else:
-            raise ValueError("coordinates must be a Quantity")
         return v
 
     @validator("coordinates")
@@ -70,6 +68,10 @@ class ConformerRecord(Record):
         )
 
 
+class MinimizedConfomerRecord(ConformerRecord):
+    pass
+
+
 class MoleculeRecord(Record):
     """A record which contains information for a labelled molecule. This may include the
     coordinates of the molecule in different conformers, and partial charges / WBOs
@@ -79,6 +81,10 @@ class MoleculeRecord(Record):
         ...,
         description="The ID of the molecule in the QCArchive database",
     )
+    qcarchive_energy: str = Field(
+        ...,
+        description="The final energy of the molecule as optimized and computed by QCArchive",
+    )
     mapped_smiles: str = Field(
         ...,
         description="The mapped SMILES string for the molecule with hydrogens specified",
@@ -86,6 +92,10 @@ class MoleculeRecord(Record):
     conformers: List[ConformerRecord] = Field(
         ...,
         description=("Conformers associated with the molecule. "),
+    )
+    minimized_conformer: List[MinimizedConfomerRecord] = Field(
+        ...,
+        description=("Minimized conformers associated with the molecule. "),
     )
 
     @property
@@ -96,10 +106,12 @@ class MoleculeRecord(Record):
     def from_qcsubmit_record(
         cls,
         qcarchive_id: str,
+        qcarchive_energy: str,
         molecule: Molecule,
     ):
         return cls(
             qcarchive_id=qcarchive_id,
+            qcarchive_energy=qcarchive_energy,
             mapped_smiles=molecule.to_smiles(mapped=True, isomeric=True),
             conformers=[
                 ConformerRecord(coordinates=conformer.m_as(unit.angstrom))

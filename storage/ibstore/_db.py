@@ -1,14 +1,8 @@
 import logging
-from typing import TYPE_CHECKING, Dict, List
+from typing import Dict, List
 
-from sqlalchemy import (  # Enum,
-    Column,
-    ForeignKey,
-    Integer,
-    PickleType,
-    String,
-    UniqueConstraint,
-)
+from ibstore.record import ConformerRecord, MinimizedConformerRecord
+from sqlalchemy import Column, ForeignKey, Integer, PickleType, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -17,23 +11,6 @@ DBBase = declarative_base()
 DB_VERSION = 1
 
 LOGGER = logging.getLogger(__name__)
-
-if TYPE_CHECKING:
-    from ibstore.record import ConformerRecord
-
-
-class DBPartialChargeSet(DBBase):
-    __tablename__ = "partial_charge_sets"
-
-    id = Column(Integer, primary_key=True, index=True)
-    parent_id = Column(Integer, ForeignKey("conformers.id"), nullable=False, index=True)
-
-    method = Column(String(20), nullable=False)
-    values = Column(PickleType, nullable=False)
-
-    __table_args__ = (
-        UniqueConstraint("parent_id", "method", name="_pc_parent_method_uc"),
-    )
 
 
 class DBConformerRecord(DBBase):
@@ -44,23 +21,14 @@ class DBConformerRecord(DBBase):
 
     coordinates = Column(PickleType, nullable=False)
 
-    def _store_new_data(
-        self,
-        new_record,
-        mapped_smiles,
-        db_class=DBPartialChargeSet,
-        container_name: str = "partial_charges",
-    ):
-        db_container = getattr(self, container_name)
-        existing_methods = [x.method for x in db_container]
-        for new_data in getattr(new_record, container_name).values():
-            if new_data.method in existing_methods:
-                raise RuntimeError(
-                    f"{new_data.method} {container_name} already stored for {mapped_smiles} "
-                    f"with coordinates {new_record.coordinates}"
-                )
-            db_data = db_class(method=new_data.method, values=new_data.values)
-            db_container.append(db_data)
+
+class DBMinimizedConformerRecord(DBBase):
+    __tablename__ = "minimized_conformers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    parent_id = Column(Integer, ForeignKey("molecules.id"), nullable=False, index=True)
+
+    coordinates = Column(PickleType, nullable=False)
 
 
 class DBMoleculeRecord(DBBase):
@@ -68,12 +36,21 @@ class DBMoleculeRecord(DBBase):
 
     id = Column(Integer, primary_key=True, index=True)
 
+    qcarchive_id = Column(String(20), nullable=False, index=True)
+    qcarchive_energy = Column(String(24), nullable=False, index=True)
+
     inchi_key = Column(String(20), nullable=False, index=True)
     mapped_smiles = Column(String, nullable=False)
 
     conformers = relationship("DBConformerRecord", cascade="all, delete-orphan")
+    minimized_conformers = relationship(
+        "DBMinimizedConformerRecord", cascade="all, delete-orphan"
+    )
+    minimized_conformers = relationship(
+        "DBMinimizedConformerRecord", cascade="all, delete-orphan"
+    )
 
-    def store_conformer_records(self, records: List["ConformerRecord"]):
+    def store_conformer_records(self, records: List[ConformerRecord]):
         """Store a set of conformer records in an existing DB molecule record."""
 
         if len(self.conformers) > 0:
@@ -95,9 +72,7 @@ class DBMoleculeRecord(DBBase):
             self.conformers.append(db_conformer)
             conformer_matches[i] = len(self.conformers) - 1
 
-        DB_CLASSES = {
-            "partial_charges": DBPartialChargeSet,
-        }
+        DB_CLASSES = {}
 
         for index, db_index in conformer_matches.items():
             db_record: DBConformerRecord = self.conformers[db_index]
@@ -106,6 +81,12 @@ class DBMoleculeRecord(DBBase):
                 db_record._store_new_data(
                     record, self.mapped_smiles, db_class, container_name
                 )
+
+    def store_minimized_conformer_records(
+        self,
+        records: List[MinimizedConformerRecord],
+    ):
+        raise NotImplementedError()
 
 
 class DBGeneralProvenance(DBBase):

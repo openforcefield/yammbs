@@ -3,7 +3,6 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional
 
 import numpy as np
-
 from ibstore._db import (
     DB_VERSION,
     DBGeneralProvenance,
@@ -13,9 +12,8 @@ from ibstore._db import (
 )
 
 if TYPE_CHECKING:
-    from sqlalchemy.orm import Session
-
     from ibstore.record import MoleculeRecord
+    from sqlalchemy.orm import Session
 
 
 class DBQueryResult(NamedTuple):
@@ -166,7 +164,10 @@ class DBSessionManager:
 
         if existing_db_record is None:
             existing_db_record = DBMoleculeRecord(
-                inchi_key=inchi_key, mapped_smiles=records[0].mapped_smiles
+                inchi_key=inchi_key,
+                mapped_smiles=records[0].mapped_smiles,
+                qcarchive_id=records[0].qcarchive_id,
+                qcarchive_energy=records[0].qcarchive_energy,
             )
 
         # Retrieve the DB indexed SMILES that defines the ordering the atoms in each
