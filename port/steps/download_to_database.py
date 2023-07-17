@@ -50,7 +50,7 @@ def download_to_database(
         print("deleting implicit hydrogen entry: ", ind)
         del data.entries["https://api.qcarchive.molssi.org:443/"][ind]
 
-    logging.info("creating recoreds")
+    logging.info("creating records")
     records = list()
     for record_and_molecule in data.to_records():
         record = record_and_molecule[0]
@@ -69,3 +69,4 @@ def download_to_database(
 
     logging.info("storing records")
     MoleculeStore(database).store(records)
+

@@ -142,6 +142,19 @@ class DBSessionManager:
     def db(self):
         return self.session
 
+    def _store_single_molecule_record(
+        self,
+        record: "MoleculeRecord",
+    ):
+        self.db.add(
+            DBMoleculeRecord(
+                # inchi_key=record.inchi_key,
+                mapped_smiles=record.mapped_smiles,
+                qcarchive_id=record.qcarchive_id,
+                qcarchive_energy=record.qcarchive_energy,
+            )
+        )
+
     def store_records_with_smiles(
         self,
         inchi_key: str,
@@ -164,7 +177,7 @@ class DBSessionManager:
 
         if existing_db_record is None:
             existing_db_record = DBMoleculeRecord(
-                inchi_key=inchi_key,
+                # inchi_key=inchi_key,
                 mapped_smiles=records[0].mapped_smiles,
                 qcarchive_id=records[0].qcarchive_id,
                 qcarchive_energy=records[0].qcarchive_energy,

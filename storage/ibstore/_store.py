@@ -105,23 +105,29 @@ class MoleculeStore:
         suppress_toolkit_warnings: bool
             Whether to suppress toolkit warnings when loading molecules.
         """
-        from openff.nagl.toolkits.openff import (
-            capture_toolkit_warnings,
-            smiles_to_inchi_key,
-        )
-
         if isinstance(records, MoleculeRecord):
             records = [records]
 
-        with capture_toolkit_warnings(run=suppress_toolkit_warnings):
-            records_by_inchi_key = defaultdict(list)
+        with self._get_session() as db:
+            for record in records:
+                db._store_single_molecule_record(record)
+"""
+        records_by_inchi_key = defaultdict(list)
 
-            for record in tqdm(records, desc="grouping records to store by InChI key"):
-                inchi_key = smiles_to_inchi_key(record.mapped_smiles)
-                records_by_inchi_key[inchi_key].append(record)
+        for record in tqdm(records, desc="grouping records to store by InChI key"):
+            inchi_key = smiles_to_inchi_key(record.mapped_smiles)
+            records_by_inchi_key[inchi_key].append(record)
 
-            with self._get_session() as db:
-                for inchi_key, inchi_records in tqdm(
-                    records_by_inchi_key.items(), desc="storing grouped records"
-                ):
-                    db.store_records_with_inchi_key(inchi_key, inchi_records)
+        with self._get_session() as db:
+            for inchi_key, inchi_records in tqdm(
+                records_by_inchi_key.items(), desc="storing grouped records"
+            ):
+                db.store_records_with_inchi_key(inchi_key, inchi_records)
+"""
+
+def smiles_to_inchi_key(smiles: str) -> str:
+    from openff.toolkit import Molecule
+
+    return Molecule.from_smiles(smiles, allow_undefined_stereo=True).to_inchikey(
+        fixed_hydrogens=True
+    )

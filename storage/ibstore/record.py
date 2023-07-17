@@ -1,5 +1,6 @@
 """This module defines the data models used to store the data in the database."""
 from typing import TYPE_CHECKING, Dict, List
+from qcportal.models.records import OptimizationRecord
 
 import numpy as np
 from openff.nagl._base.array import Array
@@ -68,7 +69,7 @@ class ConformerRecord(Record):
         )
 
 
-class MinimizedConfomerRecord(ConformerRecord):
+class MinimizedConformerRecord(ConformerRecord):
     pass
 
 
@@ -81,26 +82,67 @@ class MoleculeRecord(Record):
         ...,
         description="The ID of the molecule in the QCArchive database",
     )
-    qcarchive_energy: str = Field(
+    qcarchive_energy: float = Field(
         ...,
-        description="The final energy of the molecule as optimized and computed by QCArchive",
+        description="The final energy (kcal/mol) of the molecule as optimized and computed by QCArchive",
     )
     mapped_smiles: str = Field(
         ...,
         description="The mapped SMILES string for the molecule with hydrogens specified",
     )
-    conformers: List[ConformerRecord] = Field(
+    conformer: ConformerRecord = Field(
         ...,
         description=("Conformers associated with the molecule. "),
     )
-    minimized_conformer: List[MinimizedConfomerRecord] = Field(
+    minimized_conformer: MinimizedConformerRecord = Field(
         ...,
         description=("Minimized conformers associated with the molecule. "),
+    )
+    minimized_energy: float = Field(
+        ...,
+        description="The final energy of the molecule as minimized and computed by OpenMM",
     )
 
     @property
     def smiles(self):
         return self.mapped_smiles
+
+    @classmethod
+    def from_qc_and_mm(
+        cls,
+        qc_record: OptimizationRecord,
+        qc_molecule: Molecule,
+        mm_molecule: Molecule,
+        minimized_energy: float,
+    ):
+        import qcelemental
+
+        hartree2kcalmol = qcelemental.constants.hartree2kcalmol
+
+        assert qc_molecule.n_conformers == mm_molecule.n_conformers == 1
+        assert qc_molecule.to_smiles(
+            mapped=True,
+            isomeric=True,
+        ) == mm_molecule.to_smiles(
+            mapped=True,
+            isomeric=True,
+        )
+
+        return cls(
+            qcarchive_id=qc_record.id,
+            qcarchive_energy=qc_record.get_final_energy() * hartree2kcalmol,
+            mapped_smiles=qc_molecule.to_smiles(
+                mapped=True,
+                isomeric=True,
+            ),
+            conformer=ConformerRecord(
+                coordinates=qc_molecule.conformers[0].m_as(unit.angstrom)
+            ),
+            minimized_conformer=ConformerRecord(
+                coordinates=mm_molecule.conformers[0].m_as(unit.angstrom)
+            ),
+            minimized_energy=minimized_energy,
+        )
 
     @classmethod
     def from_qcsubmit_record(

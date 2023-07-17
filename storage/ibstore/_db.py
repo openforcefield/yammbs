@@ -2,7 +2,7 @@ import logging
 from typing import Dict, List
 
 from ibstore.record import ConformerRecord, MinimizedConformerRecord
-from sqlalchemy import Column, ForeignKey, Integer, PickleType, String
+from sqlalchemy import Column, ForeignKey, Integer, PickleType, String, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -36,17 +36,16 @@ class DBMoleculeRecord(DBBase):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    qcarchive_id = Column(String(20), nullable=False, index=True)
-    qcarchive_energy = Column(String(24), nullable=False, index=True)
+    qcarchive_id = Column(String(20), nullable=False)
+    qcarchive_energy = Column(Float(24), nullable=False)
 
-    inchi_key = Column(String(20), nullable=False, index=True)
+    minimized_energy = Column(Float(24))
+
+    # inchi_key = Column(String(20), nullable=False, index=True)
     mapped_smiles = Column(String, nullable=False)
 
-    conformers = relationship("DBConformerRecord", cascade="all, delete-orphan")
-    minimized_conformers = relationship(
-        "DBMinimizedConformerRecord", cascade="all, delete-orphan"
-    )
-    minimized_conformers = relationship(
+    conformer = relationship("DBConformerRecord", cascade="all, delete-orphan")
+    minimized_conformer = relationship(
         "DBMinimizedConformerRecord", cascade="all, delete-orphan"
     )
 
