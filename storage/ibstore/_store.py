@@ -1,25 +1,19 @@
 import logging
 import pathlib
-from collections import defaultdict
 from contextlib import contextmanager
 from typing import ContextManager, Dict, List, Tuple
 
 from ibstore._db import DBBase, DBMoleculeRecord
 from ibstore._session import DBSessionManager
 from ibstore._types import Pathlike
-from ibstore.record import MoleculeRecord
+from ibstore.models import MoleculeRecord
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
-from tqdm import tqdm
 
 LOGGER = logging.getLogger(__name__)
 
 
 class MoleculeStore:
-    """
-    A class used to store and process molecule datasets.
-    """
-
     def __len__(self):
         with self._get_session() as db:
             return db.db.query(DBMoleculeRecord.mapped_smiles).count()
@@ -59,7 +53,7 @@ class MoleculeStore:
         finally:
             session.close()
 
-    def set_provenance(
+    def _set_provenance(
         self,
         general_provenance: Dict[str, str],
         software_provenance: Dict[str, str],
@@ -110,8 +104,12 @@ class MoleculeStore:
 
         with self._get_session() as db:
             for record in records:
-                db._store_single_molecule_record(record)
+                db.store_molecule_record(record)
+
+
 """
+        from tqdm import tqdm
+        from collections import defaultdict
         records_by_inchi_key = defaultdict(list)
 
         for record in tqdm(records, desc="grouping records to store by InChI key"):
@@ -124,6 +122,7 @@ class MoleculeStore:
             ):
                 db.store_records_with_inchi_key(inchi_key, inchi_records)
 """
+
 
 def smiles_to_inchi_key(smiles: str) -> str:
     from openff.toolkit import Molecule

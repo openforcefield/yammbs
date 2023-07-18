@@ -1,8 +1,8 @@
 import logging
 from typing import Dict, List
 
-from ibstore.record import ConformerRecord, MinimizedConformerRecord
-from sqlalchemy import Column, ForeignKey, Integer, PickleType, String, Float
+from ibstore.models import MMConformerRecord, QMConformerRecord
+from sqlalchemy import Column, Float, ForeignKey, Integer, PickleType, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -13,22 +13,24 @@ DB_VERSION = 1
 LOGGER = logging.getLogger(__name__)
 
 
-class DBConformerRecord(DBBase):
-    __tablename__ = "conformers"
+class DBQMConformerRecord(DBBase):
+    __tablename__ = "qm_conformers"
 
     id = Column(Integer, primary_key=True, index=True)
     parent_id = Column(Integer, ForeignKey("molecules.id"), nullable=False, index=True)
 
     coordinates = Column(PickleType, nullable=False)
+    energy = Column(Float, nullable=False)
 
 
-class DBMinimizedConformerRecord(DBBase):
-    __tablename__ = "minimized_conformers"
+class DBMMConformerRecord(DBBase):
+    __tablename__ = "mm_conformers"
 
     id = Column(Integer, primary_key=True, index=True)
     parent_id = Column(Integer, ForeignKey("molecules.id"), nullable=False, index=True)
 
     coordinates = Column(PickleType, nullable=False)
+    energy = Column(Float, nullable=False)
 
 
 class DBMoleculeRecord(DBBase):
@@ -36,56 +38,41 @@ class DBMoleculeRecord(DBBase):
 
     id = Column(Integer, primary_key=True, index=True)
 
+    # TODO: Split these out?
     qcarchive_id = Column(String(20), nullable=False)
     qcarchive_energy = Column(Float(24), nullable=False)
 
-    minimized_energy = Column(Float(24))
+    minimized_energy = Column(Float(24), nullable=False)
 
     # inchi_key = Column(String(20), nullable=False, index=True)
     mapped_smiles = Column(String, nullable=False)
 
-    conformer = relationship("DBConformerRecord", cascade="all, delete-orphan")
-    minimized_conformer = relationship(
-        "DBMinimizedConformerRecord", cascade="all, delete-orphan"
-    )
+    qm_conformers = relationship(
+        "DBQMConformerRecord"
+    )  # , cascade="all, delete-orphan")
+    mm_conformers = relationship(
+        "DBMMConformerRecord"
+    )  # , cascade="all, delete-orphan")
 
-    def store_conformer_records(self, records: List[ConformerRecord]):
-        """Store a set of conformer records in an existing DB molecule record."""
-
-        if len(self.conformers) > 0:
-            LOGGER.warning(
-                f"An entry for {self.mapped_smiles} is already present in the molecule store. "
-                f"Trying to find matching conformers."
+    def store_qm_conformer_records(self, records: List[QMConformerRecord]):
+        if not isinstance(records, list):
+            raise ValueError("records must be a list")
+        # TODO: match conformers?
+        for record in records:
+            db_record = DBQMConformerRecord(
+                coordinates=record.coordinates, energy=record.energy
             )
+            self.qm_conformers.append(db_record)
 
-        conformer_matches = match_conformers(
-            self.mapped_smiles, self.conformers, records
-        )
-
-        # Create new database conformers for those unmatched conformers.
-        for i, record in enumerate(records):
-            if i in conformer_matches:
-                continue
-
-            db_conformer = DBConformerRecord(coordinates=record.coordinates)
-            self.conformers.append(db_conformer)
-            conformer_matches[i] = len(self.conformers) - 1
-
-        DB_CLASSES = {}
-
-        for index, db_index in conformer_matches.items():
-            db_record: DBConformerRecord = self.conformers[db_index]
-            record = records[index]
-            for container_name, db_class in DB_CLASSES.items():
-                db_record._store_new_data(
-                    record, self.mapped_smiles, db_class, container_name
-                )
-
-    def store_minimized_conformer_records(
-        self,
-        records: List[MinimizedConformerRecord],
-    ):
-        raise NotImplementedError()
+    def store_mm_conformer_records(self, records: List[MMConformerRecord]):
+        if not isinstance(records, list):
+            raise ValueError("records must be a list")
+        # TODO: match conformers?
+        for record in records:
+            db_record = DBMMConformerRecord(
+                coordinates=record.coordinates, energy=record.energy
+            )
+            self.mm_conformers.append(db_record)
 
 
 class DBGeneralProvenance(DBBase):
@@ -123,10 +110,10 @@ class DBInformation(DBBase):
     )
 
 
-def match_conformers(
+def _match_conformers(
     indexed_mapped_smiles: str,
-    db_conformers: List[DBConformerRecord],
-    query_conformers: List["ConformerRecord"],
+    db_conformers: List,
+    query_conformers: List,
 ) -> Dict[int, int]:
     """A method which attempts to match a set of new conformers to store with
     conformers already present in the database by comparing the RMS of the

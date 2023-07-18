@@ -12,7 +12,7 @@ from ibstore._db import (
 )
 
 if TYPE_CHECKING:
-    from ibstore.record import MoleculeRecord
+    from ibstore.models import MoleculeRecord
     from sqlalchemy.orm import Session
 
 
@@ -142,18 +142,21 @@ class DBSessionManager:
     def db(self):
         return self.session
 
-    def _store_single_molecule_record(
+    def store_molecule_record(
         self,
         record: "MoleculeRecord",
     ):
-        self.db.add(
-            DBMoleculeRecord(
-                # inchi_key=record.inchi_key,
-                mapped_smiles=record.mapped_smiles,
-                qcarchive_id=record.qcarchive_id,
-                qcarchive_energy=record.qcarchive_energy,
-            )
+        db_record = DBMoleculeRecord(
+            qcarchive_id=record.qcarchive_id,
+            qcarchive_energy=record.qcarchive_energy,
+            mapped_smiles=record.mapped_smiles,
+            minimized_energy=record.minimized_energy,
         )
+
+        db_record.store_qm_conformer_records([record.conformer])
+        db_record.store_mm_conformer_records([record.minimized_conformer])
+
+        self.db.add(db_record)
 
     def store_records_with_smiles(
         self,

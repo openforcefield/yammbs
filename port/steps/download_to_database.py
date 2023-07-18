@@ -69,4 +69,3 @@ def download_to_database(
 
     logging.info("storing records")
     MoleculeStore(database).store(records)
-

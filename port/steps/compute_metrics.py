@@ -1,5 +1,5 @@
-import os
 import json
+import os
 from typing import Any, Dict
 
 import numpy
@@ -15,9 +15,9 @@ from geometric.internal import (
 )
 from geometric.molecule import Molecule as GeometricMolecule
 from openff.toolkit.topology import Molecule
-from rdkit.Chem import TorsionFingerprints
 from openff.units import unit
 from openff.units.elements import SYMBOLS
+from rdkit.Chem import TorsionFingerprints
 
 # Define the RMSD calculation parameters
 RMSD_AUTOMORPH = True  # take into acct symmetry related transformations
@@ -185,9 +185,7 @@ def _compute_metrics(
             smiles = oechem.OEGetSDData(oe_qm_conformer, "SMILES QCArchive")
             record_id = oechem.OEGetSDData(oe_qm_conformer, record_id_tag)
 
-            if not (
-                oechem.OEGetSDData(oe_mm_conformer, record_id_tag) == record_id
-            ):
+            if not (oechem.OEGetSDData(oe_mm_conformer, record_id_tag) == record_id):
                 print(f"conformer mismatch {oe_qm_conformer.GetTitle()}")
                 continue
 
@@ -277,7 +275,6 @@ def _compute_metrics(
 
 
 def compute_metrics(options, input_path, output_path, n_chunks: int):
-
     os.makedirs(output_path, exist_ok=True)
 
     with open(options) as file:
@@ -304,9 +301,7 @@ def compute_metrics(options, input_path, output_path, n_chunks: int):
 
     for index in range(n_chunks):
         try:
-            data_frames.append(
-                pandas.read_csv(f"{output_path}/03-metrics-{index}.csv")
-            )
+            data_frames.append(pandas.read_csv(f"{output_path}/03-metrics-{index}.csv"))
         except pandas.errors.EmptyDataError:
             continue
 
@@ -316,5 +311,7 @@ def compute_metrics(options, input_path, output_path, n_chunks: int):
         sort=False,
     )
 
-    data_frame = data_frame.sort_values(by=["SMILES", "Conformer Idx", "Force Field"], ascending=False)
+    data_frame = data_frame.sort_values(
+        by=["SMILES", "Conformer Idx", "Force Field"], ascending=False
+    )
     data_frame.to_csv(f"{output_path}/metrics.csv", index=False)

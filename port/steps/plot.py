@@ -1,5 +1,5 @@
 import os
-from collections import defaultdict
+from collections import Counter, defaultdict
 from typing import List, Tuple
 
 import click
@@ -10,7 +10,6 @@ from matplotlib import pyplot
 from nonbonded.library.utilities.checkmol import analyse_functional_groups
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 from tqdm import tqdm
-from collections import Counter
 
 seaborn.set_palette("colorblind")
 
@@ -88,13 +87,11 @@ def draw_step_plot(
         )
 
     for sample_index in range(bootstrap_iterations):
-
         samples_indices = numpy.random.randint(
             low=0, high=sample_count, size=sample_count
         )
 
         for method, method_data in zip(method_labels, plot_data):
-
             print(method, len(method_data))
             sample_data = method_data[samples_indices]
             sample_density, _ = numpy.histogram(
@@ -112,7 +109,6 @@ def draw_step_plot(
     error_bar_y_values = {}
 
     for method, method_data in zip(method_labels, plot_data):
-
         sorted_samples = numpy.sort(sample_densities[method], axis=0)
 
         confidence_intervals[method] = (
@@ -134,7 +130,7 @@ def draw_step_plot(
             for data_point in data_series
         ]
     )
-    
+
     plot = seaborn.displot(
         data=plot_frame,
         x=metric,
@@ -149,12 +145,11 @@ def draw_step_plot(
         height=3,
         lw=1.25,
         facet_kws={"legend_out": False},
-        )
+    )
 
     # pyplot.setp(plot.ax.lines[4], linewidth=2.75)
 
     for i, method in enumerate(method_labels):
-
         x_offset = (x_range[1] - x_range[0]) / n_bins / len(method_labels) * (i + 0.5)
 
         pyplot.errorbar(
@@ -218,18 +213,26 @@ def draw_ddE_histogram_in_ranges(
     counts = {}
     for i in range(len(method_labels)):
         counts[i] = Counter(bin_inds[i])
-    pyplot.rcParams['font.size'] = 14
-    fig = pyplot.figure(figsize=(10,6))
-    width=0.15
-    x = [1,2,3,4,5]
-    mid = int(len(bins)/2)
+    pyplot.rcParams["font.size"] = 14
+    fig = pyplot.figure(figsize=(10, 6))
+    width = 0.15
+    x = [1, 2, 3, 4, 5]
+    mid = int(len(bins) / 2)
     y = {}
     for i in range(len(method_labels)):
-        y[i] = [counts[i][mid], counts[i][mid-1]+counts[i][mid+1], counts[i][mid-2]+counts[i][mid+2], counts[i][mid-3]+counts[i][mid+3], counts[i][mid-4]+counts[i][mid+4]]
-        y[i] = [t/(sum(counts[i].values()) - counts[i][len(bins)]) for t in y[i]]
-        xw = [t+(i-1)*width for t in x]
+        y[i] = [
+            counts[i][mid],
+            counts[i][mid - 1] + counts[i][mid + 1],
+            counts[i][mid - 2] + counts[i][mid + 2],
+            counts[i][mid - 3] + counts[i][mid + 3],
+            counts[i][mid - 4] + counts[i][mid + 4],
+        ]
+        y[i] = [t / (sum(counts[i].values()) - counts[i][len(bins)]) for t in y[i]]
+        xw = [t + (i - 1) * width for t in x]
         pyplot.bar(xw, y[i], width=width, alpha=0.6, label=method_labels[i])
-    pyplot.xlabel("ddE (kcal/mol) in ranges of [-1, 1], \n [-2, -1] & [1, 2], \n [-3, -2] & [2, 3], ...")
+    pyplot.xlabel(
+        "ddE (kcal/mol) in ranges of [-1, 1], \n [-2, -1] & [1, 2], \n [-3, -2] & [2, 3], ..."
+    )
     pyplot.ylabel("Densities")
     pyplot.legend()
     # save with transparency for overlapping plots
@@ -269,7 +272,7 @@ def draw_box_plot(
 
     seaborn.catplot(data=plot_frame, x="method", y=metric, kind="box", dodge=False)
 
-    pyplot.xticks(rotation=45, ha='right', rotation_mode='anchor')
+    pyplot.xticks(rotation=45, ha="right", rotation_mode="anchor")
 
     if y_range is not None:
         pyplot.ylim(y_range)
@@ -301,17 +304,17 @@ def draw_plots(energies, rmsds, tfds, method_labels, output_directory):
         x_range=(-15.0, 15.0),
         output_path=os.path.join(output_directory, "step-dde.png"),
     )
-#   draw_ddE_histogram_in_ranges(
-#       energies,
-#       method_labels,
-#       metric="ddE (kcal/mol)",
-#       output_path=os.path.join(output_directory, "dde-in-ranges.png"),
-#   )
+    #   draw_ddE_histogram_in_ranges(
+    #       energies,
+    #       method_labels,
+    #       metric="ddE (kcal/mol)",
+    #       output_path=os.path.join(output_directory, "dde-in-ranges.png"),
+    #   )
 
     for key, values in rmsds.items():
-        metric = fr"{key} ($\mathrm{{\AA}}$)"
+        metric = rf"{key} ($\mathrm{{\AA}}$)"
         if key in ["Angle RMSD", "Dihedral RMSD", "Improper RMSD"]:
-            metric = fr"{key} degrees"
+            metric = rf"{key} degrees"
 
         draw_box_plot(
             values,
@@ -347,8 +350,8 @@ def draw_plots(energies, rmsds, tfds, method_labels, output_directory):
         output_path=os.path.join(output_directory, "step-tfd.png"),
     )
 
-def plot(input_path):
 
+def plot(input_path):
     print("1) Plotting full metrics")
 
     metrics_frame = pandas.read_csv(input_path)
@@ -358,7 +361,6 @@ def plot(input_path):
     metrics = []
 
     for method_label in method_labels:
-
         method_frame = metrics_frame[metrics_frame["Force Field"] == method_label]
 
         metrics.append(
@@ -396,7 +398,7 @@ def plot(input_path):
             "Angle RMSD": angle_rmsds,
             "Proper RMSD": proper_rmsds,
             "Improper RMSD": improper_rmsds,
-            "FB OBJECTIVE" : fb_objectives, 
+            "FB OBJECTIVE": fb_objectives,
         },
         tfds,
         method_labels,
@@ -409,14 +411,12 @@ def plot(input_path):
     print("2) Splitting test molecules by chemical environment")
 
     for pattern in tqdm(smiles[0]):
-
         chemical_environments = analyse_functional_groups(pattern)
 
         if chemical_environments is None:
             print(f"skipping {pattern} - checkmol could not assign groups")
 
         for chemical_environment in chemical_environments:
-
             if chemical_environment not in ANALYSIS_ENVIRONMENTS:
                 continue
 
@@ -426,8 +426,14 @@ def plot(input_path):
 
     per_environment_metrics = defaultdict(list)
 
-    for method_smiles, method_energies, method_tfds, method_rmsds, method_fb_objectives, *_ in metrics:
-
+    for (
+        method_smiles,
+        method_energies,
+        method_tfds,
+        method_rmsds,
+        method_fb_objectives,
+        *_,
+    ) in metrics:
         method_data = pandas.DataFrame(
             {
                 "Energy": method_energies,
@@ -439,7 +445,6 @@ def plot(input_path):
         )
 
         for chemical_environment, environment_smiles in per_environment_smiles.items():
-
             chemical_environment_data = method_data[
                 method_data["SMILES"].isin(environment_smiles)
             ]
@@ -457,14 +462,17 @@ def plot(input_path):
     print("3) Plotting per environment metrics")
 
     for chemical_environment, environment_metrics in per_environment_metrics.items():
-
-        environment_energies, environment_rmsds, environment_tfds, environment_fb_objectives, _ = zip(
-            *environment_metrics
-        )
+        (
+            environment_energies,
+            environment_rmsds,
+            environment_tfds,
+            environment_fb_objectives,
+            _,
+        ) = zip(*environment_metrics)
 
         draw_plots(
             environment_energies,
-            {"RMSD": environment_rmsds, "FB OBJECTIVE":environment_fb_objectives},
+            {"RMSD": environment_rmsds, "FB OBJECTIVE": environment_fb_objectives},
             environment_tfds,
             method_labels,
             os.path.join("04-outputs", chemical_environment.value.lower()),
