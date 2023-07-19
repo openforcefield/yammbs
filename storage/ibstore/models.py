@@ -71,8 +71,6 @@ class MoleculeRecord(Record):
         assert molecule.n_conformers == 1
 
         return cls(
-            # qcarchive_id=record.id,
-            # qcarchive_energy=record.get_final_energy() * hartree2kcalmol,
             mapped_smiles=molecule.to_smiles(
                 mapped=True,
                 isomeric=True,
@@ -80,8 +78,14 @@ class MoleculeRecord(Record):
             inchi_key=molecule.to_inchikey(
                 fixed_hydrogens=True,
             ),
-            # conformer=QMConformerRecord(
-            #     coordinates=molecule.conformers[0].m_as(unit.angstrom),
-            #     energy=record.get_final_energy() * hartree2kcalmol,
-            # ),
         )
+
+        # TODO: Also add QC data (id, energy, coordinates) as a QCConformerRecord,
+        #       but don't store it here
+
+        # qcarchive_id=record.id,
+        # qcarchive_energy=record.get_final_energy() * hartree2kcalmol,
+        # conformer=QMConformerRecord(
+        #     coordinates=molecule.conformers[0].m_as(unit.angstrom),
+        #     energy=record.get_final_energy() * hartree2kcalmol,
+        # ),
