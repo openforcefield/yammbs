@@ -3,7 +3,6 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional
 
 import numpy as np
-
 from ibstore._db import (
     DB_VERSION,
     DBGeneralProvenance,
@@ -13,9 +12,8 @@ from ibstore._db import (
 )
 
 if TYPE_CHECKING:
-    from sqlalchemy.orm import Session
-
     from ibstore.models import MoleculeRecord
+    from sqlalchemy.orm import Session
 
 
 class DBQueryResult(NamedTuple):

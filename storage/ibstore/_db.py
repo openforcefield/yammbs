@@ -1,11 +1,10 @@
 import logging
 from typing import Dict, List
 
+from ibstore.models import MMConformerRecord, QMConformerRecord
 from sqlalchemy import Column, Float, ForeignKey, Integer, PickleType, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-
-from ibstore.models import MMConformerRecord, QMConformerRecord
 
 DBBase = declarative_base()
 

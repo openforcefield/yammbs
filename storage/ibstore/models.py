@@ -1,8 +1,16 @@
+from typing import TypeVar
+
+import qcelemental
 from openff.nagl._base.array import Array
 from openff.nagl._base.base import ImmutableModel
 from openff.toolkit import Molecule
+from openff.units import unit
 from pydantic import Field
 from qcportal.models.records import OptimizationRecord
+
+hartree2kcalmol = qcelemental.constants.hartree2kcalmol
+
+MR = TypeVar("MR", bound="MoleculeRecord")
 
 
 class Record(ImmutableModel):
@@ -62,7 +70,7 @@ class MoleculeRecord(Record):
         cls,
         record: OptimizationRecord,
         molecule: Molecule,
-    ):
+    ) -> tuple[MR, QMConformerRecord]:
         # import qcelemental
         # from openff.units import unit
 
@@ -70,13 +78,20 @@ class MoleculeRecord(Record):
 
         assert molecule.n_conformers == 1
 
-        return cls(
-            mapped_smiles=molecule.to_smiles(
-                mapped=True,
-                isomeric=True,
+        return (
+            cls(
+                mapped_smiles=molecule.to_smiles(
+                    mapped=True,
+                    isomeric=True,
+                ),
+                inchi_key=molecule.to_inchikey(
+                    fixed_hydrogens=True,
+                ),
             ),
-            inchi_key=molecule.to_inchikey(
-                fixed_hydrogens=True,
+            QMConformerRecord(
+                qcarchive_id=record.id,
+                coordinates=molecule.conformers[0].m_as(unit.angstrom),
+                energy=record.get_final_energy() * hartree2kcalmol,
             ),
         )
 
