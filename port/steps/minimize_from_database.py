@@ -12,7 +12,9 @@ from steps._forcefields import _get_openmm_system
 N_PROCESSES = 16
 
 
-def _run_openmm(molecule: Molecule, system: openmm.System):
+def _run_openmm(
+    molecule: Molecule, system: openmm.System
+) -> tuple[openmm.unit.Quantity, float]:
     """
     Minimize molecule with specified system and return the positions of the optimized
     molecule.

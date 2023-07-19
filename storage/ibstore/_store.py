@@ -78,13 +78,6 @@ class MoleculeStore:
             self.general_provenance = db.get_general_provenance()
             self.software_provenance = db.get_software_provenance()
 
-    def get_smiles(self) -> List[str]:
-        with self._get_session() as db:
-            return [
-                smiles
-                for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles).distinct()
-            ]
-
     def store(
         self,
         records: Tuple[str, MoleculeRecord] = tuple(),
@@ -105,7 +98,6 @@ class MoleculeStore:
         with self._get_session() as db:
             for record in records:
                 db.store_molecule_record(record)
-
 
     def get_smiles(self) -> List[str]:
         """Get the (mapped) smiles of all records in the store."""

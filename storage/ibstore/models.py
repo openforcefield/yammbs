@@ -47,6 +47,10 @@ class MoleculeRecord(Record):
         ...,
         description="The mapped SMILES string for the molecule with hydrogens specified",
     )
+    inchi_key: str = Field(
+        ...,
+        description="The InChI key for the molecule",
+    )
     conformer: QMConformerRecord = Field(
         ...,
         description="Conformers associated with the molecule. ",
