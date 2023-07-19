@@ -150,11 +150,12 @@ class DBSessionManager:
             qcarchive_id=record.qcarchive_id,
             qcarchive_energy=record.qcarchive_energy,
             mapped_smiles=record.mapped_smiles,
-            minimized_energy=record.minimized_energy,
+            inchi_key=record.inchi_key,
+            # minimized_energy=record.minimized_energy,
         )
 
         db_record.store_qm_conformer_records([record.conformer])
-        db_record.store_mm_conformer_records([record.minimized_conformer])
+        # db_record.store_mm_conformer_records([record.minimized_conformer])
 
         self.db.add(db_record)
 

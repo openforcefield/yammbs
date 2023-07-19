@@ -42,17 +42,17 @@ class DBMoleculeRecord(DBBase):
     qcarchive_id = Column(String(20), nullable=False)
     qcarchive_energy = Column(Float(24), nullable=False)
 
-    minimized_energy = Column(Float(24), nullable=False)
+    # minimized_energy = Column(Float(24), nullable=False)
 
-    # inchi_key = Column(String(20), nullable=False, index=True)
+    inchi_key = Column(String, nullable=False, index=True)
     mapped_smiles = Column(String, nullable=False)
 
     qm_conformers = relationship(
         "DBQMConformerRecord"
     )  # , cascade="all, delete-orphan")
-    mm_conformers = relationship(
-        "DBMMConformerRecord"
-    )  # , cascade="all, delete-orphan")
+    # mm_conformers = relationship(
+    #     "DBMMConformerRecord"
+    # )  # , cascade="all, delete-orphan")
 
     def store_qm_conformer_records(self, records: List[QMConformerRecord]):
         if not isinstance(records, list):

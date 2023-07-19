@@ -51,17 +51,10 @@ class MoleculeRecord(Record):
         ...,
         description="The InChI key for the molecule",
     )
+    # TODO: Do not store QC conformer on the molecule, store each QC conformer as a list, pointing back to this
     conformer: QMConformerRecord = Field(
         ...,
         description="Conformers associated with the molecule. ",
-    )
-    minimized_conformer: MMConformerRecord = Field(
-        ...,
-        description="Minimized conformers associated with the molecule. ",
-    )
-    minimized_energy: float = Field(
-        ...,
-        description="The final energy of the molecule as minimized and computed by OpenMM",
     )
 
     @property
@@ -69,39 +62,30 @@ class MoleculeRecord(Record):
         return self.mapped_smiles
 
     @classmethod
-    def from_qc_and_mm(
+    def from_record_and_molecule(
         cls,
-        qc_record: OptimizationRecord,
-        qc_molecule: Molecule,
-        mm_molecule: Molecule,
-        minimized_energy: float,
+        record: OptimizationRecord,
+        molecule: Molecule,
     ):
         import qcelemental
         from openff.units import unit
 
         hartree2kcalmol = qcelemental.constants.hartree2kcalmol
 
-        assert qc_molecule.n_conformers == mm_molecule.n_conformers == 1
-        assert qc_molecule.to_smiles(
-            mapped=True,
-            isomeric=True,
-        ) == mm_molecule.to_smiles(
-            mapped=True,
-            isomeric=True,
-        )
+        assert molecule.n_conformers == 1
 
         return cls(
-            qcarchive_id=qc_record.id,
-            qcarchive_energy=qc_record.get_final_energy() * hartree2kcalmol,
-            mapped_smiles=qc_molecule.to_smiles(
+            qcarchive_id=record.id,
+            qcarchive_energy=record.get_final_energy() * hartree2kcalmol,
+            mapped_smiles=molecule.to_smiles(
                 mapped=True,
                 isomeric=True,
             ),
+            inchi_key=molecule.to_inchikey(
+                fixed_hydrogens=True,
+            ),
             conformer=QMConformerRecord(
-                coordinates=qc_molecule.conformers[0].m_as(unit.angstrom)
+                coordinates=molecule.conformers[0].m_as(unit.angstrom),
+                energy=record.get_final_energy() * hartree2kcalmol,
             ),
-            minimized_conformer=MMConformerRecord(
-                coordinates=mm_molecule.conformers[0].m_as(unit.angstrom)
-            ),
-            minimized_energy=minimized_energy,
         )
