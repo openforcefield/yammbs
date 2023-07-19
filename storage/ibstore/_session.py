@@ -2,7 +2,6 @@
 from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional
 
-import numpy as np
 from ibstore._db import (
     DB_VERSION,
     DBGeneralProvenance,
@@ -12,8 +11,9 @@ from ibstore._db import (
 )
 
 if TYPE_CHECKING:
-    from ibstore.models import MoleculeRecord
     from sqlalchemy.orm import Session
+
+    from ibstore.models import MoleculeRecord
 
 
 class DBQueryResult(NamedTuple):
@@ -21,16 +21,13 @@ class DBQueryResult(NamedTuple):
 
     molecule_id: int
     molecule_smiles: str
-    conformer_id: int
-    conformer_coordinates: np.ndarray
-    method: str
-    values: np.ndarray
+    molecule_inchi: str
 
-    def to_nested_dict(self):
+    def to_nested_dict(self) -> dict[int, dict[str, str]]:
         return {
             self.molecule_id: {
                 "mapped_smiles": self.molecule_smiles,
-                "conformers": {self.conformer_id: {"coordinates"}},
+                "inchi": self.molecule_inchi,
             }
         }
 

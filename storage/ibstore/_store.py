@@ -1,16 +1,20 @@
 import logging
 import pathlib
 from contextlib import contextmanager
-from typing import ContextManager, Dict, List, Tuple
+from typing import ContextManager, Dict, List, Tuple, TypeVar
+
+from openff.qcsubmit.results import OptimizationResultCollection
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from ibstore._db import DBBase, DBMoleculeRecord
 from ibstore._session import DBSessionManager
 from ibstore._types import Pathlike
 from ibstore.models import MoleculeRecord
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
 
 LOGGER = logging.getLogger(__name__)
+
+MS = TypeVar("MS", bound="MoleculeStore")
 
 
 class MoleculeStore:
@@ -106,6 +110,38 @@ class MoleculeStore:
                 smiles
                 for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles).distinct()
             ]
+
+    def get_molecule_by_smiles(self, smiles: str) -> DBMoleculeRecord:
+        with self._get_session() as db:
+            return [
+                smiles
+                for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles)
+                .filter_by(mapped_smiles=smiles)
+                .all()
+            ]
+
+    @classmethod
+    def from_qcsubmit_collection(
+        cls,
+        collection: OptimizationResultCollection,
+        database_name: str,
+    ) -> MS:
+        store = cls("test.sqlite")
+
+        for record_and_molecule in collection.to_records():
+            record = record_and_molecule[0]
+            molecule = record_and_molecule[1]
+
+            # _toolkit_registry_manager could go here
+
+            molecule_record, _ = MoleculeRecord.from_record_and_molecule(
+                record,
+                molecule,
+            )
+
+            store.store(molecule_record)
+
+        return store
 
 
 def smiles_to_inchi_key(smiles: str) -> str:

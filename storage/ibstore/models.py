@@ -1,12 +1,13 @@
 from typing import TypeVar
 
 import qcelemental
-from openff.nagl._base.array import Array
-from openff.nagl._base.base import ImmutableModel
 from openff.toolkit import Molecule
 from openff.units import unit
 from pydantic import Field
 from qcportal.models.records import OptimizationRecord
+
+from ibstore._base.array import Array
+from ibstore._base.base import ImmutableModel
 
 hartree2kcalmol = qcelemental.constants.hartree2kcalmol
 

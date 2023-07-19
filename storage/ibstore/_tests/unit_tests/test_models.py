@@ -1,19 +1,10 @@
 import numpy
-import pytest
 import qcelemental
-from ibstore.models import MoleculeRecord, QMConformerRecord
-from openff.qcsubmit.results import OptimizationResultCollection
 from openff.units import unit
-from openff.utilities.utilities import get_data_file_path
+
+from ibstore.models import MoleculeRecord, QMConformerRecord
 
 hartree2kcalmol = qcelemental.constants.hartree2kcalmol
-
-
-@pytest.fixture()
-def small_collection() -> OptimizationResultCollection:
-    return OptimizationResultCollection.parse_file(
-        get_data_file_path("_tests/data/01-processed-qm-ch.json", "ibstore")
-    )
 
 
 def test_load_from_qcsubmit(small_collection):
