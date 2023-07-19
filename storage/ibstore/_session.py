@@ -3,6 +3,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional
 
 import numpy as np
+
 from ibstore._db import (
     DB_VERSION,
     DBGeneralProvenance,
@@ -12,8 +13,9 @@ from ibstore._db import (
 )
 
 if TYPE_CHECKING:
-    from ibstore.models import MoleculeRecord
     from sqlalchemy.orm import Session
+
+    from ibstore.models import MoleculeRecord
 
 
 class DBQueryResult(NamedTuple):
@@ -147,14 +149,11 @@ class DBSessionManager:
         record: "MoleculeRecord",
     ):
         db_record = DBMoleculeRecord(
-            qcarchive_id=record.qcarchive_id,
-            qcarchive_energy=record.qcarchive_energy,
             mapped_smiles=record.mapped_smiles,
             inchi_key=record.inchi_key,
-            # minimized_energy=record.minimized_energy,
         )
 
-        db_record.store_qm_conformer_records([record.conformer])
+        # db_record.store_qm_conformer_records([record.conformer])
         # db_record.store_mm_conformer_records([record.minimized_conformer])
 
         self.db.add(db_record)

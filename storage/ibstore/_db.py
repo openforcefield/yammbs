@@ -1,10 +1,11 @@
 import logging
 from typing import Dict, List
 
-from ibstore.models import MMConformerRecord, QMConformerRecord
 from sqlalchemy import Column, Float, ForeignKey, Integer, PickleType, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
+
+from ibstore.models import MMConformerRecord, QMConformerRecord
 
 DBBase = declarative_base()
 
@@ -19,6 +20,7 @@ class DBQMConformerRecord(DBBase):
     id = Column(Integer, primary_key=True, index=True)
     parent_id = Column(Integer, ForeignKey("molecules.id"), nullable=False, index=True)
 
+    qcarchive_id = Column(String(20), nullable=False)
     coordinates = Column(PickleType, nullable=False)
     energy = Column(Float, nullable=False)
 
@@ -38,21 +40,8 @@ class DBMoleculeRecord(DBBase):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    # TODO: Split these out?
-    qcarchive_id = Column(String(20), nullable=False)
-    qcarchive_energy = Column(Float(24), nullable=False)
-
-    # minimized_energy = Column(Float(24), nullable=False)
-
     inchi_key = Column(String, nullable=False, index=True)
     mapped_smiles = Column(String, nullable=False)
-
-    qm_conformers = relationship(
-        "DBQMConformerRecord"
-    )  # , cascade="all, delete-orphan")
-    # mm_conformers = relationship(
-    #     "DBMMConformerRecord"
-    # )  # , cascade="all, delete-orphan")
 
     def store_qm_conformer_records(self, records: List[QMConformerRecord]):
         if not isinstance(records, list):

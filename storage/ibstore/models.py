@@ -11,13 +11,22 @@ class Record(ImmutableModel):
 
 
 class QMConformerRecord(Record):
+    """A record for storing coordinates computed from QC. Assumes use with QCArchive"""
+
+    qcarchive_id: str = Field(
+        ...,
+        description="The ID of the molecule in the QCArchive database",
+    )
     coordinates: Array = Field(
         ...,
         description=(
             "The coordinates [Angstrom] of this conformer with shape=(n_atoms, 3)."
         ),
     )
-    energy: float
+    energy: float = Field(
+        ...,
+        description="The final energy (kcal/mol) of the molecule as optimized and computed by QCArchive",
+    )
 
 
 class MMConformerRecord(Record):
@@ -35,14 +44,6 @@ class MoleculeRecord(Record):
     coordinates of the molecule in different conformers, and partial charges / WBOs
     computed for those conformers."""
 
-    qcarchive_id: str = Field(
-        ...,
-        description="The ID of the molecule in the QCArchive database",
-    )
-    qcarchive_energy: float = Field(
-        ...,
-        description="The final energy (kcal/mol) of the molecule as optimized and computed by QCArchive",
-    )
     mapped_smiles: str = Field(
         ...,
         description="The mapped SMILES string for the molecule with hydrogens specified",
@@ -50,11 +51,6 @@ class MoleculeRecord(Record):
     inchi_key: str = Field(
         ...,
         description="The InChI key for the molecule",
-    )
-    # TODO: Do not store QC conformer on the molecule, store each QC conformer as a list, pointing back to this
-    conformer: QMConformerRecord = Field(
-        ...,
-        description="Conformers associated with the molecule. ",
     )
 
     @property
@@ -67,16 +63,16 @@ class MoleculeRecord(Record):
         record: OptimizationRecord,
         molecule: Molecule,
     ):
-        import qcelemental
-        from openff.units import unit
+        # import qcelemental
+        # from openff.units import unit
 
-        hartree2kcalmol = qcelemental.constants.hartree2kcalmol
+        # hartree2kcalmol = qcelemental.constants.hartree2kcalmol
 
         assert molecule.n_conformers == 1
 
         return cls(
-            qcarchive_id=record.id,
-            qcarchive_energy=record.get_final_energy() * hartree2kcalmol,
+            # qcarchive_id=record.id,
+            # qcarchive_energy=record.get_final_energy() * hartree2kcalmol,
             mapped_smiles=molecule.to_smiles(
                 mapped=True,
                 isomeric=True,
@@ -84,8 +80,8 @@ class MoleculeRecord(Record):
             inchi_key=molecule.to_inchikey(
                 fixed_hydrogens=True,
             ),
-            conformer=QMConformerRecord(
-                coordinates=molecule.conformers[0].m_as(unit.angstrom),
-                energy=record.get_final_energy() * hartree2kcalmol,
-            ),
+            # conformer=QMConformerRecord(
+            #     coordinates=molecule.conformers[0].m_as(unit.angstrom),
+            #     energy=record.get_final_energy() * hartree2kcalmol,
+            # ),
         )
