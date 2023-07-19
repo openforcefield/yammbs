@@ -107,21 +107,13 @@ class MoleculeStore:
                 db.store_molecule_record(record)
 
 
-"""
-        from tqdm import tqdm
-        from collections import defaultdict
-        records_by_inchi_key = defaultdict(list)
-
-        for record in tqdm(records, desc="grouping records to store by InChI key"):
-            inchi_key = smiles_to_inchi_key(record.mapped_smiles)
-            records_by_inchi_key[inchi_key].append(record)
-
+    def get_smiles(self) -> List[str]:
+        """Get the (mapped) smiles of all records in the store."""
         with self._get_session() as db:
-            for inchi_key, inchi_records in tqdm(
-                records_by_inchi_key.items(), desc="storing grouped records"
-            ):
-                db.store_records_with_inchi_key(inchi_key, inchi_records)
-"""
+            return [
+                smiles
+                for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles).distinct()
+            ]
 
 
 def smiles_to_inchi_key(smiles: str) -> str:
