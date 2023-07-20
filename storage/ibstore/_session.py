@@ -171,21 +171,20 @@ class DBSessionManager:
 
         self.db.add(db_record)
 
-    def store_qm_conformer_records(
+    def store_qm_conformer_record(
         self,
         record: "QMConformerRecord",
-        molecule_id: int,
     ):
         self.db.add(
             DBQMConformerRecord(
-                parent_id=molecule_id,
+                parent_id=record.molecule_id,
                 qcarchive_id=record.qcarchive_id,
                 coordinates=record.coordinates,
                 energy=record.energy,
             )
         )
 
-    def store_mm_conformer_records(
+    def store_mm_conformer_record(
         self,
         record: "MMConformerRecord",
         molecule_id: int,

@@ -107,7 +107,9 @@ class MoleculeStore:
         if isinstance(records, QMConformerRecord):
             records = [records]
 
-        raise NotImplementedError()
+        with self._get_session() as db:
+            for record in records:
+                db.store_qm_conformer_record(record)
 
     def store_minimized_conformer(
         self,
@@ -116,7 +118,9 @@ class MoleculeStore:
         if isinstance(records, MMConformerRecord):
             records = [records]
 
-        raise NotImplementedError()
+        with self._get_session() as db:
+            for record in records:
+                db.store_mm_conformer_record(record)
 
     def get_smiles(self) -> List[str]:
         """Get the (mapped) smiles of all records in the store."""
@@ -126,12 +130,21 @@ class MoleculeStore:
                 for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles).distinct()
             ]
 
-    def get_molecule_id_by_smiles(self, smiles: str) -> str:
+    def get_molecule_id_by_smiles(self, smiles: str) -> int:
         with self._get_session() as db:
             return [
                 id
                 for (id,) in db.db.query(DBMoleculeRecord.id)
                 .filter_by(mapped_smiles=smiles)
+                .all()
+            ][0]
+
+    def get_smiles_by_molecule_id(self, id: int) -> str:
+        with self._get_session() as db:
+            return [
+                smiles
+                for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles)
+                .filter_by(id=id)
                 .all()
             ][0]
 
@@ -141,7 +154,7 @@ class MoleculeStore:
         collection: OptimizationResultCollection,
         database_name: str,
     ) -> MS:
-        store = cls("test.sqlite")
+        store = cls(database_name)
 
         for qcarchive_record, molecule in collection.to_records():
             # _toolkit_registry_manager could go here
@@ -151,7 +164,12 @@ class MoleculeStore:
             store.store(molecule_record)
 
             store.store_qcarchive(
-                QMConformerRecord.from_qcarchive_record(qcarchive_record),
+                QMConformerRecord.from_qcarchive_record(
+                    molecule_id=store.get_molecule_id_by_smiles(
+                        molecule_record.mapped_smiles
+                    ),
+                    qc_record=qcarchive_record,
+                ),
             )
 
         return store

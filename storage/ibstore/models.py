@@ -22,6 +22,10 @@ class Record(ImmutableModel):
 class QMConformerRecord(Record):
     """A record for storing coordinates computed from QC. Assumes use with QCArchive"""
 
+    molecule_id: int = Field(
+        ...,
+        description="The ID of the molecule in the database",
+    )
     qcarchive_id: str = Field(
         ...,
         description="The ID of the molecule in the QCArchive database",
@@ -40,9 +44,11 @@ class QMConformerRecord(Record):
     @classmethod
     def from_qcarchive_record(
         cls,
+        molecule_id: int,
         qc_record: OptimizationRecord,
     ):
         return cls(
+            molecule_id=molecule_id,
             qcarchive_id=qc_record.id,
             coordinates=qc_record.get_final_molecule().geometry * bohr2angstroms,
             energy=qc_record.get_final_energy() * hartree2kcalmol,
