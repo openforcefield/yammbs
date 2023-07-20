@@ -108,14 +108,14 @@ class MoleculeStore:
                 for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles).distinct()
             ]
 
-    def get_molecule_by_smiles(self, smiles: str) -> DBMoleculeRecord:
+    def get_molecule_id_by_smiles(self, smiles: str) -> str:
         with self._get_session() as db:
             return [
-                smiles
-                for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles)
+                id
+                for (id,) in db.db.query(DBMoleculeRecord.id)
                 .filter_by(mapped_smiles=smiles)
                 .all()
-            ]
+            ][0]
 
     @classmethod
     def from_qcsubmit_collection(
