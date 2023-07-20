@@ -56,6 +56,14 @@ class QMConformerRecord(Record):
 
 
 class MMConformerRecord(Record):
+    molecule_id: int = Field(
+        ...,
+        description="The ID of the molecule in the database",
+    )
+    qcarchive_id: str = Field(
+        ...,
+        description="The ID of the molecule in the QCArchive database that this conformer corresponds to",
+    )
     coordinates: Array = Field(
         ...,
         description=(

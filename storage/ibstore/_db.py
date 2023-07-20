@@ -30,6 +30,7 @@ class DBMMConformerRecord(DBBase):
     id = Column(Integer, primary_key=True, index=True)
     parent_id = Column(Integer, ForeignKey("molecules.id"), nullable=False, index=True)
 
+    qcarchive_id = Column(String(20), nullable=False)
     coordinates = Column(PickleType, nullable=False)
     energy = Column(Float, nullable=False)
 
