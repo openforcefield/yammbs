@@ -13,7 +13,7 @@ from ibstore._db import (
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-    from ibstore.models import MoleculeRecord
+    from ibstore.models import MoleculeRecord, QMConformerRecord
 
 
 class DBQueryResult(NamedTuple):
@@ -139,10 +139,26 @@ class DBSessionManager:
     def db(self):
         return self.session
 
+    def _smiles_already_exists(
+        self,
+        smiles: str,
+    ) -> bool:
+        records = self.db.query(
+            DBMoleculeRecord.mapped_smiles,
+        ).filter_by(
+            mapped_smiles=smiles,
+        )
+
+        return records.count() > 0
+
     def store_molecule_record(
         self,
         record: "MoleculeRecord",
     ):
+        if self._smiles_already_exists(smiles=record.mapped_smiles):
+            # TODO: log this
+            return
+
         db_record = DBMoleculeRecord(
             mapped_smiles=record.mapped_smiles,
             inchi_key=record.inchi_key,
@@ -152,6 +168,12 @@ class DBSessionManager:
         # db_record.store_mm_conformer_records([record.minimized_conformer])
 
         self.db.add(db_record)
+
+    def store_qm_conformer_records(
+        self,
+        record: "QMConformerRecord",
+    ):
+        raise NotImplementedError()
 
     def store_records_with_smiles(
         self,
@@ -195,7 +217,9 @@ class DBSessionManager:
         self.db.add(existing_db_record)
 
     def store_records_with_inchi_key(
-        self, inchi_key: str, records: List["MoleculeRecord"]
+        self,
+        inchi_key: str,
+        records: List["MoleculeRecord"],
     ):
         """Stores a set of records which all store information for molecules with the
         same fixed hydrogen InChI key.

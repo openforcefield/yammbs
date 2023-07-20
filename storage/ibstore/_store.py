@@ -1,7 +1,7 @@
 import logging
 import pathlib
 from contextlib import contextmanager
-from typing import ContextManager, Dict, List, Tuple, TypeVar
+from typing import ContextManager, Dict, Iterable, List, TypeVar
 
 from openff.qcsubmit.results import OptimizationResultCollection
 from sqlalchemy import create_engine
@@ -84,17 +84,14 @@ class MoleculeStore:
 
     def store(
         self,
-        records: Tuple[str, MoleculeRecord] = tuple(),
-        suppress_toolkit_warnings: bool = True,
+        records: Iterable[MoleculeRecord],
     ):
-        """Store the molecules and their computed properties in the data store.
+        """Store molecules and their computed properties in the data store.
 
         Parameters
         ----------
-        records
+        records: Iterable[MoleculeRecord]
             The QCArchive id and record of each molecule to store.
-        suppress_toolkit_warnings: bool
-            Whether to suppress toolkit warnings when loading molecules.
         """
         if isinstance(records, MoleculeRecord):
             records = [records]
@@ -140,6 +137,8 @@ class MoleculeStore:
             )
 
             store.store(molecule_record)
+
+            # TODO: Store QCArchive record as QMConformerRecord
 
         return store
 

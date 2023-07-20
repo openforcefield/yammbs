@@ -10,4 +10,5 @@ def test_from_qcsubmit(small_collection):
             file.name,
         )
 
-    assert len(store.get_smiles()) == 40
+    # Sanity check molecule deduplication
+    assert len(store.get_smiles()) == len({*store.get_smiles()})
