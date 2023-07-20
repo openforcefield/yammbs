@@ -135,6 +135,7 @@ class MoleculeStore:
                 for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles).distinct()
             ]
 
+    # TODO: Allow by multiple selectors (smiles: list[str])
     def get_molecule_id_by_smiles(self, smiles: str) -> int:
         with self._get_session() as db:
             return [
@@ -144,6 +145,7 @@ class MoleculeStore:
                 .all()
             ][0]
 
+    # TODO: Allow by multiple selectors (id: list[int])
     def get_smiles_by_molecule_id(self, id: int) -> str:
         with self._get_session() as db:
             return [
@@ -153,6 +155,7 @@ class MoleculeStore:
                 .all()
             ][0]
 
+    # TODO: Allow by multiple selectors (id: list[int])
     def get_qm_energies_by_molecule_id(self, id: int) -> list[float]:
         with self._get_session() as db:
             return [
@@ -162,12 +165,13 @@ class MoleculeStore:
                 .all()
             ]
 
+    # TODO: Allow by multiple selectors (id: list[int])
     def get_mm_energies_by_molecule_id(self, id: int) -> list[float]:
         with self._get_session() as db:
             return [
                 energy
                 for (energy,) in db.db.query(DBMMConformerRecord.energy)
-                .filter_by(parent_id=4)
+                .filter_by(parent_id=id)
                 .all()
             ]
 
