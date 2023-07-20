@@ -6,14 +6,16 @@ from ibstore._db import (
     DB_VERSION,
     DBGeneralProvenance,
     DBInformation,
+    DBMMConformerRecord,
     DBMoleculeRecord,
+    DBQMConformerRecord,
     DBSoftwareProvenance,
 )
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-    from ibstore.models import MoleculeRecord, QMConformerRecord
+    from ibstore.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
 
 
 class DBQueryResult(NamedTuple):
@@ -172,8 +174,29 @@ class DBSessionManager:
     def store_qm_conformer_records(
         self,
         record: "QMConformerRecord",
+        molecule_id: int,
     ):
-        raise NotImplementedError()
+        self.db.add(
+            DBQMConformerRecord(
+                parent_id=molecule_id,
+                qcarchive_id=record.qcarchive_id,
+                coordinates=record.coordinates,
+                energy=record.energy,
+            )
+        )
+
+    def store_mm_conformer_records(
+        self,
+        record: "MMConformerRecord",
+        molecule_id: int,
+    ):
+        self.db.add(
+            DBMMConformerRecord(
+                parent_id=molecule_id,
+                coordinates=record.coordinates,
+                energy=record.energy,
+            )
+        )
 
     def store_records_with_smiles(
         self,

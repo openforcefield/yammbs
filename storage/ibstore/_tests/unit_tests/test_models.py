@@ -8,22 +8,13 @@ hartree2kcalmol = qcelemental.constants.hartree2kcalmol
 
 
 def test_load_from_qcsubmit(small_collection):
-    for record_and_molecule in small_collection.to_records():
-        qc_record = record_and_molecule[0]
-        molecule = record_and_molecule[1]
+    for qc_record, molecule in small_collection.to_records():
+        mapped_smiles = molecule.to_smiles(mapped=True, isomeric=True)
+        ichi_key = molecule.to_inchikey(fixed_hydrogens=True)
 
-        mapped_smiles = molecule.to_smiles(
-            mapped=True,
-            isomeric=True,
-        )
-        ichi_key = molecule.to_inchikey(
-            fixed_hydrogens=True,
-        )
+        molecule_record, qm_conformer = MoleculeRecord.from_molecule(molecule)
 
-        molecule_record, qm_conformer = MoleculeRecord.from_record_and_molecule(
-            qc_record,
-            molecule,
-        )
+        qm_conformer = QMConformerRecord.from_qcarchive_record(qc_record)
 
         assert isinstance(molecule_record, MoleculeRecord)
         assert molecule_record.mapped_smiles == mapped_smiles

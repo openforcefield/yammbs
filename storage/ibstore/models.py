@@ -2,7 +2,6 @@ from typing import TypeVar
 
 import qcelemental
 from openff.toolkit import Molecule
-from openff.units import unit
 from pydantic import Field
 from qcportal.models.records import OptimizationRecord
 
@@ -10,6 +9,7 @@ from ibstore._base.array import Array
 from ibstore._base.base import ImmutableModel
 
 hartree2kcalmol = qcelemental.constants.hartree2kcalmol
+bohr2angstroms = qcelemental.constants.bohr2angstroms
 
 MR = TypeVar("MR", bound="MoleculeRecord")
 
@@ -36,6 +36,17 @@ class QMConformerRecord(Record):
         ...,
         description="The final energy (kcal/mol) of the molecule as optimized and computed by QCArchive",
     )
+
+    @classmethod
+    def from_qcarchive_record(
+        cls,
+        qc_record: OptimizationRecord,
+    ):
+        return cls(
+            qcarchive_id=qc_record.id,
+            coordinates=qc_record.get_final_molecule().geometry * bohr2angstroms,
+            energy=qc_record.get_final_energy() * hartree2kcalmol,
+        )
 
 
 class MMConformerRecord(Record):
@@ -67,41 +78,18 @@ class MoleculeRecord(Record):
         return self.mapped_smiles
 
     @classmethod
-    def from_record_and_molecule(
+    def from_molecule(
         cls,
-        record: OptimizationRecord,
         molecule: Molecule,
     ) -> tuple[MR, QMConformerRecord]:
-        # import qcelemental
-        # from openff.units import unit
-
-        # hartree2kcalmol = qcelemental.constants.hartree2kcalmol
-
         assert molecule.n_conformers == 1
 
-        return (
-            cls(
-                mapped_smiles=molecule.to_smiles(
-                    mapped=True,
-                    isomeric=True,
-                ),
-                inchi_key=molecule.to_inchikey(
-                    fixed_hydrogens=True,
-                ),
+        return cls(
+            mapped_smiles=molecule.to_smiles(
+                mapped=True,
+                isomeric=True,
             ),
-            QMConformerRecord(
-                qcarchive_id=record.id,
-                coordinates=molecule.conformers[0].m_as(unit.angstrom),
-                energy=record.get_final_energy() * hartree2kcalmol,
+            inchi_key=molecule.to_inchikey(
+                fixed_hydrogens=True,
             ),
         )
-
-        # TODO: Also add QC data (id, energy, coordinates) as a QCConformerRecord,
-        #       but don't store it here
-
-        # qcarchive_id=record.id,
-        # qcarchive_energy=record.get_final_energy() * hartree2kcalmol,
-        # conformer=QMConformerRecord(
-        #     coordinates=molecule.conformers[0].m_as(unit.angstrom),
-        #     energy=record.get_final_energy() * hartree2kcalmol,
-        # ),

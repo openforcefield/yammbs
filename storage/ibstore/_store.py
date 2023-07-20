@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from ibstore._db import DBBase, DBMoleculeRecord
 from ibstore._session import DBSessionManager
 from ibstore._types import Pathlike
-from ibstore.models import MoleculeRecord
+from ibstore.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
 
 LOGGER = logging.getLogger(__name__)
 
@@ -100,6 +100,24 @@ class MoleculeStore:
             for record in records:
                 db.store_molecule_record(record)
 
+    def store_qcarchive(
+        self,
+        records: Iterable[QMConformerRecord],
+    ):
+        if isinstance(records, QMConformerRecord):
+            records = [records]
+
+        raise NotImplementedError()
+
+    def store_minimized_conformer(
+        self,
+        records: Iterable[MMConformerRecord],
+    ):
+        if isinstance(records, MMConformerRecord):
+            records = [records]
+
+        raise NotImplementedError()
+
     def get_smiles(self) -> List[str]:
         """Get the (mapped) smiles of all records in the store."""
         with self._get_session() as db:
@@ -125,20 +143,16 @@ class MoleculeStore:
     ) -> MS:
         store = cls("test.sqlite")
 
-        for record_and_molecule in collection.to_records():
-            record = record_and_molecule[0]
-            molecule = record_and_molecule[1]
-
+        for qcarchive_record, molecule in collection.to_records():
             # _toolkit_registry_manager could go here
 
-            molecule_record, _ = MoleculeRecord.from_record_and_molecule(
-                record,
-                molecule,
-            )
+            molecule_record = MoleculeRecord.from_molecule(molecule)
 
             store.store(molecule_record)
 
-            # TODO: Store QCArchive record as QMConformerRecord
+            store.store_qcarchive(
+                QMConformerRecord.from_qcarchive_record(qcarchive_record),
+            )
 
         return store
 
