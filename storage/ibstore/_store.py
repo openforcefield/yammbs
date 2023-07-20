@@ -7,7 +7,12 @@ from openff.qcsubmit.results import OptimizationResultCollection
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from ibstore._db import DBBase, DBMoleculeRecord
+from ibstore._db import (
+    DBBase,
+    DBMMConformerRecord,
+    DBMoleculeRecord,
+    DBQMConformerRecord,
+)
 from ibstore._session import DBSessionManager
 from ibstore._types import Pathlike
 from ibstore.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
@@ -147,6 +152,24 @@ class MoleculeStore:
                 .filter_by(id=id)
                 .all()
             ][0]
+
+    def get_qm_energies_by_molecule_id(self, id: int) -> list[float]:
+        with self._get_session() as db:
+            return [
+                energy
+                for (energy,) in db.db.query(DBQMConformerRecord.energy)
+                .filter_by(parent_id=id)
+                .all()
+            ]
+
+    def get_mm_energies_by_molecule_id(self, id: int) -> list[float]:
+        with self._get_session() as db:
+            return [
+                energy
+                for (energy,) in db.db.query(DBMMConformerRecord.energy)
+                .filter_by(parent_id=4)
+                .all()
+            ]
 
     @classmethod
     def from_qcsubmit_collection(
