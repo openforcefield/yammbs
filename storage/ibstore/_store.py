@@ -155,6 +155,24 @@ class MoleculeStore:
                 .all()
             ][0]
 
+    def get_molecule_id_by_inchi_key(self, inchi_key: str) -> int:
+        with self._get_session() as db:
+            return [
+                id
+                for (id,) in db.db.query(DBMoleculeRecord.id)
+                .filter_by(inchi_key=inchi_key)
+                .all()
+            ][0]
+
+    def get_inchi_key_by_molecule_id(self, id: int) -> str:
+        with self._get_session() as db:
+            return [
+                inchi_key
+                for (inchi_key,) in db.db.query(DBMoleculeRecord.inchi_key)
+                .filter_by(id=id)
+                .all()
+            ][0]
+
     # TODO: Allow by multiple selectors (id: list[int])
     def get_qm_energies_by_molecule_id(self, id: int) -> list[float]:
         with self._get_session() as db:
