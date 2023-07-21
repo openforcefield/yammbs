@@ -192,6 +192,7 @@ class DBSessionManager:
         self.db.add(
             DBMMConformerRecord(
                 parent_id=molecule_id,
+                qcarchive_id=record.qcarchive_id,
                 coordinates=record.coordinates,
                 energy=record.energy,
             )

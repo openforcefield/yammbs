@@ -116,6 +116,17 @@ class MoleculeStore:
             for record in records:
                 db.store_qm_conformer_record(record)
 
+    def store_conformer(
+        self,
+        records: Iterable[MMConformerRecord],
+    ):
+        if isinstance(records, MMConformerRecord):
+            records = [records]
+
+        with self._get_session() as db:
+            for record in records:
+                db.store_mm_conformer_record(record)
+
     def store_minimized_conformer(
         self,
         records: Iterable[MMConformerRecord],
@@ -227,10 +238,51 @@ class MoleculeStore:
 
         return store
 
+    def optimize_mm(
+        self,
+        # force_field,
+    ):
+        from ibstore._minimize import _minimize_blob
+
+        inchi_keys = self.get_inchi_keys()
+
+        _data = dict()
+
+        for inchi_key in inchi_keys:
+            molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
+
+            with self._get_session() as db:
+                _data[inchi_key] = [
+                    {
+                        "qcarchive_id": record.qcarchive_id,
+                        "coordinates": record.coordinates,
+                    }
+                    for record in db.db.query(
+                        DBQMConformerRecord,
+                    )
+                    .filter_by(parent_id=molecule_id)
+                    .all()
+                ]
+
+        _minimized_blob = _minimize_blob(_data)
+
+        for inchi_key in inchi_keys:
+            molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
+
+            for result in _minimized_blob[inchi_key]:
+                conformer_record = MMConformerRecord(
+                    molecule_id=molecule_id,
+                    qcarchive_id=result.qcarchive_id,
+                    energy=result.energy,
+                    coordinates=result.coordinates,
+                )
+
+            self.store_conformer(conformer_record)
+
 
 def smiles_to_inchi_key(smiles: str) -> str:
     from openff.toolkit import Molecule
 
-    return Molecule.from_smiles(smiles, allow_undefined_stereo=True).to_inchikey(
+    return Molecule.from_smiles(smiles, allow_undefined_stereo=True).to_inchi(
         fixed_hydrogens=True
     )

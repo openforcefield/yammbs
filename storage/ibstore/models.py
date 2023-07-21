@@ -103,7 +103,7 @@ class MoleculeRecord(Record):
                 mapped=True,
                 isomeric=True,
             ),
-            inchi_key=molecule.to_inchikey(
+            inchi_key=molecule.to_inchi(
                 fixed_hydrogens=True,
             ),
         )
