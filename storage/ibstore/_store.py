@@ -135,6 +135,14 @@ class MoleculeStore:
                 for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles).distinct()
             ]
 
+    def get_inchi_keys(self) -> List[str]:
+        """Get the inchi keys of all records in the store."""
+        with self._get_session() as db:
+            return [
+                inchi_key
+                for (inchi_key,) in db.db.query(DBMoleculeRecord.inchi_key).distinct()
+            ]
+
     # TODO: Allow by multiple selectors (smiles: list[str])
     def get_molecule_id_by_smiles(self, smiles: str) -> int:
         with self._get_session() as db:
