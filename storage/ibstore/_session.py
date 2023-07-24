@@ -187,16 +187,27 @@ class DBSessionManager:
     def store_mm_conformer_record(
         self,
         record: "MMConformerRecord",
-        molecule_id: int,
     ):
         self.db.add(
             DBMMConformerRecord(
-                parent_id=molecule_id,
+                parent_id=record.molecule_id,
                 qcarchive_id=record.qcarchive_id,
                 coordinates=record.coordinates,
                 energy=record.energy,
             )
         )
+
+    def _mm_conformer_already_exists(
+        self,
+        qcarchive_id: str,
+    ) -> bool:
+        records = self.db.query(
+            DBMMConformerRecord.qcarchive_id,
+        ).filter_by(
+            qcarchive_id=qcarchive_id,
+        )
+
+        return records.count() > 0
 
     def store_records_with_smiles(
         self,

@@ -1,8 +1,10 @@
 import logging
 import pathlib
+from collections import defaultdict
 from contextlib import contextmanager
 from typing import ContextManager, Dict, Iterable, List, TypeVar
 
+import numpy
 from openff.qcsubmit.results import OptimizationResultCollection
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -246,13 +248,13 @@ class MoleculeStore:
 
         inchi_keys = self.get_inchi_keys()
 
-        _data = dict()
+        _data = defaultdict(list)
 
         for inchi_key in inchi_keys:
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
 
             with self._get_session() as db:
-                _data[inchi_key] = [
+                qm_conformers = [
                     {
                         "qcarchive_id": record.qcarchive_id,
                         "coordinates": record.coordinates,
@@ -264,20 +266,62 @@ class MoleculeStore:
                     .all()
                 ]
 
+                for qm_conformer in qm_conformers:
+                    if not db._mm_conformer_already_exists(
+                        qm_conformer["qcarchive_id"]
+                    ):
+                        _data[inchi_key].append(qm_conformer)
+                    else:
+                        pass
+
         _minimized_blob = _minimize_blob(_data)
 
-        for inchi_key in inchi_keys:
+        for inchi_key in _minimized_blob:
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
 
             for result in _minimized_blob[inchi_key]:
-                conformer_record = MMConformerRecord(
-                    molecule_id=molecule_id,
-                    qcarchive_id=result.qcarchive_id,
-                    energy=result.energy,
-                    coordinates=result.coordinates,
+                self.store_conformer(
+                    MMConformerRecord(
+                        molecule_id=molecule_id,
+                        qcarchive_id=result.qcarchive_id,
+                        energy=result.energy,
+                        coordinates=result.coordinates,
+                    )
                 )
 
-            self.store_conformer(conformer_record)
+    def compute_dde(
+        self,
+        # force_field,
+    ) -> dict[str, list[float]]:
+        from ibstore.analysis import DDEs
+
+        self.optimize_mm()
+
+        ddes = DDEs()
+
+        for inchi_key in self.get_inchi_keys():
+            qm_energies = numpy.array(
+                self.get_qm_energies_by_molecule_id(
+                    self.get_molecule_id_by_inchi_key(inchi_key)
+                )
+            )
+
+            if len(qm_energies) == 1:
+                # There's only one conformer for this molecule
+                # TODO: Quicker way of short-circuiting here
+                continue
+
+            mm_energies = numpy.array(
+                self.get_mm_energies_by_molecule_id(
+                    self.get_molecule_id_by_inchi_key(inchi_key)
+                )
+            )
+
+            ddes[inchi_key] = (mm_energies - mm_energies.min()) - (
+                qm_energies - qm_energies.min()
+            )
+
+        return ddes
 
 
 def smiles_to_inchi_key(smiles: str) -> str:

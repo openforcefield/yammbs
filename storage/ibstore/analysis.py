@@ -1,0 +1,2 @@
+class DDEs(dict):
+    pass
