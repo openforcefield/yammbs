@@ -17,6 +17,7 @@ from ibstore._db import (
 )
 from ibstore._session import DBSessionManager
 from ibstore._types import Pathlike
+from ibstore.analysis import DDE
 from ibstore.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
 
 LOGGER = logging.getLogger(__name__)
@@ -200,6 +201,15 @@ class MoleculeStore:
                 .all()
             ][0]
 
+    def get_qcarchive_ids_by_molecule_id(self, id: int) -> list[str]:
+        with self._get_session() as db:
+            return [
+                qcarchive_id
+                for (qcarchive_id,) in db.db.query(DBQMConformerRecord.qcarchive_id)
+                .filter_by(parent_id=id)
+                .all()
+            ]
+
     # TODO: Allow by multiple selectors (id: list[int])
     def get_qm_energies_by_molecule_id(self, id: int) -> list[float]:
         with self._get_session() as db:
@@ -284,6 +294,9 @@ class MoleculeStore:
                     else:
                         pass
 
+        if len(_data) == 0:
+            return
+
         _minimized_blob = _minimize_blob(_data)
 
         for inchi_key in _minimized_blob:
@@ -299,37 +312,41 @@ class MoleculeStore:
                     )
                 )
 
-    def compute_dde(
+    def get_dde(
         self,
         # force_field,
-    ) -> dict[str, list[float]]:
-        from ibstore.analysis import DDEs
-
+    ) -> list[DDE]:
         self.optimize_mm()
 
-        ddes = DDEs()
+        ddes = list()
 
         for inchi_key in self.get_inchi_keys():
-            qm_energies = numpy.array(
-                self.get_qm_energies_by_molecule_id(
-                    self.get_molecule_id_by_inchi_key(inchi_key)
-                )
-            )
+            molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
 
-            if len(qm_energies) == 1:
+            qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
+
+            if len(qcarchive_ids) == 1:
                 # There's only one conformer for this molecule
                 # TODO: Quicker way of short-circuiting here
                 continue
 
-            mm_energies = numpy.array(
-                self.get_mm_energies_by_molecule_id(
-                    self.get_molecule_id_by_inchi_key(inchi_key)
-                )
-            )
+            qm_energies = self.get_qm_energies_by_molecule_id(molecule_id)
+            qm_energies -= numpy.array(qm_energies).min()
 
-            ddes[inchi_key] = (mm_energies - mm_energies.min()) - (
-                qm_energies - qm_energies.min()
-            )
+            mm_energies = self.get_mm_energies_by_molecule_id(molecule_id)
+            mm_energies -= numpy.array(mm_energies).min()
+
+            for qm, mm, id in zip(
+                qm_energies,
+                mm_energies,
+                qcarchive_ids,
+            ):
+                ddes.append(
+                    DDE(
+                        qcarchive_id=id,
+                        difference=mm - qm,
+                    )
+                )
 
         return ddes
 
