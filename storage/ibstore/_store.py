@@ -17,7 +17,7 @@ from ibstore._db import (
 )
 from ibstore._session import DBSessionManager
 from ibstore._types import Pathlike
-from ibstore.analysis import DDE
+from ibstore.analysis import DDE, DDECollection
 from ibstore.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
 
 LOGGER = logging.getLogger(__name__)
@@ -315,10 +315,10 @@ class MoleculeStore:
     def get_dde(
         self,
         # force_field,
-    ) -> list[DDE]:
+    ) -> DDECollection:
         self.optimize_mm()
 
-        ddes = list()
+        ddes = DDECollection()
 
         for inchi_key in self.get_inchi_keys():
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
