@@ -116,7 +116,10 @@ class MoleculeStore:
 
         with self._get_session() as db:
             for record in records:
-                db.store_qm_conformer_record(record)
+                if db._qm_conformer_already_exists(record.qcarchive_id):
+                    continue
+                else:
+                    db.store_qm_conformer_record(record)
 
     def store_conformer(
         self,
@@ -127,7 +130,10 @@ class MoleculeStore:
 
         with self._get_session() as db:
             for record in records:
-                db.store_mm_conformer_record(record)
+                if db._mm_conformer_already_exists(record.qcarchive_id):
+                    continue
+                else:
+                    db.store_mm_conformer_record(record)
 
     def store_minimized_conformer(
         self,
@@ -220,9 +226,13 @@ class MoleculeStore:
         collection: OptimizationResultCollection,
         database_name: str,
     ) -> MS:
+        from tqdm import tqdm
+
         store = cls(database_name)
 
-        for qcarchive_record, molecule in collection.to_records():
+        for qcarchive_record, molecule in tqdm(
+            collection.to_records(), desc="Converting records to molecules"
+        ):
             # _toolkit_registry_manager could go here
 
             molecule_record = MoleculeRecord.from_molecule(molecule)

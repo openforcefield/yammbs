@@ -184,6 +184,18 @@ class DBSessionManager:
             )
         )
 
+    def _qm_conformer_already_exists(
+        self,
+        qcarchive_id: str,
+    ) -> bool:
+        records = self.db.query(
+            DBQMConformerRecord.qcarchive_id,
+        ).filter_by(
+            qcarchive_id=qcarchive_id,
+        )
+
+        return records.count() > 0
+
     def store_mm_conformer_record(
         self,
         record: "MMConformerRecord",
