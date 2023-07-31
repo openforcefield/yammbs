@@ -84,13 +84,17 @@ def _run_openmm(
         openmm.Platform.getPlatformByName("Reference"),
     )
 
-    context.setPositions(positions * openmm.unit.angstrom)
+    context.setPositions(
+        (positions * openmm.unit.angstrom).in_units_of(openmm.unit.nanometer)
+    )
     openmm.LocalEnergyMinimizer.minimize(context, 5.0e-9, 1500)
 
     return MinimizationResult(
         inchi_key=inchi_key,
         qcarchive_id=qcarchive_id,
-        coordinates=context.getState(getPositions=True).getPositions(asNumpy=True),
+        coordinates=context.getState(getPositions=True)
+        .getPositions()
+        .value_in_unit(openmm.unit.angstrom),
         energy=context.getState(
             getEnergy=True,
         )
