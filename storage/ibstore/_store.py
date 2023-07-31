@@ -17,7 +17,7 @@ from ibstore._db import (
 )
 from ibstore._session import DBSessionManager
 from ibstore._types import Pathlike
-from ibstore.analysis import DDE, DDECollection
+from ibstore.analysis import DDE, RMSD, DDECollection, RMSDCollection, get_rmsd
 from ibstore.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
 
 LOGGER = logging.getLogger(__name__)
@@ -210,6 +210,26 @@ class MoleculeStore:
                 .all()
             ]
 
+    def get_qm_conformers_by_molecule_id(self, id: int) -> list:
+        with self._get_session() as db:
+            return [
+                conformer
+                for (conformer,) in db.db.query(DBQMConformerRecord.coordinates)
+                .filter_by(parent_id=id)
+                .order_by(DBQMConformerRecord.qcarchive_id)
+                .all()
+            ]
+
+    def get_mm_conformers_by_molecule_id(self, id: int) -> list:
+        with self._get_session() as db:
+            return [
+                conformer
+                for (conformer,) in db.db.query(DBMMConformerRecord.coordinates)
+                .filter_by(parent_id=id)
+                .order_by(DBMMConformerRecord.qcarchive_id)
+                .all()
+            ]
+
     # TODO: Allow by multiple selectors (id: list[int])
     def get_qm_energies_by_molecule_id(self, id: int) -> list[float]:
         with self._get_session() as db:
@@ -349,6 +369,36 @@ class MoleculeStore:
                 )
 
         return ddes
+
+    def get_rmsd(
+        self,
+        # force_field,
+    ) -> RMSDCollection:
+        self.optimize_mm()
+
+        rmsds = RMSDCollection()
+
+        for inchi_key in self.get_inchi_keys():
+            molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
+
+            qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
+
+            qm_conformers = self.get_qm_conformers_by_molecule_id(molecule_id)
+            mm_conformers = self.get_mm_conformers_by_molecule_id(molecule_id)
+
+            for qm, mm, id in zip(
+                qm_conformers,
+                mm_conformers,
+                qcarchive_ids,
+            ):
+                rmsds.append(
+                    RMSD(
+                        qcarchive_id=id,
+                        rmsd=get_rmsd(qm, mm),
+                    )
+                )
+
+        return rmsds
 
 
 def smiles_to_inchi_key(smiles: str) -> str:
