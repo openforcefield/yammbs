@@ -1,7 +1,12 @@
 from multiprocessing import freeze_support
+
+import numpy
+import pandas
+from matplotlib import pyplot
 from openff.qcsubmit.results import OptimizationResultCollection
 
 from ibstore._store import MoleculeStore
+
 
 def main():
     store = MoleculeStore.from_qcsubmit_collection(
@@ -17,7 +22,27 @@ def main():
     store.optimize_mm()
 
     store.get_dde().to_csv("dde.csv")
-    store.get_rmsd().to_csv("rsmd.csv")
+    store.get_rmsd().to_csv("rmsd.csv")
+
+    plot_cdfs()
+
+
+def plot_cdfs():
+    for data in ["dde", "rmsd"]:
+        dataframe = pandas.read_csv(f"{data}.csv")
+
+        sorted_data = numpy.sort(dataframe[dataframe.columns[-1]])
+
+        figure, axis = pyplot.subplots()
+
+        axis.plot(
+            sorted_data, numpy.arange(1, len(sorted_data) + 1) / len(sorted_data)
+        )
+        axis.set_xlabel(data)
+        axis.set_ylabel("CDF")
+
+        figure.savefig(f"{data}.png")
+
 
 if __name__ == "__main__":
     # This setup is necessary for reasons that confused me - both setting it up in the __main__ block and calling
