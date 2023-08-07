@@ -9,6 +9,8 @@ from ibstore._store import MoleculeStore
 
 
 def main():
+    force_field = "openff-2.1.0"
+
     store = MoleculeStore.from_qcsubmit_collection(
         OptimizationResultCollection.parse_file(
             "ibstore/_tests/data/01-processed-qm-ch.json",
@@ -19,10 +21,10 @@ def main():
 
     # This is called within each analysis method, but short-circuiting within them. It's convenient to call it here
     # with the freeze_support setup so that later analysis methods can trust that the MM conformers are there
-    store.optimize_mm()
+    store.optimize_mm(force_field=force_field)
 
-    store.get_dde().to_csv("dde.csv")
-    store.get_rmsd().to_csv("rmsd.csv")
+    store.get_dde(force_field=force_field).to_csv("dde.csv")
+    store.get_rmsd(force_field=force_field).to_csv("rmsd.csv")
 
     plot_cdfs()
 
@@ -35,9 +37,7 @@ def plot_cdfs():
 
         figure, axis = pyplot.subplots()
 
-        axis.plot(
-            sorted_data, numpy.arange(1, len(sorted_data) + 1) / len(sorted_data)
-        )
+        axis.plot(sorted_data, numpy.arange(1, len(sorted_data) + 1) / len(sorted_data))
         axis.set_xlabel(data)
         axis.set_ylabel("CDF")
 

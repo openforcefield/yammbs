@@ -64,6 +64,10 @@ class MMConformerRecord(Record):
         ...,
         description="The ID of the molecule in the QCArchive database that this conformer corresponds to",
     )
+    force_field: str = Field(
+        ...,
+        description="The identifier of the force field used to generate this conformer",
+    )
     coordinates: Array = Field(
         ...,
         description=(

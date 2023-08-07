@@ -17,10 +17,16 @@ from ibstore._base.base import ImmutableModel
 
 N_PROCESSES = 10
 
-FORCE_FIELD = ForceField("openff_unconstrained-2.0.0.offxml")
+FORCE_FIELDS: dict[str, ForceField] = {
+    "openff-2.0.0": ForceField("openff_unconstrained-2.0.0.offxml"),
+    "openff-2.1.0": ForceField("openff_unconstrained-2.1.0.offxml"),
+}
 
 
-def _minimize_blob(input: dict[str, dict[str, Union[str, numpy.ndarray]]]):
+def _minimize_blob(
+    input: dict[str, dict[str, Union[str, numpy.ndarray]]],
+    force_field: str,
+) -> dict[str, list["MinimizationResult"]]:
     returned = defaultdict(list)
     inputs = list()
 
@@ -31,6 +37,7 @@ def _minimize_blob(input: dict[str, dict[str, Union[str, numpy.ndarray]]]):
                     MinimizationInput(
                         inchi_key=inchi_key,
                         qcarchive_id=row["qcarchive_id"],
+                        force_field=force_field,
                         coordinates=row["coordinates"],
                     )
                 )
@@ -54,6 +61,9 @@ class MinimizationInput(ImmutableModel):
     qcarchive_id: str = Field(
         ..., description="The ID of the molecule in the QCArchive"
     )
+    force_field: str = Field(
+        ..., description="And identifier of the force field to use for the minimization"
+    )
     coordinates: Array = Field(
         ...,
         description="The coordinates [Angstrom] of this conformer with shape=(n_atoms, 3).",
@@ -63,6 +73,7 @@ class MinimizationInput(ImmutableModel):
 class MinimizationResult(ImmutableModel):
     inchi_key: str = Field(..., description="The InChI key of the molecule")
     qcarchive_id: str
+    force_field: str
     coordinates: Array
     energy: float = Field(..., description="Minimized energy in kcal/mol")
 
@@ -76,7 +87,9 @@ def _run_openmm(
 
     molecule = Molecule.from_inchi(inchi_key)
 
-    system = FORCE_FIELD.create_openmm_system(molecule.to_topology())
+    system = FORCE_FIELDS[input.force_field].create_openmm_system(
+        molecule.to_topology()
+    )
 
     context = openmm.Context(
         system,
@@ -92,6 +105,7 @@ def _run_openmm(
     return MinimizationResult(
         inchi_key=inchi_key,
         qcarchive_id=qcarchive_id,
+        force_field=input.force_field,
         coordinates=context.getState(getPositions=True)
         .getPositions()
         .value_in_unit(openmm.unit.angstrom),

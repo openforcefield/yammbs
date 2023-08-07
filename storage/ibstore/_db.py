@@ -1,10 +1,11 @@
 import logging
 from typing import Dict, List
 
-from ibstore.models import MMConformerRecord, QMConformerRecord
 from sqlalchemy import Column, Float, ForeignKey, Integer, PickleType, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
+
+from ibstore.models import MMConformerRecord, QMConformerRecord
 
 DBBase = declarative_base()
 
@@ -20,6 +21,7 @@ class DBQMConformerRecord(DBBase):
     parent_id = Column(Integer, ForeignKey("molecules.id"), nullable=False, index=True)
 
     qcarchive_id = Column(String(20), nullable=False)
+
     coordinates = Column(PickleType, nullable=False)
     energy = Column(Float, nullable=False)
 
@@ -31,6 +33,8 @@ class DBMMConformerRecord(DBBase):
     parent_id = Column(Integer, ForeignKey("molecules.id"), nullable=False, index=True)
 
     qcarchive_id = Column(String(20), nullable=False)
+    force_field = Column(String, nullable=False)
+
     coordinates = Column(PickleType, nullable=False)
     energy = Column(Float, nullable=False)
 
@@ -49,7 +53,9 @@ class DBMoleculeRecord(DBBase):
         # TODO: match conformers?
         for record in records:
             db_record = DBQMConformerRecord(
-                coordinates=record.coordinates, energy=record.energy
+                qcarchive_id=record.qcarchive_id,
+                coordinates=record.coordinates,
+                energy=record.energy,
             )
             self.qm_conformers.append(db_record)
 
@@ -59,7 +65,10 @@ class DBMoleculeRecord(DBBase):
         # TODO: match conformers?
         for record in records:
             db_record = DBMMConformerRecord(
-                coordinates=record.coordinates, energy=record.energy
+                qcarchive_id=record.qcarchive_id,
+                force_field=record.force_field,
+                coordinates=record.coordinates,
+                energy=record.energy,
             )
             self.mm_conformers.append(db_record)
 

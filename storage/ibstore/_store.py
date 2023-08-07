@@ -131,21 +131,12 @@ class MoleculeStore:
 
         with self._get_session() as db:
             for record in records:
-                if db._mm_conformer_already_exists(record.qcarchive_id):
+                if db._mm_conformer_already_exists(
+                    record.qcarchive_id, record.qcarchive_id
+                ):
                     continue
                 else:
                     db.store_mm_conformer_record(record)
-
-    def store_minimized_conformer(
-        self,
-        records: Iterable[MMConformerRecord],
-    ):
-        if isinstance(records, MMConformerRecord):
-            records = [records]
-
-        with self._get_session() as db:
-            for record in records:
-                db.store_mm_conformer_record(record)
 
     def get_smiles(self) -> List[str]:
         """Get the (mapped) smiles of all records in the store."""
@@ -220,12 +211,17 @@ class MoleculeStore:
                 .all()
             ]
 
-    def get_mm_conformers_by_molecule_id(self, id: int) -> list:
+    def get_mm_conformers_by_molecule_id(
+        self,
+        id: int,
+        force_field: str,
+    ) -> list:
         with self._get_session() as db:
             return [
                 conformer
                 for (conformer,) in db.db.query(DBMMConformerRecord.coordinates)
                 .filter_by(parent_id=id)
+                .filter_by(force_field=force_field)
                 .order_by(DBMMConformerRecord.qcarchive_id)
                 .all()
             ]
@@ -241,12 +237,17 @@ class MoleculeStore:
             ]
 
     # TODO: Allow by multiple selectors (id: list[int])
-    def get_mm_energies_by_molecule_id(self, id: int) -> list[float]:
+    def get_mm_energies_by_molecule_id(
+        self,
+        id: int,
+        force_field: str,
+    ) -> list[float]:
         with self._get_session() as db:
             return [
                 energy
                 for (energy,) in db.db.query(DBMMConformerRecord.energy)
                 .filter_by(parent_id=id)
+                .filter_by(force_field=force_field)
                 .all()
             ]
 
@@ -282,7 +283,7 @@ class MoleculeStore:
 
     def optimize_mm(
         self,
-        # force_field,
+        force_field: str,
     ):
         from ibstore._minimize import _minimize_blob
 
@@ -308,7 +309,8 @@ class MoleculeStore:
 
                 for qm_conformer in qm_conformers:
                     if not db._mm_conformer_already_exists(
-                        qm_conformer["qcarchive_id"]
+                        qcarchive_id=qm_conformer["qcarchive_id"],
+                        force_field=force_field,
                     ):
                         _data[inchi_key].append(qm_conformer)
                     else:
@@ -317,7 +319,7 @@ class MoleculeStore:
         if len(_data) == 0:
             return
 
-        _minimized_blob = _minimize_blob(_data)
+        _minimized_blob = _minimize_blob(_data, force_field)
 
         for inchi_key in _minimized_blob:
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
@@ -327,6 +329,7 @@ class MoleculeStore:
                     MMConformerRecord(
                         molecule_id=molecule_id,
                         qcarchive_id=result.qcarchive_id,
+                        force_field=result.force_field,
                         energy=result.energy,
                         coordinates=result.coordinates,
                     )
@@ -334,9 +337,9 @@ class MoleculeStore:
 
     def get_dde(
         self,
-        # force_field,
+        force_field: str,
     ) -> DDECollection:
-        self.optimize_mm()
+        self.optimize_mm(force_field=force_field)
 
         ddes = DDECollection()
 
@@ -353,7 +356,7 @@ class MoleculeStore:
             qm_energies = self.get_qm_energies_by_molecule_id(molecule_id)
             qm_energies -= numpy.array(qm_energies).min()
 
-            mm_energies = self.get_mm_energies_by_molecule_id(molecule_id)
+            mm_energies = self.get_mm_energies_by_molecule_id(molecule_id, force_field)
             mm_energies -= numpy.array(mm_energies).min()
 
             for qm, mm, id in zip(
@@ -365,6 +368,7 @@ class MoleculeStore:
                     DDE(
                         qcarchive_id=id,
                         difference=mm - qm,
+                        force_field=force_field,
                     )
                 )
 
@@ -372,9 +376,9 @@ class MoleculeStore:
 
     def get_rmsd(
         self,
-        # force_field,
+        force_field: str,
     ) -> RMSDCollection:
-        self.optimize_mm()
+        self.optimize_mm(force_field=force_field)
 
         rmsds = RMSDCollection()
 
@@ -384,7 +388,9 @@ class MoleculeStore:
             qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
 
             qm_conformers = self.get_qm_conformers_by_molecule_id(molecule_id)
-            mm_conformers = self.get_mm_conformers_by_molecule_id(molecule_id)
+            mm_conformers = self.get_mm_conformers_by_molecule_id(
+                molecule_id, force_field,
+            )
 
             for qm, mm, id in zip(
                 qm_conformers,
@@ -395,6 +401,7 @@ class MoleculeStore:
                     RMSD(
                         qcarchive_id=id,
                         rmsd=get_rmsd(qm, mm),
+                        force_field=force_field,
                     )
                 )
 
