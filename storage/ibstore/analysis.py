@@ -42,6 +42,24 @@ class RMSDCollection(list):
         self.to_dataframe().to_csv(path)
 
 
+class TFD(ImmutableModel):
+    qcarchive_id: str
+    force_field: str
+    tfd: float
+
+
+class TFDCollection(list):
+    def to_dataframe(self) -> pandas.DataFrame:
+        return pandas.DataFrame(
+            [tfd.tfd for tfd in self],
+            index=pandas.Index([tfd.qcarchive_id for tfd in self]),
+            columns=["tfd"],
+        )
+
+    def to_csv(self, path: str):
+        self.to_dataframe().to_csv(path)
+
+
 def get_rmsd(
     molecule: Molecule,
     reference: Array,
@@ -59,7 +77,14 @@ def get_rmsd(
 
     # oechem appears to not support named arguments, but it's hard to tell
     # since the Python API is not documented
-    return oechem.OERMSD(molecule1.to_openeye(), molecule2.to_openeye(), True, True, True,)
+    return oechem.OERMSD(
+        molecule1.to_openeye(),
+        molecule2.to_openeye(),
+        True,
+        True,
+        True,
+    )
+
 
 def _get_rmsd(
     reference: Array,
@@ -71,3 +96,54 @@ def _get_rmsd(
     ), "reference and target must have the same shape"
 
     return numpy.sqrt(numpy.sum((reference - target) ** 2) / len(reference))
+
+
+def get_tfd(
+    molecule: Molecule,
+    reference: Array,
+    target: Array,
+) -> float:
+    def _rdmol(
+        molecule: Molecule,
+        conformer: Array,
+    ):
+        from copy import deepcopy
+
+        from openff.units import Quantity, unit
+
+        # TODO: Do we need to remap indices?
+        if False:
+            # def _rdmol(inchi_key, mapped_smiles, ...)
+
+            molecule = Molecule.from_inchi(inchi_key)  # noqa
+
+            molecule_from_smiles = Molecule.from_mapped_smiles(mapped_smiles)  # noqa
+
+            are_isomorphic, atom_map = Molecule.are_isomorphic(
+                molecule,
+                molecule_from_smiles,
+                return_atom_map=True,
+            )
+
+            assert are_isomorphic, (
+                "Molecules from InChi and mapped SMILES are not isomorphic:\n"
+                f"\tinchi_key={inchi_key}\n"  # noqa
+                f"\tmapped_smiles={mapped_smiles}"  # noqa
+            )
+
+            molecule.remap(mapping_dict=atom_map)
+
+        molecule = deepcopy(molecule)
+
+        molecule.add_conformer(
+            Quantity(conformer, unit.angstrom),
+        )
+
+        return molecule.to_rdkit()
+
+    from rdkit.Chem import TorsionFingerprints
+
+    return TorsionFingerprints.GetTFDBetweenMolecules(
+        _rdmol(molecule, reference),
+        _rdmol(molecule, target),
+    )

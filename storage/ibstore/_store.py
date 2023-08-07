@@ -3,9 +3,10 @@ import pathlib
 from collections import defaultdict
 from contextlib import contextmanager
 from typing import ContextManager, Dict, Iterable, List, TypeVar
-from openff.toolkit import Molecule
+
 import numpy
 from openff.qcsubmit.results import OptimizationResultCollection
+from openff.toolkit import Molecule
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -17,7 +18,16 @@ from ibstore._db import (
 )
 from ibstore._session import DBSessionManager
 from ibstore._types import Pathlike
-from ibstore.analysis import DDE, RMSD, DDECollection, RMSDCollection, get_rmsd
+from ibstore.analysis import (
+    DDE,
+    RMSD,
+    TFD,
+    DDECollection,
+    RMSDCollection,
+    TFDCollection,
+    get_rmsd,
+    get_tfd,
+)
 from ibstore.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
 
 LOGGER = logging.getLogger(__name__)
@@ -411,6 +421,44 @@ class MoleculeStore:
                 )
 
         return rmsds
+
+    def get_tfd(
+        self,
+        force_field: str,
+    ) -> TFDCollection:
+        self.optimize_mm(force_field=force_field)
+
+        tfds = TFDCollection()
+
+        for inchi_key in self.get_inchi_keys():
+            molecule = Molecule.from_inchi(inchi_key)
+            molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
+
+            qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
+
+            qm_conformers = self.get_qm_conformers_by_molecule_id(molecule_id)
+            mm_conformers = self.get_mm_conformers_by_molecule_id(
+                molecule_id,
+                force_field,
+            )
+
+            for qm, mm, id in zip(
+                qm_conformers,
+                mm_conformers,
+                qcarchive_ids,
+            ):
+                try:
+                    tfds.append(
+                        TFD(
+                            qcarchive_id=id,
+                            tfd=get_tfd(molecule, qm, mm),
+                            force_field=force_field,
+                        )
+                    )
+                except Exception as e:
+                    logging.warning(f"Molecule {inchi_key} failed with {str(e)}")
+
+        return tfds
 
 
 def smiles_to_inchi_key(smiles: str) -> str:

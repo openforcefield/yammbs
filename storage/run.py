@@ -12,9 +12,6 @@ def main():
     force_fields = [
         f"openff-{val}.0"
         for val in [
-            "1.0",
-            "1.3",
-            "2.0",
             "2.1",
         ]
     ]
@@ -34,6 +31,7 @@ def main():
 
         store.get_dde(force_field=force_field).to_csv(f"{force_field}-dde.csv")
         store.get_rmsd(force_field=force_field).to_csv(f"{force_field}-rmsd.csv")
+        store.get_tfd(force_field=force_field).to_csv(f"{force_field}-tfd.csv")
 
     plot_cdfs(force_fields)
 
@@ -42,8 +40,9 @@ def plot_cdfs(force_fields):
     x_ranges = {
         "dde": (-5.0, 5.0),
         "rmsd": (0.0, 4.0),
+        "tfd": (0.0, 2.0),
     }
-    for data in ["dde", "rmsd"]:
+    for data in ["dde", "rmsd", "tfd"]:
         figure, axis = pyplot.subplots()
         for force_field in force_fields:
             dataframe = pandas.read_csv(f"{force_field}-{data}.csv")
