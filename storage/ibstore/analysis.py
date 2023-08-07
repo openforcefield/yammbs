@@ -1,5 +1,6 @@
 import numpy
 import pandas
+from openff.toolkit import Molecule
 
 from ibstore._base.array import Array
 from ibstore._base.base import ImmutableModel
@@ -42,9 +43,29 @@ class RMSDCollection(list):
 
 
 def get_rmsd(
+    molecule: Molecule,
     reference: Array,
     target: Array,
 ) -> float:
+    """Compute the RMSD between two sets of coordinates."""
+    from openeye import oechem
+    from openff.units import Quantity, unit
+
+    molecule1 = Molecule(molecule)
+    molecule1.add_conformer(Quantity(reference, unit.angstrom))
+
+    molecule2 = Molecule(molecule)
+    molecule2.add_conformer(Quantity(target, unit.angstrom))
+
+    # oechem appears to not support named arguments, but it's hard to tell
+    # since the Python API is not documented
+    return oechem.OERMSD(molecule1.to_openeye(), molecule2.to_openeye(), True, True, True,)
+
+def _get_rmsd(
+    reference: Array,
+    target: Array,
+) -> float:
+    """Native, naive implementation of RMSD."""
     assert (
         reference.shape == target.shape
     ), "reference and target must have the same shape"

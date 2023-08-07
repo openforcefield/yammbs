@@ -3,7 +3,7 @@ import pathlib
 from collections import defaultdict
 from contextlib import contextmanager
 from typing import ContextManager, Dict, Iterable, List, TypeVar
-
+from openff.toolkit import Molecule
 import numpy
 from openff.qcsubmit.results import OptimizationResultCollection
 from sqlalchemy import create_engine
@@ -386,6 +386,7 @@ class MoleculeStore:
         rmsds = RMSDCollection()
 
         for inchi_key in self.get_inchi_keys():
+            molecule = Molecule.from_inchi(inchi_key)
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
 
             qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
@@ -404,7 +405,7 @@ class MoleculeStore:
                 rmsds.append(
                     RMSD(
                         qcarchive_id=id,
-                        rmsd=get_rmsd(qm, mm),
+                        rmsd=get_rmsd(molecule, qm, mm),
                         force_field=force_field,
                     )
                 )

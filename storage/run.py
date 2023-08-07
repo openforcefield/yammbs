@@ -30,6 +30,10 @@ def main():
 
 
 def plot_cdfs():
+    x_ranges = {
+        "dde": (-5.0, 5.0),
+        "rmsd": (0.0, 4.0),
+    }
     for data in ["dde", "rmsd"]:
         dataframe = pandas.read_csv(f"{data}.csv")
 
@@ -37,10 +41,12 @@ def plot_cdfs():
 
         figure, axis = pyplot.subplots()
 
-        axis.plot(sorted_data, numpy.arange(1, len(sorted_data) + 1) / len(sorted_data))
+        axis.plot(sorted_data, numpy.arange(1, len(sorted_data) + 1) / len(sorted_data), '.--')
         axis.set_xlabel(data)
         axis.set_ylabel("CDF")
 
+        axis.set_xlim(x_ranges[data])
+        axis.set_ylim((0.0, 1.0))
         figure.savefig(f"{data}.png")
 
 
