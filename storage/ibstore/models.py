@@ -30,6 +30,10 @@ class QMConformerRecord(Record):
         ...,
         description="The ID of the molecule in the QCArchive database",
     )
+    mapped_smiles: str = Field(
+        ...,
+        description="The mapped SMILES string for the molecule, stored to track atom maps",
+    )
     coordinates: Array = Field(
         ...,
         description=(
@@ -45,11 +49,13 @@ class QMConformerRecord(Record):
     def from_qcarchive_record(
         cls,
         molecule_id: int,
+        mapped_smiles: str,
         qc_record: OptimizationRecord,
     ):
         return cls(
             molecule_id=molecule_id,
             qcarchive_id=qc_record.id,
+            mapped_smiles=mapped_smiles,
             coordinates=qc_record.get_final_molecule().geometry * bohr2angstroms,
             energy=qc_record.get_final_energy() * hartree2kcalmol,
         )
@@ -67,6 +73,10 @@ class MMConformerRecord(Record):
     force_field: str = Field(
         ...,
         description="The identifier of the force field used to generate this conformer",
+    )
+    mapped_smiles: str = Field(
+        ...,
+        description="The mapped SMILES string for the molecule, stored to track atom maps",
     )
     coordinates: Array = Field(
         ...,

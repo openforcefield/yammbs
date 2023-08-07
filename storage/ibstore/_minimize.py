@@ -38,6 +38,7 @@ def _minimize_blob(
                         inchi_key=inchi_key,
                         qcarchive_id=row["qcarchive_id"],
                         force_field=force_field,
+                        mapped_smiles=row["mapped_smiles"],
                         coordinates=row["coordinates"],
                     )
                 )
@@ -59,10 +60,16 @@ def _minimize_blob(
 class MinimizationInput(ImmutableModel):
     inchi_key: str = Field(..., description="The InChI key of the molecule")
     qcarchive_id: str = Field(
-        ..., description="The ID of the molecule in the QCArchive"
+        ...,
+        description="The ID of the molecule in the QCArchive",
     )
     force_field: str = Field(
-        ..., description="And identifier of the force field to use for the minimization"
+        ...,
+        description="And identifier of the force field to use for the minimization",
+    )
+    mapped_smiles: str = Field(
+        ...,
+        description="The mapped SMILES string for the molecule, stored to track atom maps",
     )
     coordinates: Array = Field(
         ...,
@@ -74,6 +81,7 @@ class MinimizationResult(ImmutableModel):
     inchi_key: str = Field(..., description="The InChI key of the molecule")
     qcarchive_id: str
     force_field: str
+    mapped_smiles: str
     coordinates: Array
     energy: float = Field(..., description="Minimized energy in kcal/mol")
 
@@ -86,6 +94,18 @@ def _run_openmm(
     positions: numpy.ndarray = input.coordinates
 
     molecule = Molecule.from_inchi(inchi_key)
+
+    molecule_from_smiles = Molecule.from_mapped_smiles(input.mapped_smiles)
+
+    are_isomorphic, atom_map = Molecule.are_isomorphic(
+        molecule,
+        molecule_from_smiles,
+        return_atom_map=True,
+    )
+
+    assert are_isomorphic, "Molecules from InChi and mapped SMILES are not isomorphic"
+
+    molecule.remap(mapping_dict=atom_map)
 
     system = FORCE_FIELDS[input.force_field].create_openmm_system(
         molecule.to_topology()
@@ -106,6 +126,7 @@ def _run_openmm(
         inchi_key=inchi_key,
         qcarchive_id=qcarchive_id,
         force_field=input.force_field,
+        mapped_smiles=input.mapped_smiles,
         coordinates=context.getState(getPositions=True)
         .getPositions()
         .value_in_unit(openmm.unit.angstrom),

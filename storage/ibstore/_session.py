@@ -179,6 +179,7 @@ class DBSessionManager:
             DBQMConformerRecord(
                 parent_id=record.molecule_id,
                 qcarchive_id=record.qcarchive_id,
+                mapped_smiles=record.mapped_smiles,
                 coordinates=record.coordinates,
                 energy=record.energy,
             )
@@ -205,6 +206,7 @@ class DBSessionManager:
                 parent_id=record.molecule_id,
                 qcarchive_id=record.qcarchive_id,
                 force_field=record.force_field,
+                mapped_smiles=record.mapped_smiles,
                 coordinates=record.coordinates,
                 energy=record.energy,
             )
@@ -215,12 +217,16 @@ class DBSessionManager:
         qcarchive_id: str,
         force_field: str,
     ) -> bool:
-        records = self.db.query(
-            DBMMConformerRecord.qcarchive_id,
-        ).filter_by(
-            qcarchive_id=qcarchive_id,
-        ).filter_by(
-            force_field=force_field,
+        records = (
+            self.db.query(
+                DBMMConformerRecord.qcarchive_id,
+            )
+            .filter_by(
+                qcarchive_id=qcarchive_id,
+            )
+            .filter_by(
+                force_field=force_field,
+            )
         )
 
         return records.count() > 0

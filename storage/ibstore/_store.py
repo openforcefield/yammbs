@@ -275,6 +275,7 @@ class MoleculeStore:
                     molecule_id=store.get_molecule_id_by_smiles(
                         molecule_record.mapped_smiles
                     ),
+                    mapped_smiles=molecule_record.mapped_smiles,
                     qc_record=qcarchive_record,
                 ),
             )
@@ -298,6 +299,7 @@ class MoleculeStore:
                 qm_conformers = [
                     {
                         "qcarchive_id": record.qcarchive_id,
+                        "mapped_smiles": record.mapped_smiles,
                         "coordinates": record.coordinates,
                     }
                     for record in db.db.query(
@@ -330,6 +332,7 @@ class MoleculeStore:
                         molecule_id=molecule_id,
                         qcarchive_id=result.qcarchive_id,
                         force_field=result.force_field,
+                        mapped_smiles=result.mapped_smiles,
                         energy=result.energy,
                         coordinates=result.coordinates,
                     )
@@ -389,7 +392,8 @@ class MoleculeStore:
 
             qm_conformers = self.get_qm_conformers_by_molecule_id(molecule_id)
             mm_conformers = self.get_mm_conformers_by_molecule_id(
-                molecule_id, force_field,
+                molecule_id,
+                force_field,
             )
 
             for qm, mm, id in zip(

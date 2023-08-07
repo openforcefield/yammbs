@@ -22,6 +22,7 @@ class DBQMConformerRecord(DBBase):
 
     qcarchive_id = Column(String(20), nullable=False)
 
+    mapped_smiles = Column(String, nullable=False)
     coordinates = Column(PickleType, nullable=False)
     energy = Column(Float, nullable=False)
 
@@ -35,6 +36,7 @@ class DBMMConformerRecord(DBBase):
     qcarchive_id = Column(String(20), nullable=False)
     force_field = Column(String, nullable=False)
 
+    mapped_smiles = Column(String, nullable=False)
     coordinates = Column(PickleType, nullable=False)
     energy = Column(Float, nullable=False)
 
