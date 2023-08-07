@@ -1,0 +1,37 @@
+name: ib-dev
+channels:
+  - conda-forge
+  - openeye
+dependencies:
+  - python =3.9
+  - pip
+  - qcfractal
+  - qcengine =0.25
+  - qcelemental =0.25
+  - qcportal >=0.15
+  - pint =0.20
+  - openff-toolkit =0.11
+  - openff-qcsubmit =0.4
+  - openff-models =0.0
+  - pandas =1
+  - pydantic =1
+  - openmmforcefields =0.11.2
+  - geometric <1
+
+  - click
+
+  - ipython
+  - ipdb
+  - pre-commit
+
+  - openeye-toolkits
+
+  - ipywidgets =7
+
+  - seaborn =0.11
+
+  - rich
+
+  - pip:
+    - git+https://github.com/SimonBoothroyd/nonbonded.git
+    - git+https://github.com/openforcefield/openff-qcsubmit@add-pre-commit
