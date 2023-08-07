@@ -9,7 +9,15 @@ from ibstore._store import MoleculeStore
 
 
 def main():
-    force_field = "openff-2.1.0"
+    force_fields = [
+        f"openff-{val}.0"
+        for val in [
+            "1.0",
+            "1.3",
+            "2.0",
+            "2.1",
+        ]
+    ]
 
     store = MoleculeStore.from_qcsubmit_collection(
         OptimizationResultCollection.parse_file(
@@ -19,34 +27,44 @@ def main():
         database_name="tmp.sqlite",
     )
 
-    # This is called within each analysis method, but short-circuiting within them. It's convenient to call it here
-    # with the freeze_support setup so that later analysis methods can trust that the MM conformers are there
-    store.optimize_mm(force_field=force_field)
+    for force_field in force_fields:
+        # This is called within each analysis method, but short-circuiting within them. It's convenient to call it here
+        # with the freeze_support setup so that later analysis methods can trust that the MM conformers are there
+        store.optimize_mm(force_field=force_field)
 
-    store.get_dde(force_field=force_field).to_csv("dde.csv")
-    store.get_rmsd(force_field=force_field).to_csv("rmsd.csv")
+        store.get_dde(force_field=force_field).to_csv(f"{force_field}-dde.csv")
+        store.get_rmsd(force_field=force_field).to_csv(f"{force_field}-rmsd.csv")
 
-    plot_cdfs()
+    plot_cdfs(force_fields)
 
 
-def plot_cdfs():
+def plot_cdfs(force_fields):
     x_ranges = {
         "dde": (-5.0, 5.0),
         "rmsd": (0.0, 4.0),
     }
     for data in ["dde", "rmsd"]:
-        dataframe = pandas.read_csv(f"{data}.csv")
-
-        sorted_data = numpy.sort(dataframe[dataframe.columns[-1]])
-
         figure, axis = pyplot.subplots()
+        for force_field in force_fields:
+            dataframe = pandas.read_csv(f"{force_field}-{data}.csv")
 
-        axis.plot(sorted_data, numpy.arange(1, len(sorted_data) + 1) / len(sorted_data), '.--')
+            sorted_data = numpy.sort(dataframe[dataframe.columns[-1]])
+
+            axis.plot(
+                sorted_data,
+                numpy.arange(1, len(sorted_data) + 1) / len(sorted_data),
+                ".--",
+                label=force_field,
+            )
+
         axis.set_xlabel(data)
         axis.set_ylabel("CDF")
 
         axis.set_xlim(x_ranges[data])
         axis.set_ylim((0.0, 1.0))
+
+        axis.legend(loc=0)
+
         figure.savefig(f"{data}.png")
 
 

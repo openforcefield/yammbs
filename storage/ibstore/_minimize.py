@@ -18,6 +18,8 @@ from ibstore._base.base import ImmutableModel
 N_PROCESSES = 10
 
 FORCE_FIELDS: dict[str, ForceField] = {
+    "openff-1.0.0": ForceField("openff_unconstrained-1.0.0.offxml"),
+    "openff-1.3.0": ForceField("openff_unconstrained-1.3.0.offxml"),
     "openff-2.0.0": ForceField("openff_unconstrained-2.0.0.offxml"),
     "openff-2.1.0": ForceField("openff_unconstrained-2.1.0.offxml"),
 }
@@ -103,7 +105,11 @@ def _run_openmm(
         return_atom_map=True,
     )
 
-    assert are_isomorphic, "Molecules from InChi and mapped SMILES are not isomorphic"
+    assert are_isomorphic, (
+        "Molecules from InChi and mapped SMILES are not isomorphic:\n"
+        f"\tinchi_key={inchi_key}\n"
+        f"\tmapped_smiles={input.mapped_smiles}"
+    )
 
     molecule.remap(mapping_dict=atom_map)
 
