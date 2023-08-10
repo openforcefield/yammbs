@@ -105,21 +105,30 @@ def _run_openmm(
 
     molecule = Molecule.from_mapped_smiles(input.mapped_smiles)
 
-    try:
-        force_field = FORCE_FIELDS[input.force_field]
-    except KeyError:
-        # Attempt to load from local path
-        try:
-            force_field = ForceField(input.force_field, allow_cosmetic_attributes=True)
-        except Exception as error:
-            # The toolkit does a poor job of distinguishing between a string
-            # argument being a file that does not exist and a file that it should
-            # try to parse (polymorphic input), so just have to clobber whatever
-            raise NotImplementedError(
-                f"Could not find or parse force field {input.force_field}"
-            ) from error
+    if input.force_field.startswith("gaff"):
+        from ibstore._forcefields import _openmmforcefields
 
-    system = force_field.create_openmm_system(molecule.to_topology())
+        system = _openmmforcefields(
+            molecule=molecule,
+            force_field_path=input.force_field,
+        )
+
+    else:
+        try:
+            force_field = FORCE_FIELDS[input.force_field]
+        except KeyError:
+            # Attempt to load from local path
+            try:
+                force_field = ForceField(input.force_field, allow_cosmetic_attributes=True)
+            except Exception as error:
+                # The toolkit does a poor job of distinguishing between a string
+                # argument being a file that does not exist and a file that it should
+                # try to parse (polymorphic input), so just have to clobber whatever
+                raise NotImplementedError(
+                    f"Could not find or parse force field {input.force_field}"
+                ) from error
+
+        system = force_field.create_openmm_system(molecule.to_topology())
 
     context = openmm.Context(
         system,
