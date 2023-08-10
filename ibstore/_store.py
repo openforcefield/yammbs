@@ -375,6 +375,9 @@ class MoleculeStore:
             qm_energies -= numpy.array(qm_energies).min()
 
             mm_energies = self.get_mm_energies_by_molecule_id(molecule_id, force_field)
+            if len(mm_energies) != len(qm_energies):
+                continue
+
             mm_energies -= numpy.array(mm_energies).min()
 
             for qm, mm, id in zip(

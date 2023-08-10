@@ -19,6 +19,8 @@ N_PROCESSES = 10
 
 FORCE_FIELDS: dict[str, ForceField] = {
     "openff-1.0.0": ForceField("openff_unconstrained-1.0.0.offxml"),
+    "openff-1.1.0": ForceField("openff_unconstrained-1.1.0.offxml"),
+    "openff-1.2.0": ForceField("openff_unconstrained-1.2.0.offxml"),
     "openff-1.3.0": ForceField("openff_unconstrained-1.3.0.offxml"),
     "openff-2.0.0": ForceField("openff_unconstrained-2.0.0.offxml"),
     "openff-2.1.0": ForceField("openff_unconstrained-2.1.0.offxml"),
@@ -59,7 +61,7 @@ def _minimize_blob(
                     _run_openmm,
                     inputs,
                 ),
-                desc="Building and minimizing systems",
+                desc=f"Building and minimizing systems with {force_field}",
                 total=len(inputs),
             ):
                 returned[result.inchi_key].append(result)
