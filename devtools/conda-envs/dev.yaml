@@ -25,13 +25,8 @@ dependencies:
   - pre-commit
 
   - openeye-toolkits
-
-  - ipywidgets =7
-
-  - seaborn =0.11
-
   - rich
 
-  - pip:
-    - git+https://github.com/SimonBoothroyd/nonbonded.git
-    - git+https://github.com/openforcefield/openff-qcsubmit@add-pre-commit
+  - pytest
+  - pytest-xdist
+  - pytest-randomly
