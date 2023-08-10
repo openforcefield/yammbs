@@ -7,6 +7,10 @@ repos:
   - id: trailing-whitespace
     exclude: '\.(pdb|gro|top|sdf)$'
   - id: debug-statements
+- repo: https://github.com/asottile/setup-cfg-fmt
+  rev: v2.4.0
+  hooks:
+  - id: setup-cfg-fmt
 - repo: https://github.com/psf/black
   rev: 23.7.0
   hooks:
@@ -17,7 +21,7 @@ repos:
   hooks:
   - id: isort
 - repo: https://github.com/PyCQA/flake8
-  rev: 6.0.0
+  rev: 6.1.0
   hooks:
   - id: flake8
     additional_dependencies: [
@@ -25,7 +29,7 @@ repos:
         'flake8-pytest-style',
     ]
 - repo: https://github.com/asottile/pyupgrade
-  rev: v3.9.0
+  rev: v3.10.1
   hooks:
   - id: pyupgrade
     args: [--py38-plus]
