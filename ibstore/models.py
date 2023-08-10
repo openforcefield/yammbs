@@ -109,7 +109,7 @@ class MoleculeRecord(Record):
     def from_molecule(
         cls,
         molecule: Molecule,
-    ) -> tuple[MR, QMConformerRecord]:
+    ) -> MR:
         assert molecule.n_conformers == 1
 
         return cls(
