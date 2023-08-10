@@ -10,10 +10,9 @@ from ibstore._store import MoleculeStore
 
 def main():
     force_fields = [
-        f"openff-{val}.0"
-        for val in [
-            "2.1",
-        ]
+        "openff-1.0.0",
+        "openff-2.1.0",
+        "gaff-2.11",
     ]
 
     store = MoleculeStore.from_qcsubmit_collection(
@@ -21,7 +20,7 @@ def main():
             "ibstore/_tests/data/01-processed-qm-ch.json",
         ),
         # TODO: Don't assume this file doesn't already exist
-        database_name="tmp.sqlite",
+        database_name="example.sqlite",
     )
 
     for force_field in force_fields:

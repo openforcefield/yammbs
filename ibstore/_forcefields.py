@@ -23,7 +23,7 @@ def _get_openmm_system(
         return _smirnoff(molecule, force_field_path)
 
     elif force_field_type == "OPENMM":
-        return _openmmforcefields(molecule, force_field_path)
+        return _gaff(molecule, force_field_path)
 
     else:
         raise NotImplementedError(f"force field type {force_field_type} not supported.")
@@ -42,14 +42,17 @@ def _smirnoff(molecule: Molecule, force_field_path: str) -> openmm.System:
     return smirnoff_force_field.create_openmm_system(molecule.to_topology())
 
 
-def _openmmforcefields(molecule: Molecule, force_field_path: str) -> openmm.System:
+def _gaff(molecule: Molecule, force_field_name: str) -> openmm.System:
     import openmm.app
     import openmm.unit
     from openmmforcefields.generators import GAFFTemplateGenerator
 
+    if not force_field_name.startswith("gaff"):
+        raise NotImplementedError(f"Force field {force_field_name} not implemented.")
+
     force_field = openmm.app.ForceField()
 
-    generator = GAFFTemplateGenerator(molecules=molecule, forcefield=force_field_path)
+    generator = GAFFTemplateGenerator(molecules=molecule, forcefield=force_field_name)
 
     force_field.registerTemplateGenerator(generator.generator)
 

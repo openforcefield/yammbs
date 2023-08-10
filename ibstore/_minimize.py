@@ -37,7 +37,7 @@ def _minimize_blob(
             for row in input[inchi_key]:
                 are_isomorphic, _ = Molecule.are_isomorphic(
                     Molecule.from_inchi(inchi_key),
-                    Molecule.from_mapped_smiles(row['mapped_smiles']),
+                    Molecule.from_mapped_smiles(row["mapped_smiles"]),
                 )
 
                 if not are_isomorphic:
@@ -106,11 +106,11 @@ def _run_openmm(
     molecule = Molecule.from_mapped_smiles(input.mapped_smiles)
 
     if input.force_field.startswith("gaff"):
-        from ibstore._forcefields import _openmmforcefields
+        from ibstore._forcefields import _gaff
 
-        system = _openmmforcefields(
+        system = _gaff(
             molecule=molecule,
-            force_field_path=input.force_field,
+            force_field_name=input.force_field,
         )
 
     else:
@@ -119,7 +119,9 @@ def _run_openmm(
         except KeyError:
             # Attempt to load from local path
             try:
-                force_field = ForceField(input.force_field, allow_cosmetic_attributes=True)
+                force_field = ForceField(
+                    input.force_field, allow_cosmetic_attributes=True
+                )
             except Exception as error:
                 # The toolkit does a poor job of distinguishing between a string
                 # argument being a file that does not exist and a file that it should
