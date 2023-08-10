@@ -28,6 +28,7 @@ from ibstore.analysis import (
     get_rmsd,
     get_tfd,
 )
+from ibstore.exceptions import DatabaseExistsError
 from ibstore.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
 
 LOGGER = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ class MoleculeStore:
 
     def __init__(self, database_path: Pathlike = "molecule-store.sqlite"):
         database_path = pathlib.Path(database_path)
+
         if not database_path.suffix.lower() == ".sqlite":
             raise NotImplementedError(
                 "Only paths to SQLite databases ending in .sqlite "
@@ -268,6 +270,9 @@ class MoleculeStore:
         database_name: str,
     ) -> MS:
         from tqdm import tqdm
+
+        if pathlib.Path(database_name).exists():
+            raise DatabaseExistsError(f"Database {database_name} already exists.")
 
         store = cls(database_name)
 
