@@ -13,6 +13,7 @@ def main():
     force_fields = [
         "openff-1.0.0",
         "openff-1.1.0",
+        "openff-1.2.0",
         "openff-1.3.0",
         "openff-2.0.0",
         "openff-2.1.0",
@@ -83,7 +84,7 @@ def plot(force_fields):
 
         axis.legend(loc=0)
 
-        figure.savefig(f"{data}.png")
+        figure.savefig(f"{data}.png", dpi=300)
 
 
 if __name__ == "__main__":

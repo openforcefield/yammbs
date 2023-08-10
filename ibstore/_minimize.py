@@ -15,7 +15,7 @@ from tqdm import tqdm
 from ibstore._base.array import Array
 from ibstore._base.base import ImmutableModel
 
-N_PROCESSES = 10
+N_PROCESSES = 14
 
 FORCE_FIELDS: dict[str, ForceField] = {
     "openff-1.0.0": ForceField("openff_unconstrained-1.0.0.offxml"),
