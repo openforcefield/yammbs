@@ -113,7 +113,21 @@ def _run_openmm(
 
     molecule.remap(mapping_dict=atom_map)
 
-    system = FORCE_FIELDS[input.force_field].create_openmm_system(
+    try:
+        force_field = FORCE_FIELDS[input.force_field]
+    except KeyError:
+        # Attempt to load from local path
+        try:
+            force_field = ForceField(input.force_field)
+        except Exception as error:
+            # The toolkit does a poor job of distinguishing between a string
+            # argument being a file that does not exist and a file that it should
+            # try to parse (polymorphic input), so just have to clobber whatever
+            raise NotImplementedError(
+                f"Could not find or parse force field {input.force_field}"
+            ) from error
+
+    system = force_field.create_openmm_system(
         molecule.to_topology()
     )
 
