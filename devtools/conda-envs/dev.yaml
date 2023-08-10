@@ -28,5 +28,6 @@ dependencies:
   - rich
 
   - pytest
+  - pytest-cov
   - pytest-xdist
   - pytest-randomly
