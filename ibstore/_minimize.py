@@ -35,6 +35,14 @@ def _minimize_blob(
     with _toolkit_registry_manager(OpenEyeToolkitWrapper()):
         for inchi_key in input:
             for row in input[inchi_key]:
+                are_isomorphic, _ = Molecule.are_isomorphic(
+                    Molecule.from_inchi(inchi_key),
+                    Molecule.from_mapped_smiles(row['mapped_smiles']),
+                )
+
+                if not are_isomorphic:
+                    continue
+
                 inputs.append(
                     MinimizationInput(
                         inchi_key=inchi_key,
@@ -95,23 +103,7 @@ def _run_openmm(
     qcarchive_id: str = input.qcarchive_id
     positions: numpy.ndarray = input.coordinates
 
-    molecule = Molecule.from_inchi(inchi_key)
-
-    molecule_from_smiles = Molecule.from_mapped_smiles(input.mapped_smiles)
-
-    are_isomorphic, atom_map = Molecule.are_isomorphic(
-        molecule,
-        molecule_from_smiles,
-        return_atom_map=True,
-    )
-
-    assert are_isomorphic, (
-        "Molecules from InChi and mapped SMILES are not isomorphic:\n"
-        f"\tinchi_key={inchi_key}\n"
-        f"\tmapped_smiles={input.mapped_smiles}"
-    )
-
-    molecule.remap(mapping_dict=atom_map)
+    molecule = Molecule.from_mapped_smiles(input.mapped_smiles)
 
     try:
         force_field = FORCE_FIELDS[input.force_field]
