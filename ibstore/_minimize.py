@@ -7,8 +7,6 @@ import openmm
 import openmm.app
 import openmm.unit
 from openff.toolkit import ForceField, Molecule
-from openff.toolkit.utils import OpenEyeToolkitWrapper
-from openff.toolkit.utils.toolkit_registry import _toolkit_registry_manager
 from pydantic import Field
 from tqdm import tqdm
 
@@ -34,37 +32,36 @@ def _minimize_blob(
     returned = defaultdict(list)
     inputs = list()
 
-    with _toolkit_registry_manager(OpenEyeToolkitWrapper()):
-        for inchi_key in input:
-            for row in input[inchi_key]:
-                are_isomorphic, _ = Molecule.are_isomorphic(
-                    Molecule.from_inchi(inchi_key),
-                    Molecule.from_mapped_smiles(row["mapped_smiles"]),
+    for inchi_key in input:
+        for row in input[inchi_key]:
+            are_isomorphic, _ = Molecule.are_isomorphic(
+                Molecule.from_inchi(inchi_key),
+                Molecule.from_mapped_smiles(row["mapped_smiles"]),
+            )
+
+            if not are_isomorphic:
+                continue
+
+            inputs.append(
+                MinimizationInput(
+                    inchi_key=inchi_key,
+                    qcarchive_id=row["qcarchive_id"],
+                    force_field=force_field,
+                    mapped_smiles=row["mapped_smiles"],
+                    coordinates=row["coordinates"],
                 )
+            )
 
-                if not are_isomorphic:
-                    continue
-
-                inputs.append(
-                    MinimizationInput(
-                        inchi_key=inchi_key,
-                        qcarchive_id=row["qcarchive_id"],
-                        force_field=force_field,
-                        mapped_smiles=row["mapped_smiles"],
-                        coordinates=row["coordinates"],
-                    )
-                )
-
-        with Pool(processes=N_PROCESSES) as pool:
-            for result in tqdm(
-                pool.imap(
-                    _run_openmm,
-                    inputs,
-                ),
-                desc=f"Building and minimizing systems with {force_field}",
-                total=len(inputs),
-            ):
-                returned[result.inchi_key].append(result)
+    with Pool(processes=N_PROCESSES) as pool:
+        for result in tqdm(
+            pool.imap(
+                _run_openmm,
+                inputs,
+            ),
+            desc=f"Building and minimizing systems with {force_field}",
+            total=len(inputs),
+        ):
+            returned[result.inchi_key].append(result)
 
     return returned
 
