@@ -103,10 +103,12 @@ class DBInformation(DBBase):
     version = Column(Integer, primary_key=True)
 
     general_provenance = relationship(
-        "DBGeneralProvenance", cascade="all, delete-orphan"
+        "DBGeneralProvenance",
+        cascade="all, delete-orphan",
     )
     software_provenance = relationship(
-        "DBSoftwareProvenance", cascade="all, delete-orphan"
+        "DBSoftwareProvenance",
+        cascade="all, delete-orphan",
     )
 
 
@@ -134,7 +136,8 @@ def _match_conformers(
     from openff.toolkit.topology import Molecule
 
     molecule = Molecule.from_mapped_smiles(
-        indexed_mapped_smiles, allow_undefined_stereo=True
+        indexed_mapped_smiles,
+        allow_undefined_stereo=True,
     )
 
     # See if any of the conformers to add are already in the DB.
@@ -143,7 +146,9 @@ def _match_conformers(
     for q_index, query in enumerate(query_conformers):
         for db_index, db_conformer in enumerate(db_conformers):
             if is_conformer_identical(
-                molecule, query.coordinates, db_conformer.coordinates
+                molecule,
+                query.coordinates,
+                db_conformer.coordinates,
             ):
                 matches[q_index] = db_index
                 break

@@ -35,8 +35,11 @@ def _minimize_blob(
     for inchi_key in input:
         for row in input[inchi_key]:
             are_isomorphic, _ = Molecule.are_isomorphic(
-                Molecule.from_inchi(inchi_key),
-                Molecule.from_mapped_smiles(row["mapped_smiles"]),
+                Molecule.from_inchi(inchi_key, allow_undefined_stereo=True),
+                Molecule.from_mapped_smiles(
+                    row["mapped_smiles"],
+                    allow_undefined_stereo=True,
+                ),
             )
 
             if not are_isomorphic:
@@ -49,7 +52,7 @@ def _minimize_blob(
                     force_field=force_field,
                     mapped_smiles=row["mapped_smiles"],
                     coordinates=row["coordinates"],
-                )
+                ),
             )
 
     with Pool(processes=N_PROCESSES) as pool:
@@ -102,7 +105,10 @@ def _run_openmm(
     qcarchive_id: str = input.qcarchive_id
     positions: numpy.ndarray = input.coordinates
 
-    molecule = Molecule.from_mapped_smiles(input.mapped_smiles)
+    molecule = Molecule.from_mapped_smiles(
+        input.mapped_smiles,
+        allow_undefined_stereo=True,
+    )
 
     if input.force_field.startswith("gaff"):
         from ibstore._forcefields import _gaff
@@ -119,14 +125,15 @@ def _run_openmm(
             # Attempt to load from local path
             try:
                 force_field = ForceField(
-                    input.force_field, allow_cosmetic_attributes=True
+                    input.force_field,
+                    allow_cosmetic_attributes=True,
                 )
             except Exception as error:
                 # The toolkit does a poor job of distinguishing between a string
                 # argument being a file that does not exist and a file that it should
                 # try to parse (polymorphic input), so just have to clobber whatever
                 raise NotImplementedError(
-                    f"Could not find or parse force field {input.force_field}"
+                    f"Could not find or parse force field {input.force_field}",
                 ) from error
 
         system = force_field.create_openmm_system(molecule.to_topology())
@@ -138,7 +145,7 @@ def _run_openmm(
     )
 
     context.setPositions(
-        (positions * openmm.unit.angstrom).in_units_of(openmm.unit.nanometer)
+        (positions * openmm.unit.angstrom).in_units_of(openmm.unit.nanometer),
     )
     openmm.LocalEnergyMinimizer.minimize(context, 5.0e-9, 1500)
 

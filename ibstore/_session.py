@@ -30,7 +30,7 @@ class DBQueryResult(NamedTuple):
             self.molecule_id: {
                 "mapped_smiles": self.molecule_smiles,
                 "inchi": self.molecule_inchi,
-            }
+            },
         }
 
 
@@ -54,7 +54,7 @@ class IncompatibleDBVersion(ValueError):
             f"The database being loaded is currently at version {found_version} "
             f"while the framework expects a version of {expected_version}. There "
             f"is no way to upgrade the database at this time, although this may "
-            f"be added in future versions."
+            f"be added in future versions.",
         )
 
         self.found_version = found_version
@@ -182,7 +182,7 @@ class DBSessionManager:
                 mapped_smiles=record.mapped_smiles,
                 coordinates=record.coordinates,
                 energy=record.energy,
-            )
+            ),
         )
 
     def _qm_conformer_already_exists(
@@ -209,7 +209,7 @@ class DBSessionManager:
                 mapped_smiles=record.mapped_smiles,
                 coordinates=record.coordinates,
                 energy=record.energy,
-            )
+            ),
         )
 
     def _mm_conformer_already_exists(
@@ -307,7 +307,7 @@ class DBSessionManager:
             raise RuntimeError(
                 "The database is not self consistent."
                 "There are multiple records with the same InChI key and SMILES."
-                f"InChI key: {inchi_key} and SMILES: {multiple}"
+                f"InChI key: {inchi_key} and SMILES: {multiple}",
             )
         db_records_by_smiles = {k: v[0] for k, v in db_records_by_smiles.items()}
 

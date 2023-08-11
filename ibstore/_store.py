@@ -47,7 +47,7 @@ class MoleculeStore:
         if not database_path.suffix.lower() == ".sqlite":
             raise NotImplementedError(
                 "Only paths to SQLite databases ending in .sqlite "
-                f"are supported. Given: {database_path}"
+                f"are supported. Given: {database_path}",
             )
 
         self.database_url = f"sqlite:///{database_path.resolve()}"
@@ -144,7 +144,8 @@ class MoleculeStore:
         with self._get_session() as db:
             for record in records:
                 if db._mm_conformer_already_exists(
-                    record.qcarchive_id, record.qcarchive_id
+                    record.qcarchive_id,
+                    record.qcarchive_id,
                 ):
                     continue
                 else:
@@ -277,7 +278,8 @@ class MoleculeStore:
         store = cls(database_name)
 
         for qcarchive_record, molecule in tqdm(
-            collection.to_records(), desc="Converting records to molecules"
+            collection.to_records(),
+            desc="Converting records to molecules",
         ):
             # _toolkit_registry_manager could go here
 
@@ -288,7 +290,7 @@ class MoleculeStore:
             store.store_qcarchive(
                 QMConformerRecord.from_qcarchive_record(
                     molecule_id=store.get_molecule_id_by_smiles(
-                        molecule_record.mapped_smiles
+                        molecule_record.mapped_smiles,
                     ),
                     mapped_smiles=molecule_record.mapped_smiles,
                     qc_record=qcarchive_record,
@@ -350,7 +352,7 @@ class MoleculeStore:
                         mapped_smiles=result.mapped_smiles,
                         energy=result.energy,
                         coordinates=result.coordinates,
-                    )
+                    ),
                 )
 
     def get_dde(
@@ -390,7 +392,7 @@ class MoleculeStore:
                         qcarchive_id=id,
                         difference=mm - qm,
                         force_field=force_field,
-                    )
+                    ),
                 )
 
         return ddes
@@ -404,7 +406,7 @@ class MoleculeStore:
         rmsds = RMSDCollection()
 
         for inchi_key in self.get_inchi_keys():
-            molecule = Molecule.from_inchi(inchi_key)
+            molecule = Molecule.from_inchi(inchi_key, allow_undefined_stereo=True)
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
 
             qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
@@ -425,7 +427,7 @@ class MoleculeStore:
                         qcarchive_id=id,
                         rmsd=get_rmsd(molecule, qm, mm),
                         force_field=force_field,
-                    )
+                    ),
                 )
 
         return rmsds
@@ -439,7 +441,7 @@ class MoleculeStore:
         tfds = TFDCollection()
 
         for inchi_key in self.get_inchi_keys():
-            molecule = Molecule.from_inchi(inchi_key)
+            molecule = Molecule.from_inchi(inchi_key, allow_undefined_stereo=True)
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
 
             qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
@@ -461,7 +463,7 @@ class MoleculeStore:
                             qcarchive_id=id,
                             tfd=get_tfd(molecule, qm, mm),
                             force_field=force_field,
-                        )
+                        ),
                     )
                 except Exception as e:
                     logging.warning(f"Molecule {inchi_key} failed with {str(e)}")
@@ -473,5 +475,5 @@ def smiles_to_inchi_key(smiles: str) -> str:
     from openff.toolkit import Molecule
 
     return Molecule.from_smiles(smiles, allow_undefined_stereo=True).to_inchi(
-        fixed_hydrogens=True
+        fixed_hydrogens=True,
     )

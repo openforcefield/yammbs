@@ -33,7 +33,9 @@ def _smirnoff(molecule: Molecule, force_field_path: str) -> openmm.System:
     from openff.toolkit import ForceField
 
     smirnoff_force_field = ForceField(
-        force_field_path, load_plugins=True, allow_cosmetic_attributes=True
+        force_field_path,
+        load_plugins=True,
+        allow_cosmetic_attributes=True,
     )
 
     if "Constraints" in smirnoff_force_field.registered_parameter_handlers:
