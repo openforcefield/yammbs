@@ -66,7 +66,7 @@ class MutableModel(BaseModel):
     @classmethod
     def _get_properties(cls) -> Dict[str, property]:
         return dict(
-            inspect.getmembers(cls, predicate=lambda x: isinstance(x, property))
+            inspect.getmembers(cls, predicate=lambda x: isinstance(x, property)),
         )
 
     @no_type_check

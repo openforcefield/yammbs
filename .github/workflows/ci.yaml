@@ -14,7 +14,7 @@ defaults:
 
 jobs:
   test:
-    name: Test 
+    name: Test
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

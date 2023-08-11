@@ -15,7 +15,9 @@ def test_load_from_qcsubmit(small_collection):
         molecule_record = MoleculeRecord.from_molecule(molecule)
 
         qm_conformer = QMConformerRecord.from_qcarchive_record(
-            molecule_id="1", mapped_smiles=mapped_smiles, qc_record=qc_record
+            molecule_id="1",
+            mapped_smiles=mapped_smiles,
+            qc_record=qc_record,
         )
 
         assert isinstance(molecule_record, MoleculeRecord)
