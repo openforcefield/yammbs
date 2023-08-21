@@ -127,6 +127,7 @@ def _run_openmm(
                 force_field = ForceField(
                     input.force_field,
                     allow_cosmetic_attributes=True,
+                    load_plugins=True,
                 )
             except Exception as error:
                 # The toolkit does a poor job of distinguishing between a string
@@ -136,7 +137,9 @@ def _run_openmm(
                     f"Could not find or parse force field {input.force_field}",
                 ) from error
 
-        system = force_field.create_openmm_system(molecule.to_topology())
+        system = force_field.create_interchange(molecule.to_topology()).to_openmm(
+            combine_nonbonded_forces=False,
+        )
 
     context = openmm.Context(
         system,

@@ -78,3 +78,15 @@ def test_different_force_fields_different_results():
     energy2 = _run_openmm(basic_input("openff-2.0.0")).energy
 
     assert energy1 != energy2
+
+
+def test_plugin_loadable(ethane):
+    _run_openmm(
+        MinimizationInput(
+            inchi_key=ethane.to_inchikey(),
+            qcarchive_id="test",
+            force_field="de-force-1.0.1.offxml",
+            mapped_smiles=ethane.to_smiles(mapped=True),
+            coordinates=ethane.conformers[0].m_as(unit.angstrom),
+        ),
+    )

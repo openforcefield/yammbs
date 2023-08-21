@@ -19,6 +19,7 @@ def main():
         "openff-2.1.0",
         "gaff-1.8",
         "gaff-2.11",
+        "de-force-1.0.1.offxml",
     ]
 
     data = "cho"
