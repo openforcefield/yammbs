@@ -1,3 +1,4 @@
+import os
 import tempfile
 
 import pytest
@@ -9,8 +10,7 @@ from ibstore.exceptions import DatabaseExistsError
 
 def test_from_qcsubmit(small_collection):
     store = MoleculeStore.from_qcsubmit_collection(
-        small_collection,
-        "foo.sqlite",
+        small_collection, "foo.sqlite"
     )
 
     # Sanity check molecule deduplication
@@ -18,6 +18,8 @@ def test_from_qcsubmit(small_collection):
 
     # Ensure a new object can be created from the same database
     assert len(MoleculeStore("foo.sqlite")) == len(store)
+
+    os.remove("foo.sqlite")
 
 
 def test_do_not_overwrite(small_collection):
