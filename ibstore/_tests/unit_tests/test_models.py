@@ -18,6 +18,7 @@ def test_load_from_qcsubmit(small_collection):
             molecule_id="1",
             mapped_smiles=mapped_smiles,
             qc_record=qc_record,
+            coordinates=molecule.conformers[0],
         )
 
         assert isinstance(molecule_record, MoleculeRecord)

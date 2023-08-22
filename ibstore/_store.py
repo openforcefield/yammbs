@@ -294,6 +294,7 @@ class MoleculeStore:
                     ),
                     mapped_smiles=molecule_record.mapped_smiles,
                     qc_record=qcarchive_record,
+                    coordinates=molecule.conformers[0],
                 ),
             )
 

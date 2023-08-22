@@ -51,12 +51,13 @@ class QMConformerRecord(Record):
         molecule_id: int,
         mapped_smiles: str,
         qc_record: OptimizationRecord,
+        coordinates,
     ):
         return cls(
             molecule_id=molecule_id,
             qcarchive_id=qc_record.id,
             mapped_smiles=mapped_smiles,
-            coordinates=qc_record.get_final_molecule().geometry * bohr2angstroms,
+            coordinates=coordinates,
             energy=qc_record.get_final_energy() * hartree2kcalmol,
         )
 

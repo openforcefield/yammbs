@@ -1,23 +1,22 @@
 import tempfile
 
 import pytest
-from openff.utilities import get_data_file_path
+from openff.utilities import get_data_file_path, temporary_cd
 
 from ibstore._store import MoleculeStore
 from ibstore.exceptions import DatabaseExistsError
 
 
 def test_from_qcsubmit(small_collection):
-    store = MoleculeStore.from_qcsubmit_collection(
-        small_collection,
-        "foo.sqlite",
-    )
+    db = "foo.sqlite"
+    with temporary_cd():
+        store = MoleculeStore.from_qcsubmit_collection(small_collection, db)
 
-    # Sanity check molecule deduplication
-    assert len(store.get_smiles()) == len({*store.get_smiles()})
+        # Sanity check molecule deduplication
+        assert len(store.get_smiles()) == len({*store.get_smiles()})
 
-    # Ensure a new object can be created from the same database
-    assert len(MoleculeStore("foo.sqlite")) == len(store)
+        # Ensure a new object can be created from the same database
+        assert len(MoleculeStore(db)) == len(store)
 
 
 def test_do_not_overwrite(small_collection):
