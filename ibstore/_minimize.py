@@ -1,4 +1,3 @@
-from collections import defaultdict
 from multiprocessing import Pool
 from typing import Union
 
@@ -29,7 +28,6 @@ def _minimize_blob(
     n_processes: int = 2,
     chunksize=32,
 ) -> dict[str, list["MinimizationResult"]]:
-    returned = defaultdict(list)
     inputs = list()
 
     for inchi_key in input:
@@ -65,9 +63,7 @@ def _minimize_blob(
             desc=f"Building and minimizing systems with {force_field}",
             total=len(inputs),
         ):
-            returned[result.inchi_key].append(result)
-
-    return returned
+            yield result
 
 
 class MinimizationInput(ImmutableModel):

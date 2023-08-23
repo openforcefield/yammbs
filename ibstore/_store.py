@@ -347,20 +347,19 @@ class MoleculeStore:
             n_processes,
         )
 
-        for inchi_key in _minimized_blob:
+        for result in _minimized_blob:
+            inchi_key = result.inchi_key
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
-
-            for result in _minimized_blob[inchi_key]:
-                self.store_conformer(
-                    MMConformerRecord(
-                        molecule_id=molecule_id,
-                        qcarchive_id=result.qcarchive_id,
-                        force_field=result.force_field,
-                        mapped_smiles=result.mapped_smiles,
-                        energy=result.energy,
-                        coordinates=result.coordinates,
-                    ),
-                )
+            self.store_conformer(
+                MMConformerRecord(
+                    molecule_id=molecule_id,
+                    qcarchive_id=result.qcarchive_id,
+                    force_field=result.force_field,
+                    mapped_smiles=result.mapped_smiles,
+                    energy=result.energy,
+                    coordinates=result.coordinates,
+                ),
+            )
 
     def get_dde(
         self,
