@@ -304,6 +304,7 @@ class MoleculeStore:
         self,
         force_field: str,
         n_processes: int = 2,
+        chunksize=32,
     ):
         from ibstore._minimize import _minimize_blob
 

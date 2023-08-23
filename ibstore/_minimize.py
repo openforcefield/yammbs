@@ -27,6 +27,7 @@ def _minimize_blob(
     input: dict[str, dict[str, Union[str, numpy.ndarray]]],
     force_field: str,
     n_processes: int = 2,
+    chunksize=32,
 ) -> dict[str, list["MinimizationResult"]]:
     returned = defaultdict(list)
     inputs = list()
@@ -59,6 +60,7 @@ def _minimize_blob(
             pool.imap(
                 _run_openmm,
                 inputs,
+                chunksize=chunksize,
             ),
             desc=f"Building and minimizing systems with {force_field}",
             total=len(inputs),
