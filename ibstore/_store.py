@@ -303,6 +303,7 @@ class MoleculeStore:
     def optimize_mm(
         self,
         force_field: str,
+        n_processes: int = 2,
     ):
         from ibstore._minimize import _minimize_blob
 
@@ -339,7 +340,11 @@ class MoleculeStore:
         if len(_data) == 0:
             return
 
-        _minimized_blob = _minimize_blob(_data, force_field)
+        _minimized_blob = _minimize_blob(
+            _data,
+            force_field,
+            n_processes,
+        )
 
         for inchi_key in _minimized_blob:
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)

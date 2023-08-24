@@ -13,8 +13,6 @@ from tqdm import tqdm
 from ibstore._base.array import Array
 from ibstore._base.base import ImmutableModel
 
-N_PROCESSES = 14
-
 FORCE_FIELDS: dict[str, ForceField] = {
     "openff-1.0.0": ForceField("openff_unconstrained-1.0.0.offxml"),
     "openff-1.1.0": ForceField("openff_unconstrained-1.1.0.offxml"),
@@ -28,6 +26,7 @@ FORCE_FIELDS: dict[str, ForceField] = {
 def _minimize_blob(
     input: dict[str, dict[str, Union[str, numpy.ndarray]]],
     force_field: str,
+    n_processes: int = 2,
 ) -> dict[str, list["MinimizationResult"]]:
     returned = defaultdict(list)
     inputs = list()
@@ -55,7 +54,7 @@ def _minimize_blob(
                 ),
             )
 
-    with Pool(processes=N_PROCESSES) as pool:
+    with Pool(processes=n_processes) as pool:
         for result in tqdm(
             pool.imap(
                 _run_openmm,
