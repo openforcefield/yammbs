@@ -270,7 +270,7 @@ class MoleculeStore:
                 .all()
             ][0]
 
-    def get_mm_conformer_by_qcharchive_id(self, id: int, force_field: str):
+    def get_mm_conformer_by_qcarchive_id(self, id: int, force_field: str):
         with self._get_session() as db:
             return [
                 conformer
@@ -278,7 +278,7 @@ class MoleculeStore:
                 .filter_by(qcarchive_id=id)
                 .filter_by(force_field=force_field)
                 .all()
-            ]
+            ][0]
 
     # TODO: Allow by multiple selectors (id: list[int])
     def get_qm_energies_by_molecule_id(self, id: int) -> list[float]:
