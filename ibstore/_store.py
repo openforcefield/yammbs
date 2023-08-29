@@ -345,6 +345,7 @@ class MoleculeStore:
             _data,
             force_field,
             n_processes,
+            chunksize,
         )
 
         for result in _minimized_blob:
