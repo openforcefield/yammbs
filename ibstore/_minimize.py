@@ -54,7 +54,7 @@ def _minimize_blob(
             )
 
     with Pool(processes=n_processes) as pool:
-        for result in tqdm(
+        yield from tqdm(
             pool.imap(
                 _run_openmm,
                 inputs,
@@ -62,8 +62,7 @@ def _minimize_blob(
             ),
             desc=f"Building and minimizing systems with {force_field}",
             total=len(inputs),
-        ):
-            yield result
+        )
 
 
 class MinimizationInput(ImmutableModel):

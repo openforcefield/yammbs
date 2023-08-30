@@ -151,6 +151,19 @@ class MoleculeStore:
                 else:
                     db.store_mm_conformer_record(record)
 
+    def get_molecule_ids(self) -> list[int]:
+        """
+        Get the molecule IDs of all records in the store.
+
+        These are likely to be integers sequentially incrementing from 1, but that
+        is not guaranteed.
+        """
+        with self._get_session() as db:
+            return [
+                molecule_id
+                for (molecule_id,) in db.db.query(DBMoleculeRecord.id).distinct()
+            ]
+
     def get_smiles(self) -> List[str]:
         """Get the (mapped) smiles of all records in the store."""
         with self._get_session() as db:
@@ -214,6 +227,15 @@ class MoleculeStore:
                 .all()
             ]
 
+    def get_molecule_id_by_qcarchive_id(self, id: str) -> int:
+        with self._get_session() as db:
+            return [
+                molecule_id
+                for (molecule_id,) in db.db.query(DBQMConformerRecord.parent_id)
+                .filter_by(qcarchive_id=id)
+                .all()
+            ][0]
+
     def get_qm_conformers_by_molecule_id(self, id: int) -> list:
         with self._get_session() as db:
             return [
@@ -238,6 +260,25 @@ class MoleculeStore:
                 .order_by(DBMMConformerRecord.qcarchive_id)
                 .all()
             ]
+
+    def get_qm_conformer_by_qcarchive_id(self, id: int):
+        with self._get_session() as db:
+            return [
+                conformer
+                for (conformer,) in db.db.query(DBQMConformerRecord.coordinates)
+                .filter_by(qcarchive_id=id)
+                .all()
+            ][0]
+
+    def get_mm_conformer_by_qcarchive_id(self, id: int, force_field: str):
+        with self._get_session() as db:
+            return [
+                conformer
+                for (conformer,) in db.db.query(DBMMConformerRecord.coordinates)
+                .filter_by(qcarchive_id=id)
+                .filter_by(force_field=force_field)
+                .all()
+            ][0]
 
     # TODO: Allow by multiple selectors (id: list[int])
     def get_qm_energies_by_molecule_id(self, id: int) -> list[float]:
