@@ -2,7 +2,7 @@ import openmm
 import pytest
 from openff.toolkit import Molecule
 
-from ibstore._forcefields import _gaff, _smirnoff
+from ibstore._forcefields import _espaloma, _gaff, _smirnoff
 
 
 @pytest.fixture()
@@ -27,3 +27,15 @@ def test_gaff_basic(molecule):
 def test_gaff_unsupported(molecule):
     with pytest.raises(NotImplementedError):
         _gaff(molecule, "foo")
+
+
+def test_espaloma_basic(molecule):
+    system = _espaloma(molecule, "espaloma-openff_unconstrained-2.1.0")
+
+    assert isinstance(system, openmm.System)
+    assert system.getNumParticles() == molecule.n_atoms
+
+
+def test_espaloma_unsupported(molecule):
+    with pytest.raises(NotImplementedError):
+        _espaloma(molecule, "foo")

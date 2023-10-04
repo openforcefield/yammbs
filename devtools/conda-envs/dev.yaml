@@ -9,6 +9,7 @@ dependencies:
   - openff-qcsubmit
   - openmmforcefields
   - smirnoff-plugins =2023.08.0
+  - espaloma
 
   - ipython
   - ipdb
