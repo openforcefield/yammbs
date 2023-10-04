@@ -114,6 +114,27 @@ def _run_openmm(
             force_field_name=input.force_field,
         )
 
+    elif input.force_field.startswith("espaloma"):
+        import espaloma as esp
+
+        # espaloma needs an OpenFF force field too, so provide it as
+        # espaloma-openff-2.1.0, for example. use a slice in case it's empty
+        ff = input.force_field.split("-", 1)[1:2]
+
+        if ff == []:
+            raise ValueError(
+                "espaloma force field must have an OpenFF force field too"
+            )
+        else:
+            ff = ff[0]
+
+        mol_graph = esp.Graph(molecule)
+        model = esp.get_model("latest")
+        model(mol_graph.heterograph)
+        system = esp.graphs.deploy.openmm_system_from_graph(
+            mol_graph, forcefield=ff
+        )
+
     else:
         try:
             force_field = FORCE_FIELDS[input.force_field]
