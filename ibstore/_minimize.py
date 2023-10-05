@@ -114,6 +114,14 @@ def _run_openmm(
             force_field_name=input.force_field,
         )
 
+    elif input.force_field.startswith("espaloma"):
+        from ibstore._forcefields import _espaloma
+
+        system = _espaloma(
+            molecule=molecule,
+            force_field_name=input.force_field,
+        )
+
     else:
         try:
             force_field = FORCE_FIELDS[input.force_field]

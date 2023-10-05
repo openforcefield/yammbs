@@ -63,3 +63,34 @@ def _gaff(molecule: Molecule, force_field_name: str) -> openmm.System:
         nonbondedCutoff=0.9 * openmm.unit.nanometer,
         constraints=None,
     )
+
+
+def _espaloma(molecule: Molecule, force_field_name: str) -> openmm.System:
+    """Generate an OpenMM System for a molecule and force field name. The force
+    field name should be of the form espaloma-force-field-name, such as
+    espaloma-openff_unconstrained-2.1.0. Everything after the first dash is
+    passed as the forcefield argument to
+    espaloma.graphs.deploy.openmm_system_from_graph, where it will be appended
+    with .offxml. Raises a ValueError if there is no dash in force_field_name.
+    """
+    import espaloma as esp
+
+    if not force_field_name.startswith("espaloma"):
+        raise NotImplementedError(
+            f"Force field {force_field_name} not implemented."
+        )
+
+    ff = force_field_name.split("-", 1)[1:2]
+
+    if ff == []:
+        raise ValueError(
+            "espaloma force field must have an OpenFF force field too"
+        )
+    else:
+        ff = ff[0]
+
+    mol_graph = esp.Graph(molecule)
+    model = esp.get_model("latest")
+    model(mol_graph.heterograph)
+
+    return esp.graphs.deploy.openmm_system_from_graph(mol_graph, forcefield=ff)
