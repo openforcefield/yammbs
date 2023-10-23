@@ -76,16 +76,12 @@ def _espaloma(molecule: Molecule, force_field_name: str) -> openmm.System:
     import espaloma as esp
 
     if not force_field_name.startswith("espaloma"):
-        raise NotImplementedError(
-            f"Force field {force_field_name} not implemented."
-        )
+        raise NotImplementedError(f"Force field {force_field_name} not implemented.")
 
     ff = force_field_name.split("-", 1)[1:2]
 
     if ff == []:
-        raise ValueError(
-            "espaloma force field must have an OpenFF force field too"
-        )
+        raise ValueError("espaloma force field must have an OpenFF force field too")
     else:
         ff = ff[0]
 

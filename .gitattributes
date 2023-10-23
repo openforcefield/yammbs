@@ -1,1 +1,2 @@
 ib/_version.py export-subst
+ibstore/_version.py export-subst
