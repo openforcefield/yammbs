@@ -344,6 +344,7 @@ class MoleculeStore:
     def optimize_mm(
         self,
         force_field: str,
+        prune_isomorphs: bool = False,
         n_processes: int = 2,
         chunksize=32,
     ):
@@ -383,10 +384,11 @@ class MoleculeStore:
             return
 
         _minimized_blob = _minimize_blob(
-            _data,
-            force_field,
-            n_processes,
-            chunksize,
+            input=_data,
+            force_field=force_field,
+            prune_isomorphs=prune_isomorphs,
+            n_processes=n_processes,
+            chunksize=chunksize,
         )
 
         for result in _minimized_blob:
