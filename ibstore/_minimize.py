@@ -34,6 +34,8 @@ def _minimize_blob(
     for inchi_key in input:
         for row in input[inchi_key]:
             if prune_isomorphs:
+                # This behavior is always useless and probably bad as there is
+                # no reason to use InCHI when mapped SMILES is known. See #7
                 are_isomorphic, _ = Molecule.are_isomorphic(
                     Molecule.from_inchi(inchi_key, allow_undefined_stereo=True),
                     Molecule.from_mapped_smiles(
