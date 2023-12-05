@@ -1,7 +1,10 @@
+import json
+import random
 import tempfile
 
 import numpy
 import pytest
+from openff.qcsubmit.results import OptimizationResultCollection
 from openff.utilities import get_data_file_path, temporary_cd
 
 from ibstore._store import MoleculeStore
@@ -55,6 +58,28 @@ def test_get_molecule_id_by_qcarchive_id(small_store):
     qcarchive_id = small_store.get_qcarchive_ids_by_molecule_id(molecule_id)[-1]
 
     assert small_store.get_molecule_id_by_qcarchive_id(qcarchive_id) == molecule_id
+
+
+def test_molecules_sorted_by_qcarchive_id():
+    raw_ch = json.load(
+        open(get_data_file_path("_tests/data/01-processed-qm-ch.json", "ibstore")),
+    )
+
+    random.shuffle(raw_ch["entries"]["https://api.qcarchive.molssi.org:443/"])
+
+    with tempfile.NamedTemporaryFile(mode="w+") as file:
+        json.dump(raw_ch, file)
+        file.flush()
+
+        store = MoleculeStore.from_qcsubmit_collection(
+            OptimizationResultCollection.parse_file(file.name),
+            database_name=tempfile.NamedTemporaryFile(suffix=".sqlite").name,
+        )
+
+        qcarchive_ids = store.get_qcarchive_ids_by_molecule_id(40)
+
+    for index, id in enumerate(qcarchive_ids[:-1]):
+        assert id < qcarchive_ids[index + 1]
 
 
 def test_get_conformers(small_store):

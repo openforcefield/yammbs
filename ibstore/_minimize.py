@@ -25,6 +25,7 @@ FORCE_FIELDS: dict[str, ForceField] = {
 def _minimize_blob(
     input: dict[str, dict[str, Union[str, numpy.ndarray]]],
     force_field: str,
+    prune_isomorphs: bool,
     n_processes: int = 2,
     chunksize=32,
 ) -> dict[str, list["MinimizationResult"]]:
@@ -32,16 +33,19 @@ def _minimize_blob(
 
     for inchi_key in input:
         for row in input[inchi_key]:
-            are_isomorphic, _ = Molecule.are_isomorphic(
-                Molecule.from_inchi(inchi_key, allow_undefined_stereo=True),
-                Molecule.from_mapped_smiles(
-                    row["mapped_smiles"],
-                    allow_undefined_stereo=True,
-                ),
-            )
+            if prune_isomorphs:
+                # This behavior is always useless and probably bad as there is
+                # no reason to use InCHI when mapped SMILES is known. See #7
+                are_isomorphic, _ = Molecule.are_isomorphic(
+                    Molecule.from_inchi(inchi_key, allow_undefined_stereo=True),
+                    Molecule.from_mapped_smiles(
+                        row["mapped_smiles"],
+                        allow_undefined_stereo=True,
+                    ),
+                )
 
-            if not are_isomorphic:
-                continue
+                if not are_isomorphic:
+                    continue
 
             inputs.append(
                 MinimizationInput(

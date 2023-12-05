@@ -224,9 +224,11 @@ class MoleculeStore:
                 qcarchive_id
                 for (qcarchive_id,) in db.db.query(DBQMConformerRecord.qcarchive_id)
                 .filter_by(parent_id=id)
+                .order_by(DBQMConformerRecord.qcarchive_id)
                 .all()
             ]
 
+    # TODO: if this can take a list of ids, should it sort by QCArchive ID
     def get_molecule_id_by_qcarchive_id(self, id: str) -> int:
         with self._get_session() as db:
             return [
@@ -287,6 +289,7 @@ class MoleculeStore:
                 energy
                 for (energy,) in db.db.query(DBQMConformerRecord.energy)
                 .filter_by(parent_id=id)
+                .order_by(DBQMConformerRecord.qcarchive_id)
                 .all()
             ]
 
@@ -302,6 +305,7 @@ class MoleculeStore:
                 for (energy,) in db.db.query(DBMMConformerRecord.energy)
                 .filter_by(parent_id=id)
                 .filter_by(force_field=force_field)
+                .order_by(DBQMConformerRecord.qcarchive_id)
                 .all()
             ]
 
@@ -344,6 +348,7 @@ class MoleculeStore:
     def optimize_mm(
         self,
         force_field: str,
+        prune_isomorphs: bool = False,
         n_processes: int = 2,
         chunksize=32,
     ):
@@ -383,10 +388,11 @@ class MoleculeStore:
             return
 
         _minimized_blob = _minimize_blob(
-            _data,
-            force_field,
-            n_processes,
-            chunksize,
+            input=_data,
+            force_field=force_field,
+            prune_isomorphs=prune_isomorphs,
+            n_processes=n_processes,
+            chunksize=chunksize,
         )
 
         for result in _minimized_blob:
