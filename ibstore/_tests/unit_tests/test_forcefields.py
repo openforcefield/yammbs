@@ -30,6 +30,8 @@ def test_gaff_unsupported(molecule):
 
 
 def test_espaloma_basic(molecule):
+    pytest.importorskip("espaloma")
+
     system = _espaloma(molecule, "espaloma-openff_unconstrained-2.1.0")
 
     assert isinstance(system, openmm.System)
@@ -37,5 +39,7 @@ def test_espaloma_basic(molecule):
 
 
 def test_espaloma_unsupported(molecule):
+    pytest.importorskip("espaloma")
+
     with pytest.raises(NotImplementedError):
         _espaloma(molecule, "foo")

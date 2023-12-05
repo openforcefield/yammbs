@@ -7,7 +7,7 @@ from ibstore._base.base import ImmutableModel
 
 
 class DDE(ImmutableModel):
-    qcarchive_id: str
+    qcarchive_id: int
     force_field: str
     difference: float
 
@@ -25,7 +25,7 @@ class DDECollection(list):
 
 
 class RMSD(ImmutableModel):
-    qcarchive_id: str
+    qcarchive_id: int
     force_field: str
     rmsd: float
 
@@ -43,7 +43,7 @@ class RMSDCollection(list):
 
 
 class TFD(ImmutableModel):
-    qcarchive_id: str
+    qcarchive_id: int
     force_field: str
     tfd: float
 

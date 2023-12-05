@@ -1,9 +1,8 @@
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import qcelemental
 from openff.toolkit import Molecule
 from pydantic import Field
-from qcportal.models.records import OptimizationRecord
 
 from ibstore._base.array import Array
 from ibstore._base.base import ImmutableModel
@@ -26,7 +25,7 @@ class QMConformerRecord(Record):
         ...,
         description="The ID of the molecule in the database",
     )
-    qcarchive_id: str = Field(
+    qcarchive_id: int = Field(
         ...,
         description="The ID of the molecule in the QCArchive database",
     )
@@ -50,7 +49,7 @@ class QMConformerRecord(Record):
         cls,
         molecule_id: int,
         mapped_smiles: str,
-        qc_record: OptimizationRecord,
+        qc_record: Any,  # qcportal.optimization.OptimizationRecord ?
         coordinates,
     ):
         return cls(
@@ -58,7 +57,7 @@ class QMConformerRecord(Record):
             qcarchive_id=qc_record.id,
             mapped_smiles=mapped_smiles,
             coordinates=coordinates,
-            energy=qc_record.get_final_energy() * hartree2kcalmol,
+            energy=qc_record.energies[-1] * hartree2kcalmol,
         )
 
 
@@ -67,7 +66,7 @@ class MMConformerRecord(Record):
         ...,
         description="The ID of the molecule in the database",
     )
-    qcarchive_id: str = Field(
+    qcarchive_id: int = Field(
         ...,
         description="The ID of the molecule in the QCArchive database that this conformer corresponds to",
     )

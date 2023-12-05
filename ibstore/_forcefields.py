@@ -73,7 +73,7 @@ def _espaloma(molecule: Molecule, force_field_name: str) -> openmm.System:
     espaloma.graphs.deploy.openmm_system_from_graph, where it will be appended
     with .offxml. Raises a ValueError if there is no dash in force_field_name.
     """
-    import espaloma as esp
+    import espaloma
 
     if not force_field_name.startswith("espaloma"):
         raise NotImplementedError(f"Force field {force_field_name} not implemented.")
@@ -85,8 +85,8 @@ def _espaloma(molecule: Molecule, force_field_name: str) -> openmm.System:
     else:
         ff = ff[0]
 
-    mol_graph = esp.Graph(molecule)
-    model = esp.get_model("latest")
+    mol_graph = espaloma.Graph(molecule)
+    model = espaloma.get_model("latest")
     model(mol_graph.heterograph)
 
-    return esp.graphs.deploy.openmm_system_from_graph(mol_graph, forcefield=ff)
+    return espaloma.graphs.deploy.openmm_system_from_graph(mol_graph, forcefield=ff)
