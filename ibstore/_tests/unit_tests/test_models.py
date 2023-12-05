@@ -26,7 +26,7 @@ def test_load_from_qcsubmit(small_collection):
         assert molecule_record.inchi_key == ichi_key
 
         assert isinstance(qm_conformer, QMConformerRecord)
-        assert qm_conformer.energy == qc_record.get_final_energy() * hartree2kcalmol
+        assert qm_conformer.energy == qc_record.energies[-1] * hartree2kcalmol
         assert qm_conformer.qcarchive_id == qc_record.id
         assert numpy.allclose(
             qm_conformer.coordinates,

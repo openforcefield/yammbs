@@ -187,7 +187,7 @@ class DBSessionManager:
 
     def _qm_conformer_already_exists(
         self,
-        qcarchive_id: str,
+        qcarchive_id: int,
     ) -> bool:
         records = self.db.query(
             DBQMConformerRecord.qcarchive_id,
@@ -214,7 +214,7 @@ class DBSessionManager:
 
     def _mm_conformer_already_exists(
         self,
-        qcarchive_id: str,
+        qcarchive_id: int,
         force_field: str,
     ) -> bool:
         records = (
