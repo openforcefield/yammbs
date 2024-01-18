@@ -321,6 +321,29 @@ class MoleculeStore:
                 .all()
             ]
 
+    def get_mm_conformer_records_by_molecule_id(
+        store,
+        molecule_id: int,
+        force_field: str,
+    ):
+        with store._get_session() as db:
+            contents = [
+                MMConformerRecord(
+                    molecule_id=molecule_id,
+                    qcarchive_id=x.qcarchive_id,
+                    force_field=x.force_field,
+                    mapped_smiles=x.mapped_smiles,
+                    coordinates=x.coordinates,
+                    energy=x.energy,
+                )
+                for x in db.db.query(DBMMConformerRecord)
+                .filter_by(parent_id=molecule_id)
+                .filter_by(force_field=force_field)
+                .order_by(DBMMConformerRecord.qcarchive_id)
+                .all()
+            ]
+        return contents
+
     @classmethod
     def from_qcsubmit_collection(
         cls,
