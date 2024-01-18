@@ -248,6 +248,18 @@ class MoleculeStore:
                 .all()
             ]
 
+    def get_force_fields(
+        self,
+    ) -> list[str]:
+        """Return a list of all force fields with some conformers stored."""
+        with self._get_session() as db:
+            return [
+                force_field
+                for (force_field,) in db.db.query(
+                    DBMMConformerRecord.force_field,
+                ).distinct()
+            ]
+
     def get_mm_conformers_by_molecule_id(
         self,
         id: int,
@@ -308,6 +320,50 @@ class MoleculeStore:
                 .order_by(DBQMConformerRecord.qcarchive_id)
                 .all()
             ]
+
+    def get_qm_conformer_records_by_molecule_id(
+        self,
+        molecule_id: int,
+    ) -> list[QMConformerRecord]:
+        with self._get_session() as db:
+            contents = [
+                QMConformerRecord(
+                    molecule_id=molecule_id,
+                    qcarchive_id=x.qcarchive_id,
+                    mapped_smiles=x.mapped_smiles,
+                    coordinates=x.coordinates,
+                    energy=x.energy,
+                )
+                for x in db.db.query(DBQMConformerRecord)
+                .filter_by(parent_id=molecule_id)
+                .order_by(DBQMConformerRecord.qcarchive_id)
+                .all()
+            ]
+
+        return contents
+
+    def get_mm_conformer_records_by_molecule_id(
+        self,
+        molecule_id: int,
+        force_field: str,
+    ) -> list[MMConformerRecord]:
+        with self._get_session() as db:
+            contents = [
+                MMConformerRecord(
+                    molecule_id=molecule_id,
+                    qcarchive_id=x.qcarchive_id,
+                    force_field=x.force_field,
+                    mapped_smiles=x.mapped_smiles,
+                    coordinates=x.coordinates,
+                    energy=x.energy,
+                )
+                for x in db.db.query(DBMMConformerRecord)
+                .filter_by(parent_id=molecule_id)
+                .filter_by(force_field=force_field)
+                .order_by(DBMMConformerRecord.qcarchive_id)
+                .all()
+            ]
+        return contents
 
     @classmethod
     def from_qcsubmit_collection(
