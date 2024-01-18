@@ -33,7 +33,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest -v --cov=ibstore/ --cov-report=xml ibstore/
+        pytest -v -nauto --cov=ibstore/ --cov-report=xml ibstore/
 
     - name: CodeCov
       uses: codecov/codecov-action@v3

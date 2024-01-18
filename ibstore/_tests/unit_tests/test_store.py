@@ -10,6 +10,7 @@ from openff.utilities import get_data_file_path, temporary_cd
 
 from ibstore._store import MoleculeStore
 from ibstore.exceptions import DatabaseExistsError
+from ibstore.models import MMConformerRecord, QMConformerRecord
 
 
 @pytest.fixture()
@@ -133,6 +134,7 @@ def test_get_mm_conformer_records_by_molecule_id(basic_ch_store, diphenylvinylbe
     )
 
     for record in records:
+        assert isinstance(record, MMConformerRecord)
         assert record.molecule_id == 1
         assert record.force_field == "openff-2.1.0"
         assert record.coordinates.shape == (36, 3)
@@ -147,6 +149,7 @@ def test_get_qm_conformer_records_by_molecule_id(basic_ch_store, diphenylvinylbe
     records = basic_ch_store.get_qm_conformer_records_by_molecule_id(1)
 
     for record in records:
+        assert isinstance(record, QMConformerRecord)
         assert record.molecule_id == 1
         assert record.coordinates.shape == (36, 3)
         assert record.energy is not None
