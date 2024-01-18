@@ -321,12 +321,33 @@ class MoleculeStore:
                 .all()
             ]
 
+    def get_qm_conformer_records_by_molecule_id(
+        self,
+        molecule_id: int,
+    ) -> list[QMConformerRecord]:
+        with self._get_session() as db:
+            contents = [
+                QMConformerRecord(
+                    molecule_id=molecule_id,
+                    qcarchive_id=x.qcarchive_id,
+                    mapped_smiles=x.mapped_smiles,
+                    coordinates=x.coordinates,
+                    energy=x.energy,
+                )
+                for x in db.db.query(DBQMConformerRecord)
+                .filter_by(parent_id=molecule_id)
+                .order_by(DBQMConformerRecord.qcarchive_id)
+                .all()
+            ]
+
+        return contents
+
     def get_mm_conformer_records_by_molecule_id(
-        store,
+        self,
         molecule_id: int,
         force_field: str,
-    ):
-        with store._get_session() as db:
+    ) -> list[MMConformerRecord]:
+        with self._get_session() as db:
             contents = [
                 MMConformerRecord(
                     molecule_id=molecule_id,

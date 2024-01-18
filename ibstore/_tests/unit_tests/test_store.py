@@ -13,6 +13,17 @@ from ibstore.exceptions import DatabaseExistsError
 
 
 @pytest.fixture()
+def basic_ch_store():
+    # This file manually generated from data/01-processed-qm-ch.json
+    return MoleculeStore(
+        get_data_file_path(
+            "_tests/data/ch.sqlite",
+            package_name="ibstore",
+        ),
+    )
+
+
+@pytest.fixture()
 def diphenylvinylbenzene():
     """Return 1,2-diphenylvinylbenzene"""
     return Molecule.from_smiles("c1ccc(cc1)C=C(c2ccccc2)c3ccccc3")
@@ -39,16 +50,8 @@ def test_do_not_overwrite(small_collection):
             )
 
 
-def test_load_existing_database():
-    # This file manually generated from data/01-processed-qm-ch.json
-    store = MoleculeStore(
-        get_data_file_path(
-            "_tests/data/01-processed-qm-ch.sqlite",
-            package_name="ibstore",
-        ),
-    )
-
-    assert len(store) == 40
+def test_load_existing_database(basic_ch_store):
+    assert len(basic_ch_store) == 40
 
 
 def test_get_molecule_ids(small_store):
@@ -113,13 +116,8 @@ def test_get_conformers(small_store):
     )
 
 
-def test_get_force_fields():
-    force_fields = MoleculeStore(
-        get_data_file_path(
-            "_tests/data/ch.sqlite",
-            package_name="ibstore",
-        ),
-    ).get_force_fields()
+def test_get_force_fields(basic_ch_store):
+    force_fields = basic_ch_store.get_force_fields()
 
     assert len(force_fields) == 9
 
@@ -128,17 +126,28 @@ def test_get_force_fields():
     assert "openff-3.0.0" not in force_fields
 
 
-def test_get_mm_conformer_records_by_molecule_id(diphenylvinylbenzene):
-    records = MoleculeStore(
-        get_data_file_path(
-            "_tests/data/ch.sqlite",
-            package_name="ibstore",
-        ),
-    ).get_mm_conformer_records_by_molecule_id(1, force_field="openff-2.1.0")
+def test_get_mm_conformer_records_by_molecule_id(basic_ch_store, diphenylvinylbenzene):
+    records = basic_ch_store.get_mm_conformer_records_by_molecule_id(
+        1,
+        force_field="openff-2.1.0",
+    )
 
     for record in records:
         assert record.molecule_id == 1
         assert record.force_field == "openff-2.1.0"
+        assert record.coordinates.shape == (36, 3)
+        assert record.energy is not None
+
+        assert Molecule.from_mapped_smiles(record.mapped_smiles).is_isomorphic_with(
+            diphenylvinylbenzene,
+        )
+
+
+def test_get_qm_conformer_records_by_molecule_id(basic_ch_store, diphenylvinylbenzene):
+    records = basic_ch_store.get_qm_conformer_records_by_molecule_id(1)
+
+    for record in records:
+        assert record.molecule_id == 1
         assert record.coordinates.shape == (36, 3)
         assert record.energy is not None
 
