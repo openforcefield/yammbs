@@ -248,6 +248,18 @@ class MoleculeStore:
                 .all()
             ]
 
+    def get_force_fields(
+        self,
+    ) -> list[str]:
+        """Return a list of all force fields with some conformers stored."""
+        with self._get_session() as db:
+            return [
+                force_field
+                for (force_field,) in db.db.query(
+                    DBMMConformerRecord.force_field,
+                ).distinct()
+            ]
+
     def get_mm_conformers_by_molecule_id(
         self,
         id: int,

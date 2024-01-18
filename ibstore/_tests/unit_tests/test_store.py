@@ -104,3 +104,18 @@ def test_get_conformers(small_store):
             force_field=force_field,
         )[-1],
     )
+
+
+def test_get_force_fields():
+    force_fields = MoleculeStore(
+        get_data_file_path(
+            "_tests/data/ch.sqlite",
+            package_name="ibstore",
+        ),
+    ).get_force_fields()
+
+    assert len(force_fields) == 9
+
+    assert "openff-2.1.0" in force_fields
+    assert "gaff-2.11" in force_fields
+    assert "openff-3.0.0" not in force_fields
