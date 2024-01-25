@@ -42,6 +42,16 @@ class RMSDCollection(list):
         self.to_dataframe().to_csv(path)
 
 
+class ICRMSD(ImmutableModel):
+    qcarchive_id: int
+    force_field: str
+    icrmsd: dict[str, float]
+
+
+class ICRMSDCollection(list):
+    pass
+
+
 class TFD(ImmutableModel):
     qcarchive_id: int
     force_field: str
@@ -84,6 +94,76 @@ def get_rmsd(
         True,
         True,
     )
+
+
+def get_internal_coordinate_rmsds(
+    molecule: Molecule,
+    reference: Array,
+    target: Array,
+    _types: tuple[str] = ("Bond", "Angle", "Dihedral", "Improper"),
+) -> dict[str, float]:
+    """Get internal coordinate RMSDs for one conformer of one molecule."""
+    from geometric.internal import (
+        Angle,
+        Dihedral,
+        Distance,
+        OutOfPlane,
+        PrimitiveInternalCoordinates,
+    )
+
+    from ibstore._forcebalance import compute_rmsd as forcebalance_rmsd
+    from ibstore._molecule import _to_geometric_molecule
+
+    _generator = PrimitiveInternalCoordinates(
+        _to_geometric_molecule(molecule=molecule, coordinates=target),
+    )
+
+    types = {
+        _type: {
+            "Bond": Distance,
+            "Angle": Angle,
+            "Dihedral": Dihedral,
+            "Improper": OutOfPlane,
+        }.get(_type)
+        for _type in _types
+    }
+
+    internal_coordinates = {
+        label: [
+            (
+                internal_coordinate.value(reference),
+                internal_coordinate.value(target),
+            )
+            for internal_coordinate in _generator.Internals
+            if isinstance(internal_coordinate, internal_coordinate_class)
+        ]
+        for label, internal_coordinate_class in types.items()
+    }
+
+    internal_coordinate_rmsd = dict()
+
+    for _type, _values in internal_coordinates.items():
+        if len(_values) == 0:
+            continue
+
+        qm_values, mm_values = zip(*_values)
+
+        qm_values = numpy.array(qm_values)
+        mm_values = numpy.array(mm_values)
+
+        # Converting from radians to degrees
+        if _type in ["Angle", "Dihedral", "Improper"]:
+            rmsd = forcebalance_rmsd(
+                qm_values * 180 / numpy.pi,
+                mm_values * 180 / numpy.pi,
+                360,
+            )
+        else:
+            rmsd = forcebalance_rmsd(qm_values, mm_values)
+
+        internal_coordinate_rmsd[_type] = rmsd
+
+    return internal_coordinate_rmsd
 
 
 def _get_rmsd(
