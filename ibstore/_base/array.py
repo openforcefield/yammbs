@@ -21,4 +21,9 @@ class Array(numpy.ndarray, metaclass=ArrayMeta):
         dtype = getattr(cls, "__dtype__", Any)
         if dtype is Any:
             dtype = None
+
+        # If Quantity, manually strip units to avoid downcast warning
+        if hasattr(val, "magnitude"):
+            val = val.magnitude
+
         return numpy.asanyarray(val, dtype=dtype)

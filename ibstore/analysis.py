@@ -1,6 +1,7 @@
 import numpy
 import pandas
 from openff.toolkit import Molecule
+from openff.units import Quantity, unit
 
 from ibstore._base.array import Array
 from ibstore._base.base import ImmutableModel
@@ -113,6 +114,12 @@ def get_internal_coordinate_rmsds(
 
     from ibstore._forcebalance import compute_rmsd as forcebalance_rmsd
     from ibstore._molecule import _to_geometric_molecule
+
+    if isinstance(reference, Quantity):
+        reference = reference.m_as(unit.angstrom)
+
+    if isinstance(target, Quantity):
+        target = target.m_as(unit.angstrom)
 
     _generator = PrimitiveInternalCoordinates(
         _to_geometric_molecule(molecule=molecule, coordinates=target),
