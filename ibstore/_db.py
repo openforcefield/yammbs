@@ -2,8 +2,7 @@ import logging
 from typing import Dict, List
 
 from sqlalchemy import Column, Float, ForeignKey, Integer, PickleType, String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import declarative_base, relationship
 
 from ibstore.models import MMConformerRecord, QMConformerRecord
 

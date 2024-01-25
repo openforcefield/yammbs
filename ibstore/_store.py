@@ -20,11 +20,14 @@ from ibstore._session import DBSessionManager
 from ibstore._types import Pathlike
 from ibstore.analysis import (
     DDE,
+    ICRMSD,
     RMSD,
     TFD,
     DDECollection,
+    ICRMSDCollection,
     RMSDCollection,
     TFDCollection,
+    get_internal_coordinate_rmsds,
     get_rmsd,
     get_tfd,
 )
@@ -541,6 +544,41 @@ class MoleculeStore:
                 )
 
         return rmsds
+
+    def get_internal_coordinate_rmsd(
+        self,
+        force_field: str,
+    ) -> ICRMSDCollection:
+        self.optimize_mm(force_field=force_field)
+
+        icrmsds = ICRMSDCollection()
+
+        for inchi_key in self.get_inchi_keys():
+            molecule = Molecule.from_inchi(inchi_key, allow_undefined_stereo=True)
+            molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
+
+            qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
+
+            qm_conformers = self.get_qm_conformers_by_molecule_id(molecule_id)
+            mm_conformers = self.get_mm_conformers_by_molecule_id(
+                molecule_id,
+                force_field,
+            )
+
+            for qm, mm, id in zip(
+                qm_conformers,
+                mm_conformers,
+                qcarchive_ids,
+            ):
+                icrmsds.append(
+                    ICRMSD(
+                        qcarchive_id=id,
+                        icrmsd=get_internal_coordinate_rmsds(molecule, qm, mm),
+                        force_field=force_field,
+                    ),
+                )
+
+        return icrmsds
 
     def get_tfd(
         self,

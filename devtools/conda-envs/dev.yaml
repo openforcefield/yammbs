@@ -10,6 +10,7 @@ dependencies:
   - openmmforcefields
   - smirnoff-plugins =2023.08.0
   # espaloma =0.3
+  - geometric =1
 
   - ipython
   - ipdb
