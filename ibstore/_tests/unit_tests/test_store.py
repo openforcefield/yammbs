@@ -140,3 +140,35 @@ def test_get_qm_conformer_records_by_molecule_id(small_store, diphenylvinylbenze
         assert Molecule.from_mapped_smiles(record.mapped_smiles).is_isomorphic_with(
             diphenylvinylbenzene,
         )
+
+
+@pytest.mark.parametrize(("molecule_id", "expected_len"), [(28, 1), (40, 9)])
+def test_get_mm_energies_by_molecule_id(
+    small_store,
+    molecule_id,
+    expected_len,
+):
+    """Trigger issue #16."""
+    energies = small_store.get_mm_energies_by_molecule_id(
+        molecule_id,
+        force_field="openff-2.0.0",
+    )
+
+    for energy in energies:
+        assert isinstance(energy, float)
+
+    assert len(energies) == expected_len
+
+
+@pytest.mark.parametrize(("molecule_id", "expected_len"), [(28, 1), (40, 9)])
+def test_get_qm_energies_by_molecule_id(
+    small_store,
+    molecule_id,
+    expected_len,
+):
+    energies = small_store.get_qm_energies_by_molecule_id(molecule_id)
+
+    for energy in energies:
+        assert isinstance(energy, float)
+
+    assert len(energies) == expected_len
