@@ -85,7 +85,7 @@ def test_plugin_loadable(ethane):
         MinimizationInput(
             inchi_key=ethane.to_inchikey(),
             qcarchive_id="test",
-            force_field="de-force-1.0.1.offxml",
+            force_field="de-force-1.0.1",
             mapped_smiles=ethane.to_smiles(mapped=True),
             coordinates=ethane.conformers[0].m_as(unit.angstrom),
         ),

@@ -12,6 +12,7 @@ from tqdm import tqdm
 from ibstore._base.array import Array
 from ibstore._base.base import ImmutableModel
 
+# TODO: This causes all of these to be loaded at import time, which is not ideal
 FORCE_FIELDS: dict[str, ForceField] = {
     "openff-1.0.0": ForceField("openff_unconstrained-1.0.0.offxml"),
     "openff-1.1.0": ForceField("openff_unconstrained-1.1.0.offxml"),
@@ -19,6 +20,10 @@ FORCE_FIELDS: dict[str, ForceField] = {
     "openff-1.3.0": ForceField("openff_unconstrained-1.3.0.offxml"),
     "openff-2.0.0": ForceField("openff_unconstrained-2.0.0.offxml"),
     "openff-2.1.0": ForceField("openff_unconstrained-2.1.0.offxml"),
+    "de-force-1.0.1": ForceField(
+        "de-force_unconstrained-1.0.1.offxml",
+        load_plugins=True,
+    ),
 }
 
 

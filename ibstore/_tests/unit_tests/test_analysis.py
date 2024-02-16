@@ -55,7 +55,7 @@ class TestInternalCoordinateRMSD:
 
     def test_icrmsd_dataframe(self, small_store):
         dataframe = small_store.get_internal_coordinate_rmsd(
-            "openff-2.0.0.offxml",
+            "openff-2.0.0",
         ).to_dataframe()
 
         cumene_id = small_store.get_molecule_id_by_qcarchive_id(37017037)
@@ -75,7 +75,7 @@ class TestInternalCoordinateRMSD:
 
     def test_torsions_not_in_methane_icrmsd(self, small_store):
         dataframe = small_store.get_internal_coordinate_rmsd(
-            "openff-2.0.0.offxml",
+            "openff-2.0.0",
         ).to_dataframe()
 
         methane_id = small_store.get_molecule_id_by_qcarchive_id(37017014)
