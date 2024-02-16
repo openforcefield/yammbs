@@ -1,3 +1,12 @@
+# Ensure QCPortal is imported before any OpenEye modules, see
+# https://github.com/conda-forge/qcfractal-feedstock/issues/43
+try:
+    import qcportal
+except ImportError:
+    qcportal = None
+
+import shutil
+
 import pytest
 from openff.interchange._tests import MoleculeWithConformer
 from openff.qcsubmit.results import OptimizationResultCollection
@@ -39,10 +48,22 @@ def small_collection() -> OptimizationResultCollection:
 
 
 @pytest.fixture()
-def small_store() -> MoleculeStore:
-    return MoleculeStore(
-        get_data_file_path(
-            "_tests/data/ch.sqlite",
-            package_name="ibstore",
-        ),
+def small_store(tmp_path) -> MoleculeStore:
+    """Return a small molecule store, copied from a single source and provided as a temporary file."""
+    # This file manually generated from data/01-processed-qm-ch.json
+    source_path = get_data_file_path(
+        "_tests/data/ch.sqlite",
+        package_name="ibstore",
     )
+
+    dest_path = (tmp_path / "ch.sqlite").as_posix()
+
+    shutil.copy(source_path, dest_path)
+
+    return MoleculeStore(dest_path)
+
+
+@pytest.fixture()
+def diphenylvinylbenzene():
+    """Return 1,2-diphenylvinylbenzene"""
+    return Molecule.from_smiles("c1ccc(cc1)C=C(c2ccccc2)c3ccccc3")
