@@ -320,7 +320,7 @@ class MoleculeStore:
                 for (energy,) in db.db.query(DBMMConformerRecord.energy)
                 .filter_by(parent_id=id)
                 .filter_by(force_field=force_field)
-                .order_by(DBQMConformerRecord.qcarchive_id)
+                .order_by(DBMMConformerRecord.qcarchive_id)
                 .all()
             ]
 
