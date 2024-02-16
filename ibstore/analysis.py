@@ -50,7 +50,23 @@ class ICRMSD(ImmutableModel):
 
 
 class ICRMSDCollection(list):
-    pass
+    def to_dataframe(self) -> pandas.DataFrame:
+        return pandas.DataFrame(
+            [
+                (
+                    icrmsd.icrmsd["Bond"],
+                    icrmsd.icrmsd["Angle"],
+                    icrmsd.icrmsd.get("Dihedral", pandas.NA),
+                    icrmsd.icrmsd.get("Improper", pandas.NA),
+                )
+                for icrmsd in self
+            ],
+            index=pandas.Index([rmsd.qcarchive_id for rmsd in self]),
+            columns=["Bond", "Angle", "Dihedral", "Improper"],
+        )
+
+    def to_csv(self, path: str):
+        self.to_dataframe().to_csv(path)
 
 
 class TFD(ImmutableModel):
