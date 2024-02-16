@@ -13,23 +13,6 @@ from ibstore.exceptions import DatabaseExistsError
 from ibstore.models import MMConformerRecord, QMConformerRecord
 
 
-@pytest.fixture()
-def basic_ch_store():
-    # This file manually generated from data/01-processed-qm-ch.json
-    return MoleculeStore(
-        get_data_file_path(
-            "_tests/data/ch.sqlite",
-            package_name="ibstore",
-        ),
-    )
-
-
-@pytest.fixture()
-def diphenylvinylbenzene():
-    """Return 1,2-diphenylvinylbenzene"""
-    return Molecule.from_smiles("c1ccc(cc1)C=C(c2ccccc2)c3ccccc3")
-
-
 def test_from_qcsubmit(small_collection):
     db = "foo.sqlite"
     with temporary_cd():
@@ -51,8 +34,8 @@ def test_do_not_overwrite(small_collection):
             )
 
 
-def test_load_existing_database(basic_ch_store):
-    assert len(basic_ch_store) == 40
+def test_load_existing_database(small_store):
+    assert len(small_store) == 40
 
 
 def test_get_molecule_ids(small_store):
@@ -117,8 +100,8 @@ def test_get_conformers(small_store):
     )
 
 
-def test_get_force_fields(basic_ch_store):
-    force_fields = basic_ch_store.get_force_fields()
+def test_get_force_fields(small_store):
+    force_fields = small_store.get_force_fields()
 
     assert len(force_fields) == 9
 
@@ -127,8 +110,8 @@ def test_get_force_fields(basic_ch_store):
     assert "openff-3.0.0" not in force_fields
 
 
-def test_get_mm_conformer_records_by_molecule_id(basic_ch_store, diphenylvinylbenzene):
-    records = basic_ch_store.get_mm_conformer_records_by_molecule_id(
+def test_get_mm_conformer_records_by_molecule_id(small_store, diphenylvinylbenzene):
+    records = small_store.get_mm_conformer_records_by_molecule_id(
         1,
         force_field="openff-2.1.0",
     )
@@ -145,8 +128,8 @@ def test_get_mm_conformer_records_by_molecule_id(basic_ch_store, diphenylvinylbe
         )
 
 
-def test_get_qm_conformer_records_by_molecule_id(basic_ch_store, diphenylvinylbenzene):
-    records = basic_ch_store.get_qm_conformer_records_by_molecule_id(1)
+def test_get_qm_conformer_records_by_molecule_id(small_store, diphenylvinylbenzene):
+    records = small_store.get_qm_conformer_records_by_molecule_id(1)
 
     for record in records:
         assert isinstance(record, QMConformerRecord)

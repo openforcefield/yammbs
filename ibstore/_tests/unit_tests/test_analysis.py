@@ -1,11 +1,7 @@
-"""
-def get_internal_coordinate_rmsds(
-    molecule: Molecule,
-    reference: Array,
-    target: Array,
-    _types: tuple[str] = ("Bond", "Angle", "Dihedral", "Improper"),
-) -> dict[str, float]:
-"""
+import pandas
+import pytest
+from openff.toolkit import Molecule
+
 from ibstore.analysis import get_internal_coordinate_rmsds
 
 
@@ -56,3 +52,44 @@ class TestInternalCoordinateRMSD:
 
         assert "Dihedral" in rmsds
         assert "Improper" not in rmsds
+
+    def test_icrmsd_dataframe(self, small_store):
+        dataframe = small_store.get_internal_coordinate_rmsd(
+            "openff-2.0.0",
+        ).to_dataframe()
+
+        cumene_id = small_store.get_molecule_id_by_qcarchive_id(37017037)
+
+        # This molecule should be cumene
+        assert Molecule.from_mapped_smiles(
+            small_store.get_smiles_by_molecule_id(cumene_id),
+        ).is_isomorphic_with(Molecule.from_smiles("CC(C)c1ccccc1"))
+
+        for qcarchive_id in small_store.get_qcarchive_ids_by_molecule_id(cumene_id):
+            # This should probably be an int, but it's str
+            data = dataframe.loc[int(qcarchive_id)]
+
+            for key in ("Bond", "Angle", "Dihedral", "Improper"):
+                assert isinstance(data[key], float)
+                assert data[key] != pytest.approx(0.0)
+
+    def test_torsions_not_in_methane_icrmsd(self, small_store):
+        dataframe = small_store.get_internal_coordinate_rmsd(
+            "openff-2.0.0",
+        ).to_dataframe()
+
+        methane_id = small_store.get_molecule_id_by_qcarchive_id(37017014)
+
+        # This molecule should be methane
+        assert Molecule.from_mapped_smiles(
+            small_store.get_smiles_by_molecule_id(methane_id),
+        ).is_isomorphic_with(Molecule.from_smiles("C"))
+
+        for qcarchive_id in small_store.get_qcarchive_ids_by_molecule_id(methane_id):
+            # This should probably be an int, but it's str
+            data = dataframe.loc[int(qcarchive_id)]
+
+            assert isinstance(data["Bond"], float)
+            assert isinstance(data["Angle"], float)
+            assert data["Dihedral"] is pandas.NA
+            assert data["Improper"] is pandas.NA
