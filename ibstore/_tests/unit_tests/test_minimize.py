@@ -1,6 +1,6 @@
 import numpy
 import pytest
-from openff.toolkit import Molecule
+from openff.toolkit import ForceField, Molecule
 from openff.units import unit
 
 from ibstore._minimize import MinimizationInput, _run_openmm
@@ -86,6 +86,52 @@ def test_plugin_loadable(ethane):
             inchi_key=ethane.to_inchikey(),
             qcarchive_id="test",
             force_field="de-force-1.0.1",
+            mapped_smiles=ethane.to_smiles(mapped=True),
+            coordinates=ethane.conformers[0].m_as(unit.angstrom),
+        ),
+    )
+
+
+@pytest.mark.timeout(1)
+def test_cached_force_fields_load_quickly():
+    """Test that cached force fields are loaded quickly."""
+    from ibstore._minimize import _lazy_load_force_field
+
+    # timeout includes the time it takes to load it the first time, but that should be << 1 second
+    [_lazy_load_force_field("openff-1.0.0") for _ in range(1000)]
+
+
+def test_finds_local_force_field(ethane, tmp_path):
+    ForceField("openff_unconstrained-1.2.0.offxml").to_file(tmp_path / "fOOOO.offxml")
+
+    _run_openmm(
+        MinimizationInput(
+            inchi_key=ethane.to_inchikey(),
+            qcarchive_id="test",
+            force_field=(tmp_path / "fOOOO.offxml").as_posix(),
+            mapped_smiles=ethane.to_smiles(mapped=True),
+            coordinates=ethane.conformers[0].m_as(unit.angstrom),
+        ),
+    )
+
+
+def test_plugin_not_needed_to_use_mainline_force_field(monkeypatch, ethane):
+    from deforcefields import deforcefields
+
+    assert len(deforcefields.get_forcefield_paths()) > 0
+
+    def return_no_paths():
+        return list()
+
+    monkeypatch.setattr(deforcefields, "get_forcefield_paths", return_no_paths)
+
+    assert len(deforcefields.get_forcefield_paths()) == 0
+
+    _run_openmm(
+        MinimizationInput(
+            inchi_key=ethane.to_inchikey(),
+            qcarchive_id="test",
+            force_field="openff-1.0.0",
             mapped_smiles=ethane.to_smiles(mapped=True),
             coordinates=ethane.conformers[0].m_as(unit.angstrom),
         ),

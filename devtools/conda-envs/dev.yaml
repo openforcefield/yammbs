@@ -23,6 +23,7 @@ dependencies:
   - pytest-cov
   - pytest-xdist
   - pytest-randomly
+  - pytest-timeout
 
   - pip:
     - git+https://github.com/mattwthompson/de-forcefields.git@periodic-nonperiodic-methods
