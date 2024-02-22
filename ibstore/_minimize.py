@@ -1,3 +1,5 @@
+import functools
+import re
 from multiprocessing import Pool
 from typing import Union
 
@@ -6,25 +8,61 @@ import openmm
 import openmm.app
 import openmm.unit
 from openff.toolkit import ForceField, Molecule
+from openff.toolkit.typing.engines.smirnoff import get_available_force_fields
 from pydantic import Field
 from tqdm import tqdm
 
 from ibstore._base.array import Array
 from ibstore._base.base import ImmutableModel
 
-# TODO: This causes all of these to be loaded at import time, which is not ideal
-FORCE_FIELDS: dict[str, ForceField] = {
-    "openff-1.0.0": ForceField("openff_unconstrained-1.0.0.offxml"),
-    "openff-1.1.0": ForceField("openff_unconstrained-1.1.0.offxml"),
-    "openff-1.2.0": ForceField("openff_unconstrained-1.2.0.offxml"),
-    "openff-1.3.0": ForceField("openff_unconstrained-1.3.0.offxml"),
-    "openff-2.0.0": ForceField("openff_unconstrained-2.0.0.offxml"),
-    "openff-2.1.0": ForceField("openff_unconstrained-2.1.0.offxml"),
-    "de-force-1.0.1": ForceField(
-        "de-force_unconstrained-1.0.1.offxml",
-        load_plugins=True,
-    ),
-}
+_AVAILABLE_FORCE_FIELDS = get_available_force_fields()
+
+
+def _shorthand_to_full_force_field_name(
+    shorthand: str,
+    make_unconstrained: bool = True,
+) -> str:
+    """Make i.e. `openff-2.1.0` into `openff_unconstrained-2.1.0.offxml`"""
+    if make_unconstrained:
+        # Split on '-' immediately followed by a number;
+        # cannot split on '-' because of i.e. 'de-force-1.0.0'
+        prefix, version = re.split(r"-[0-9]", shorthand, maxsplit=1)
+        return f"{prefix}_unconstrained-{version}.offxml"
+    else:
+        return shorthand + ".offxml"
+
+
+@functools.lru_cache(maxsize=1)
+def _lazy_load_force_field(force_field_name: str) -> ForceField:
+    """
+    Attempt to load a force field from a shorthand string or a file path.
+
+    Caching is used to speed up loading; a single force field takes O(100 ms) to
+    load, but the cache takes O(10 ns) to access. The cache key is simply the
+    argument passed to this function; a hash collision should only occur when
+    two identical strings are expected to return different force fields, which
+    seems like an assumption that the toolkit has always made anyway.
+    """
+    if not force_field_name.endswith(".offxml"):
+        force_field_name = _shorthand_to_full_force_field_name(
+            force_field_name,
+            make_unconstrained=False,
+        )
+
+    if force_field_name.startswith("openff"):
+        if force_field_name in _AVAILABLE_FORCE_FIELDS:
+            return ForceField(force_field_name)
+
+        else:
+            # Attempt to load from local path, which might have "cosmetic" attributes from ForceBalance
+            return ForceField(
+                force_field_name,
+                allow_cosmetic_attributes=True,
+                load_plugins=True,
+            )
+
+    else:
+        return ForceField(force_field_name, load_plugins=True)
 
 
 def _minimize_blob(
@@ -133,7 +171,7 @@ def _run_openmm(
 
     else:
         try:
-            force_field = FORCE_FIELDS[input.force_field]
+            force_field = _lazy_load_force_field(input.force_field)
         except KeyError:
             # Attempt to load from local path
             try:
