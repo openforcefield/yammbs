@@ -33,6 +33,7 @@ from ibstore.analysis import (
 )
 from ibstore.exceptions import DatabaseExistsError
 from ibstore.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
+from ibstore.cached_result import CachedResultCollection
 
 LOGGER = logging.getLogger(__name__)
 
@@ -400,6 +401,41 @@ class MoleculeStore:
                     qc_record=qcarchive_record,
                     coordinates=molecule.conformers[0],
                 ),
+            )
+
+        return store
+
+    @classmethod
+    def from_cached_result_collection(
+            cls,
+            collection: CachedResultCollection,
+            database_name: str,
+    ) -> MS:
+        from tqdm import tqdm
+
+        if pathlib.Path(database_name).exists():
+            raise DatabaseExistsError(f"Database {database_name} already exists.")
+
+        store = cls(database_name)
+
+        for rec in tqdm(collection.inner, desc="Loading cached collection"):
+            molecule_record = MoleculeRecord(
+                mapped_smiles=rec.mapped_smiles,
+                inchi_key=rec.inchi_key,
+            )
+
+            store.store(molecule_record)
+
+            store.store_qcarchive(
+                QMConformerRecord(
+                    molecule_id=store.get_molecule_id_by_smiles(
+                        molecule_record.mapped_smiles,
+                    ),
+                    qcarchive_id=rec.qc_record_id,
+                    mapped_smiles=molecule_record.mapped_smiles,
+                    coordinates=rec.coordinates,
+                    energy=rec.qc_record_final_energy,
+                )
             )
 
         return store
