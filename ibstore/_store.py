@@ -490,19 +490,39 @@ class MoleculeStore:
             chunksize=chunksize,
         )
 
-        for result in _minimized_blob:
-            inchi_key = result.inchi_key
-            molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
-            self.store_conformer(
-                MMConformerRecord(
+        inchi_to_id = {
+            inchi_key: id
+            for (id, inchi_key) in reversed(
+                db.db.query(
+                    DBMoleculeRecord.id,
+                    DBMoleculeRecord.inchi_key,
+                ).all()
+            )
+        }
+
+        with self._get_session() as db:
+            # from _mm_conformer_already_exists
+            seen = set(
+                db.db.query(
+                    DBMMConformerRecord.qcarchive_id,
+                )
+            )
+            for result in _minimized_blob:
+                inchi_key = result.inchi_key
+                molecule_id = inchi_to_id[inchi_key]
+                record = MMConformerRecord(
                     molecule_id=molecule_id,
                     qcarchive_id=result.qcarchive_id,
                     force_field=result.force_field,
                     mapped_smiles=result.mapped_smiles,
                     energy=result.energy,
                     coordinates=result.coordinates,
-                ),
-            )
+                )
+                # inlined from MoleculeStore.store_conformer
+                if record.qcarchive_id in seen:
+                    continue
+                seen.add(record.qcarchive_id)
+                db.store_mm_conformer_record(record)
 
     def get_dde(
         self,
