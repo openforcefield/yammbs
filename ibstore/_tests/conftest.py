@@ -14,6 +14,7 @@ from openff.toolkit import Molecule
 from openff.utilities.utilities import get_data_file_path
 
 from ibstore._store import MoleculeStore
+from ibstore.cached_result import CachedResultCollection
 
 
 @pytest.fixture()
@@ -44,6 +45,13 @@ def ligand():
 def small_collection() -> OptimizationResultCollection:
     return OptimizationResultCollection.parse_file(
         get_data_file_path("_tests/data/01-processed-qm-ch.json", "ibstore"),
+    )
+
+
+@pytest.fixture()
+def small_cache() -> CachedResultCollection:
+    return CachedResultCollection.from_json(
+        get_data_file_path("_tests/data/tiny-opt.json", "ibstore"),
     )
 
 
