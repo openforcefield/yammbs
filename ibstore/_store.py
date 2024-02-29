@@ -507,8 +507,10 @@ class MoleculeStore:
     def get_dde(
         self,
         force_field: str,
+        skip_check: bool = False,
     ) -> DDECollection:
-        self.optimize_mm(force_field=force_field)
+        if not skip_check:
+            self.optimize_mm(force_field=force_field)
 
         ddes = DDECollection()
 
@@ -564,8 +566,10 @@ class MoleculeStore:
     def get_rmsd(
         self,
         force_field: str,
+        skip_check: bool = False,
     ) -> RMSDCollection:
-        self.optimize_mm(force_field=force_field)
+        if not skip_check:
+            self.optimize_mm(force_field=force_field)
 
         rmsds = RMSDCollection()
 
@@ -599,8 +603,10 @@ class MoleculeStore:
     def get_internal_coordinate_rmsd(
         self,
         force_field: str,
+        skip_check: bool = False,
     ) -> ICRMSDCollection:
-        self.optimize_mm(force_field=force_field)
+        if not skip_check:
+            self.optimize_mm(force_field=force_field)
 
         icrmsds = ICRMSDCollection()
 
@@ -634,8 +640,10 @@ class MoleculeStore:
     def get_tfd(
         self,
         force_field: str,
+        skip_check: bool = False,
     ) -> TFDCollection:
-        self.optimize_mm(force_field=force_field)
+        if not skip_check:
+            self.optimize_mm(force_field=force_field)
 
         tfds = TFDCollection()
 
