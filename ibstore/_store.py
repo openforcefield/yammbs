@@ -542,6 +542,8 @@ class MoleculeStore:
                 ),
             )
             for result in _minimized_blob:
+                if result.qcarchive_id in seen:
+                    continue
                 inchi_key = result.inchi_key
                 molecule_id = inchi_to_id[inchi_key]
                 record = MMConformerRecord(
@@ -553,8 +555,6 @@ class MoleculeStore:
                     coordinates=result.coordinates,
                 )
                 # inlined from MoleculeStore.store_conformer
-                if record.qcarchive_id in seen:
-                    continue
                 seen.add(record.qcarchive_id)
                 db.store_mm_conformer_record(record)
 
