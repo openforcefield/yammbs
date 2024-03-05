@@ -524,7 +524,7 @@ class MoleculeStore:
             chunksize=chunksize,
         )
 
-        inchi_to_id: dict[int, str] = {
+        inchi_to_id: dict[str, int] = {
             inchi_key: id
             for (id, inchi_key) in reversed(
                 db.db.query(
