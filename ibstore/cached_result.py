@@ -52,6 +52,7 @@ class CachedResultCollection:
             collection.to_records(),
             desc="Converting records to molecules",
         ):
+            assert molecule.n_conformers == 1
             energy = qcarchive_record.get_final_energy() * hartree2kcalmol
             ret.inner.append(
                 CachedResult(
