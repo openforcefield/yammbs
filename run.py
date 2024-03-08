@@ -22,7 +22,7 @@ def main():
         "de-force-1.0.1.offxml",
     ]
 
-    data = "cho"
+    data = "ch"
 
     if pathlib.Path(f"{data}.sqlite").exists():
         store = MoleculeStore(f"{data}.sqlite")
@@ -46,7 +46,7 @@ def main():
     plot(force_fields)
 
 
-def plot(force_fields):
+def plot(force_fields: list[str]):
     x_ranges = {
         "dde": (-16.0, 16.0),
         "rmsd": (-0.3, 3.3),
@@ -60,7 +60,7 @@ def plot(force_fields):
             if data == "dde":
                 counts, bins = numpy.histogram(
                     dataframe[dataframe.columns[-1]],
-                    bins=numpy.linspace(-15, 15, 16),
+                    bins=numpy.linspace(-15, 15, 31),
                 )
 
                 axis.stairs(counts, bins, label=force_field)
