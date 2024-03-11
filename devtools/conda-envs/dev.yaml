@@ -3,14 +3,15 @@ channels:
   - openeye
   - conda-forge
 dependencies:
-  - python
+  - python =3.10
 
-  - openff-toolkit =0.14.3
-  - openff-qcsubmit =0.50.1
+  - openff-toolkit
+  - openff-qcsubmit
   - openmmforcefields
-  - smirnoff-plugins =2023.08.0
+  - smirnoff-plugins
   # espaloma =0.3
   - geometric =1
+  - pydantic =2
 
   - ipython
   - ipdb
