@@ -486,14 +486,29 @@ class MoleculeStore:
                 # TODO: Quicker way of short-circuiting here
                 continue
 
-            qm_energies = self.get_qm_energies_by_molecule_id(molecule_id)
-            qm_energies -= numpy.array(qm_energies).min()
+            qm_energies = numpy.array(
+                self.get_qm_energies_by_molecule_id(
+                    molecule_id,
+                ),
+            )
 
-            mm_energies = self.get_mm_energies_by_molecule_id(molecule_id, force_field)
+            mm_energies = numpy.array(
+                self.get_mm_energies_by_molecule_id(
+                    molecule_id,
+                    force_field,
+                ),
+            )
+
             if len(mm_energies) != len(qm_energies):
                 continue
 
-            mm_energies -= numpy.array(mm_energies).min()
+            qm_minimum_index = qm_energies.argmin()
+
+            mm_energies -= mm_energies[qm_minimum_index]
+            qm_energies -= qm_energies[qm_minimum_index]
+
+            mm_energies[qm_minimum_index] = numpy.nan
+            qm_energies[qm_minimum_index] = numpy.nan
 
             for qm, mm, id in zip(
                 qm_energies,
