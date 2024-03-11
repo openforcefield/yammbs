@@ -25,6 +25,18 @@ def test_from_qcsubmit(small_collection):
         assert len(MoleculeStore(db)) == len(store)
 
 
+def test_from_cached_collection(small_cache):
+    db = "foo.sqlite"
+    with temporary_cd():
+        store = MoleculeStore.from_cached_result_collection(small_cache, db)
+
+        # Sanity check molecule deduplication
+        assert len(store.get_smiles()) == len({*store.get_smiles()})
+
+        # Ensure a new object can be created from the same database
+        assert len(MoleculeStore(db)) == len(store)
+
+
 def test_do_not_overwrite(small_collection):
     with tempfile.NamedTemporaryFile(suffix=".sqlite") as file:
         with pytest.raises(DatabaseExistsError, match="already exists."):
