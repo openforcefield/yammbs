@@ -39,9 +39,7 @@ class CachedResultCollection:
         self.inner = []
 
     @classmethod
-    def from_qcsubmit_collection(
-        cls, collection: OptimizationResultCollection
-    ):
+    def from_qcsubmit_collection(cls, collection: OptimizationResultCollection):
         import qcelemental
         from tqdm import tqdm
 
@@ -52,18 +50,15 @@ class CachedResultCollection:
             collection.to_records(),
             desc="Converting records to molecules",
         ):
-            assert molecule.n_conformers == 1
             energy = qcarchive_record.get_final_energy() * hartree2kcalmol
             ret.inner.append(
                 CachedResult(
-                    mapped_smiles=molecule.to_smiles(
-                        mapped=True, isomeric=True
-                    ),
+                    mapped_smiles=molecule.to_smiles(mapped=True, isomeric=True),
                     inchi_key=molecule.to_inchi(fixed_hydrogens=True),
                     coordinates=molecule.conformers[0],
                     qc_record_id=qcarchive_record.id,
                     qc_record_final_energy=energy,
-                )
+                ),
             )
         return ret
 
@@ -86,6 +81,6 @@ class CachedResultCollection:
                     coordinates=coordinates,
                     qc_record_id=entry["qc_record_id"],
                     qc_record_final_energy=entry["qc_record_final_energy"],
-                )
+                ),
             )
         return ret

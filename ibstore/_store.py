@@ -31,9 +31,9 @@ from ibstore.analysis import (
     get_rmsd,
     get_tfd,
 )
+from ibstore.cached_result import CachedResultCollection
 from ibstore.exceptions import DatabaseExistsError
 from ibstore.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
-from ibstore.cached_result import CachedResultCollection
 
 LOGGER = logging.getLogger(__name__)
 
@@ -407,9 +407,9 @@ class MoleculeStore:
 
     @classmethod
     def from_cached_result_collection(
-            cls,
-            collection: CachedResultCollection,
-            database_name: str,
+        cls,
+        collection: CachedResultCollection,
+        database_name: str,
     ) -> MS:
         from tqdm import tqdm
 
@@ -418,25 +418,59 @@ class MoleculeStore:
 
         store = cls(database_name)
 
-        for rec in tqdm(collection.inner, desc="Loading cached collection"):
-            molecule_record = MoleculeRecord(
-                mapped_smiles=rec.mapped_smiles,
-                inchi_key=rec.inchi_key,
-            )
-
-            store.store(molecule_record)
-
-            store.store_qcarchive(
-                QMConformerRecord(
-                    molecule_id=store.get_molecule_id_by_smiles(
-                        molecule_record.mapped_smiles,
-                    ),
-                    qcarchive_id=rec.qc_record_id,
-                    mapped_smiles=molecule_record.mapped_smiles,
-                    coordinates=rec.coordinates,
-                    energy=rec.qc_record_final_energy,
+        # adapted from MoleculeRecord.from_molecule, MoleculeStore.store, and
+        # DBSessionManager.store_molecule_record
+        with store._get_session() as db:
+            # instead of DBSessionManager._smiles_already_exists
+            seen = set(db.db.query(DBMoleculeRecord.mapped_smiles))
+            for rec in tqdm(collection.inner, desc="Storing molecules"):
+                if rec.mapped_smiles in seen:
+                    continue
+                seen.add(rec.mapped_smiles)
+                db_record = DBMoleculeRecord(
+                    mapped_smiles=rec.mapped_smiles,
+                    inchi_key=rec.inchi_key,
                 )
+                db.db.add(db_record)
+                db.db.commit()
+
+        # close the session here and re-open to make sure all of the molecule
+        # IDs have been flushed to the db
+
+        # adapted from MoleculeStore.store_qcarchive,
+        # QMConformerRecord.from_qcarchive_record, and
+        # DBSessionManager.store_qm_conformer_record
+        with store._get_session() as db:
+            seen = set(
+                db.db.query(
+                    DBQMConformerRecord.qcarchive_id,
+                ),
             )
+            # reversed so the first record encountered wins out. this matches
+            # the behavior of the version that queries the db each time
+            smiles_to_id = {
+                smi: id
+                for id, smi in reversed(
+                    db.db.query(
+                        DBMoleculeRecord.id,
+                        DBMoleculeRecord.mapped_smiles,
+                    ).all(),
+                )
+            }
+            for record in tqdm(collection.inner, desc="Storing Records"):
+                if record.qc_record_id in seen:
+                    continue
+                seen.add(record.qc_record_id)
+                mol_id = smiles_to_id[record.mapped_smiles]
+                db.db.add(
+                    DBQMConformerRecord(
+                        parent_id=mol_id,
+                        qcarchive_id=record.qc_record_id,
+                        mapped_smiles=record.mapped_smiles,
+                        coordinates=record.coordinates,
+                        energy=record.qc_record_final_energy,
+                    ),
+                )
 
         return store
 
@@ -496,7 +530,7 @@ class MoleculeStore:
                 db.db.query(
                     DBMoleculeRecord.id,
                     DBMoleculeRecord.inchi_key,
-                ).all()
+                ).all(),
             )
         }
 
@@ -505,7 +539,7 @@ class MoleculeStore:
             seen = set(
                 db.db.query(
                     DBMMConformerRecord.qcarchive_id,
-                )
+                ),
             )
             for result in _minimized_blob:
                 inchi_key = result.inchi_key
