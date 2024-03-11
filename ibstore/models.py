@@ -2,7 +2,7 @@ from typing import Any, TypeVar
 
 import qcelemental
 from openff.toolkit import Molecule
-from pydantic import Field
+from pydantic.v1 import Field
 
 from ibstore._base.array import Array
 from ibstore._base.base import ImmutableModel
