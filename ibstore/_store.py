@@ -539,6 +539,8 @@ class MoleculeStore:
             seen = set(
                 db.db.query(
                     DBMMConformerRecord.qcarchive_id,
+                ).filter_by(
+                    force_field=force_field,
                 ),
             )
             for result in _minimized_blob:
