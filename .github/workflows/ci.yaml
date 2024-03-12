@@ -34,7 +34,7 @@ jobs:
     - name: Run tests
       run: |
         pytest -v -n logical --durations=10 \
-          --cov=ibstore/ --cov-report=xml \
+          --cov=ibstore/ --cov-report=xml --cov-config=setup.cfg \
           ibstore/
 
     - name: CodeCov
