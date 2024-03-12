@@ -149,7 +149,7 @@ class MoleculeStore:
             for record in records:
                 if db._mm_conformer_already_exists(
                     record.qcarchive_id,
-                    record.qcarchive_id,
+                    record.force_field,
                 ):
                     continue
                 else:
