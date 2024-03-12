@@ -2,33 +2,6 @@ import openmm
 from openff.toolkit import Molecule
 
 
-def _get_force_field_type(
-    force_field_path: str,
-) -> str:
-    if force_field_path.endswith(".offxml"):
-        return "SMIRNOFF"
-    elif force_field_path.endswith(".xml"):
-        return "OPENMM"
-    else:
-        raise NotImplementedError(f"Force field type {force_field_path} not supported.")
-
-
-def _get_openmm_system(
-    molecule: Molecule,
-    force_field_path: str,
-) -> openmm.System:
-    force_field_type = _get_force_field_type(force_field_path)
-
-    if force_field_type == "SMIRNOFF":
-        return _smirnoff(molecule, force_field_path)
-
-    elif force_field_type == "OPENMM":
-        return _gaff(molecule, force_field_path)
-
-    else:
-        raise NotImplementedError(f"force field type {force_field_type} not supported.")
-
-
 def _smirnoff(molecule: Molecule, force_field_path: str) -> openmm.System:
     from openff.toolkit import ForceField
 

@@ -477,7 +477,6 @@ class MoleculeStore:
     def optimize_mm(
         self,
         force_field: str,
-        prune_isomorphs: bool = False,
         n_processes: int = 2,
         chunksize=32,
     ):
@@ -485,7 +484,7 @@ class MoleculeStore:
 
         inchi_keys = self.get_inchi_keys()
 
-        _data = defaultdict(list)
+        inchi_key_qm_conformer_mapping = defaultdict(list)
 
         for inchi_key in inchi_keys:
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
@@ -509,17 +508,16 @@ class MoleculeStore:
                         qcarchive_id=qm_conformer["qcarchive_id"],
                         force_field=force_field,
                     ):
-                        _data[inchi_key].append(qm_conformer)
+                        inchi_key_qm_conformer_mapping[inchi_key].append(qm_conformer)
                     else:
                         pass
 
-        if len(_data) == 0:
+        if len(inchi_key_qm_conformer_mapping) == 0:
             return
 
         _minimized_blob = _minimize_blob(
-            input=_data,
+            input=inchi_key_qm_conformer_mapping,
             force_field=force_field,
-            prune_isomorphs=prune_isomorphs,
             n_processes=n_processes,
             chunksize=chunksize,
         )
@@ -546,7 +544,6 @@ class MoleculeStore:
             for result in _minimized_blob:
                 if result.qcarchive_id in seen:
                     continue
-                inchi_key = result.inchi_key
                 molecule_id = inchi_to_id[inchi_key]
                 record = MMConformerRecord(
                     molecule_id=molecule_id,

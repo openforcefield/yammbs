@@ -68,37 +68,21 @@ def _lazy_load_force_field(force_field_name: str) -> ForceField:
 def _minimize_blob(
     input: dict[str, dict[str, Union[str, numpy.ndarray]]],
     force_field: str,
-    prune_isomorphs: bool,
     n_processes: int = 2,
     chunksize=32,
 ) -> dict[str, list["MinimizationResult"]]:
     inputs = list()
 
-    for inchi_key in input:
-        for row in input[inchi_key]:
-            if prune_isomorphs:
-                # This behavior is always useless and probably bad as there is
-                # no reason to use InCHI when mapped SMILES is known. See #7
-                are_isomorphic, _ = Molecule.are_isomorphic(
-                    Molecule.from_inchi(inchi_key, allow_undefined_stereo=True),
-                    Molecule.from_mapped_smiles(
-                        row["mapped_smiles"],
-                        allow_undefined_stereo=True,
-                    ),
-                )
-
-                if not are_isomorphic:
-                    continue
-
-            inputs.append(
-                MinimizationInput(
-                    inchi_key=inchi_key,
-                    qcarchive_id=row["qcarchive_id"],
-                    force_field=force_field,
-                    mapped_smiles=row["mapped_smiles"],
-                    coordinates=row["coordinates"],
-                ),
-            )
+    inputs = [
+        MinimizationInput(
+            qcarchive_id=row["qcarchive_id"],
+            force_field=force_field,
+            mapped_smiles=row["mapped_smiles"],
+            coordinates=row["coordinates"],
+        )
+        for inchi_key in input
+        for row in input[inchi_key]
+    ]
 
     with Pool(processes=n_processes) as pool:
         yield from tqdm(
@@ -113,7 +97,6 @@ def _minimize_blob(
 
 
 class MinimizationInput(ImmutableModel):
-    inchi_key: str = Field(..., description="The InChI key of the molecule")
     qcarchive_id: str = Field(
         ...,
         description="The ID of the molecule in the QCArchive",
@@ -133,7 +116,6 @@ class MinimizationInput(ImmutableModel):
 
 
 class MinimizationResult(ImmutableModel):
-    inchi_key: str = Field(..., description="The InChI key of the molecule")
     qcarchive_id: str
     force_field: str
     mapped_smiles: str
@@ -144,7 +126,6 @@ class MinimizationResult(ImmutableModel):
 def _run_openmm(
     input: MinimizationInput,
 ) -> MinimizationResult:
-    inchi_key: str = input.inchi_key
     qcarchive_id: str = input.qcarchive_id
     positions: numpy.ndarray = input.coordinates
 
@@ -204,7 +185,6 @@ def _run_openmm(
     openmm.LocalEnergyMinimizer.minimize(context, 5.0e-9, 1500)
 
     return MinimizationResult(
-        inchi_key=inchi_key,
         qcarchive_id=qcarchive_id,
         force_field=input.force_field,
         mapped_smiles=input.mapped_smiles,

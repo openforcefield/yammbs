@@ -30,7 +30,6 @@ def basic_input(force_field="openff-1.0.0") -> MinimizationInput:
     ethane.generate_conformers(n_conformers=1)
 
     return MinimizationInput(
-        inchi_key=ethane.to_inchikey(),
         qcarchive_id="test",
         force_field=force_field,
         mapped_smiles=ethane.to_smiles(mapped=True),
@@ -41,7 +40,6 @@ def basic_input(force_field="openff-1.0.0") -> MinimizationInput:
 @pytest.fixture()
 def perturbed_input(perturbed_ethane) -> MinimizationInput:
     return MinimizationInput(
-        inchi_key=perturbed_ethane.to_inchikey(),
         qcarchive_id="test",
         force_field="openff-1.0.0",
         mapped_smiles=perturbed_ethane.to_smiles(mapped=True),
@@ -57,7 +55,6 @@ def test_minimization_basic(perturbed_input):
     result = _run_openmm(perturbed_input)
 
     for attr in (
-        "inchi_key",
         "qcarchive_id",
         "mapped_smiles",
     ):
@@ -85,7 +82,6 @@ def test_different_force_fields_different_results():
 def test_plugin_loadable(ethane):
     _run_openmm(
         MinimizationInput(
-            inchi_key=ethane.to_inchikey(),
             qcarchive_id="test",
             force_field="de-force-1.0.1",
             mapped_smiles=ethane.to_smiles(mapped=True),
@@ -108,7 +104,6 @@ def test_finds_local_force_field(ethane, tmp_path):
 
     _run_openmm(
         MinimizationInput(
-            inchi_key=ethane.to_inchikey(),
             qcarchive_id="test",
             force_field=(tmp_path / "fOOOO.offxml").as_posix(),
             mapped_smiles=ethane.to_smiles(mapped=True),
@@ -131,7 +126,6 @@ def test_plugin_not_needed_to_use_mainline_force_field(monkeypatch, ethane):
 
     _run_openmm(
         MinimizationInput(
-            inchi_key=ethane.to_inchikey(),
             qcarchive_id="test",
             force_field="openff-1.0.0",
             mapped_smiles=ethane.to_smiles(mapped=True),
