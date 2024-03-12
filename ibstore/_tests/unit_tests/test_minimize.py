@@ -165,9 +165,15 @@ def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
             get_n_mm_conformers(store, "openff-2.0.0"),
         )
 
-    # No need to minimize all 200 records twice
+    # No need to minimize all 200 records twice ...
     tinier_cache = CachedResultCollection()
-    tinier_cache.inner = tiny_cache.inner[:10]
+
+    # ... so slice out some really small molecules (< 9 heavy atoms)
+    # which should be 12 molecules for this dataset
+    for result in tiny_cache.inner:
+        molecule = Molecule.from_mapped_smiles(result.mapped_smiles)
+        if len([atom for atom in molecule.atoms if atom.atomic_number > 1]) < 9:
+            tinier_cache.inner.append(result)
 
     tinier_store = MoleculeStore.from_cached_result_collection(
         tinier_cache,
@@ -178,8 +184,8 @@ def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
 
     tinier_store.optimize_mm(force_field="openff-1.0.0", n_processes=guess_n_processes)
 
-    assert get_n_results(tinier_store) == (10, 0)
+    assert get_n_results(tinier_store) == (12, 0)
 
     tinier_store.optimize_mm(force_field="openff-2.0.0", n_processes=guess_n_processes)
 
-    assert get_n_results(tinier_store) == (10, 10)
+    assert get_n_results(tinier_store) == (12, 12)

@@ -33,7 +33,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest -v -nauto --durations=10 \
+        pytest -v -n logical --durations=10 \
           --cov=ibstore/ --cov-report=xml \
           ibstore/
 
