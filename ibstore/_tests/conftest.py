@@ -5,6 +5,8 @@ try:
 except ImportError:
     qcportal = None
 
+import multiprocessing
+import os
 import shutil
 
 import pytest
@@ -15,6 +17,14 @@ from openff.utilities.utilities import get_data_file_path
 
 from ibstore._store import MoleculeStore
 from ibstore.cached_result import CachedResultCollection
+
+
+@pytest.fixture()
+def guess_n_processes() -> int:
+    if os.getenv("GITHUB_ACTIONS"):
+        return 4
+    else:
+        return multiprocessing.cpu_count()
 
 
 @pytest.fixture()
@@ -69,6 +79,18 @@ def small_store(tmp_path) -> MoleculeStore:
     shutil.copy(source_path, dest_path)
 
     return MoleculeStore(dest_path)
+
+
+@pytest.fixture()
+def tiny_cache() -> CachedResultCollection:
+    """Return the "tiny" molecule store, copied from a single source and provided as a temporary file."""
+
+    return CachedResultCollection.from_json(
+        get_data_file_path(
+            "_tests/data/tiny-opt.json",
+            package_name="ibstore",
+        ),
+    )
 
 
 @pytest.fixture()
