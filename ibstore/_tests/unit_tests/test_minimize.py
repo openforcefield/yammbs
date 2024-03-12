@@ -4,6 +4,8 @@ from openff.toolkit import ForceField, Molecule
 from openff.units import unit
 
 from ibstore._minimize import MinimizationInput, _run_openmm
+from ibstore._store import MoleculeStore
+from ibstore.cached_result import CachedResultCollection
 
 
 @pytest.fixture()
@@ -136,3 +138,54 @@ def test_plugin_not_needed_to_use_mainline_force_field(monkeypatch, ethane):
             coordinates=ethane.conformers[0].m_as(unit.angstrom),
         ),
     )
+
+
+def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
+    """
+    Test that minimizing with one force field produces expected results
+
+    See https://github.com/mattwthompson/ib/pull/21#discussion_r1511804909
+    """
+
+    def get_n_mm_conformers(store, ff):
+        molecule_ids = store.get_molecule_ids()
+        return sum(
+            len(
+                store.get_mm_conformers_by_molecule_id(
+                    id=molecule_id,
+                    force_field=ff,
+                ),
+            )
+            for molecule_id in molecule_ids
+        )
+
+    def get_n_results(store) -> tuple[int, ...]:
+        return (
+            get_n_mm_conformers(store, "openff-1.0.0"),
+            get_n_mm_conformers(store, "openff-2.0.0"),
+        )
+
+    # No need to minimize all 200 records twice ...
+    tinier_cache = CachedResultCollection()
+
+    # ... so slice out some really small molecules (< 9 heavy atoms)
+    # which should be 12 molecules for this dataset
+    for result in tiny_cache.inner:
+        molecule = Molecule.from_mapped_smiles(result.mapped_smiles)
+        if len([atom for atom in molecule.atoms if atom.atomic_number > 1]) < 9:
+            tinier_cache.inner.append(result)
+
+    tinier_store = MoleculeStore.from_cached_result_collection(
+        tinier_cache,
+        database_name=(tmp_path / "tiny.sqlite").as_posix(),
+    )
+
+    assert get_n_results(tinier_store) == (0, 0)
+
+    tinier_store.optimize_mm(force_field="openff-1.0.0", n_processes=guess_n_processes)
+
+    assert get_n_results(tinier_store) == (12, 0)
+
+    tinier_store.optimize_mm(force_field="openff-2.0.0", n_processes=guess_n_processes)
+
+    assert get_n_results(tinier_store) == (12, 12)
