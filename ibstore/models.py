@@ -84,7 +84,10 @@ class MMConformerRecord(Record):
             "The coordinates [Angstrom] of this conformer with shape=(n_atoms, 3)."
         ),
     )
-    energy: float
+    energy: float = Field(
+        ...,
+        description="The energy (kcal/mol) of this conformer as optimized by the force field.",
+    )
 
 
 class MoleculeRecord(Record):

@@ -300,6 +300,7 @@ class MoleculeStore:
 
     # TODO: Allow by multiple selectors (id: list[int])
     def get_qm_energies_by_molecule_id(self, id: int) -> list[float]:
+        """Return a list of all QM energies for a molecule, stored as floats, implicitly in kcal/mol."""
         with self._get_session() as db:
             return [
                 energy
@@ -315,6 +316,7 @@ class MoleculeStore:
         id: int,
         force_field: str,
     ) -> list[float]:
+        """Return a list of all QM energies for a molecule, stored as floats, implicitly in kcal/mol."""
         with self._get_session() as db:
             return [
                 energy
@@ -577,6 +579,8 @@ class MoleculeStore:
                 # TODO: Quicker way of short-circuiting here
                 continue
 
+            # these functions should each return list[float],
+            # implicitly both in kcal/mol
             qm_energies = numpy.array(
                 self.get_qm_energies_by_molecule_id(
                     molecule_id,
