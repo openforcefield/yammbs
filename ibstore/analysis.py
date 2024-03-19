@@ -97,9 +97,11 @@ def get_rmsd(
     from openff.units import Quantity, unit
 
     molecule1 = Molecule(molecule)
+    molecule1.conformers.clear()
     molecule1.add_conformer(Quantity(reference, unit.angstrom))
 
     molecule2 = Molecule(molecule)
+    molecule2.conformers.clear()
     molecule2.add_conformer(Quantity(target, unit.angstrom))
 
     # oechem appears to not support named arguments, but it's hard to tell
@@ -210,8 +212,6 @@ def get_tfd(
         molecule: Molecule,
         conformer: Array,
     ):
-        from copy import deepcopy
-
         from openff.units import Quantity, unit
 
         # TODO: Do we need to remap indices?
@@ -236,11 +236,10 @@ def get_tfd(
 
             molecule.remap(mapping_dict=atom_map)
 
-        molecule = deepcopy(molecule)
+        molecule = Molecule(molecule)
+        molecule.conformers.clear()
 
-        molecule.add_conformer(
-            Quantity(conformer, unit.angstrom),
-        )
+        molecule.add_conformer(Quantity(conformer, unit.angstrom))
 
         return molecule.to_rdkit()
 
