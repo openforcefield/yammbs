@@ -2,7 +2,44 @@ import pandas
 import pytest
 from openff.toolkit import Molecule
 
-from ibstore.analysis import get_internal_coordinate_rmsds
+from ibstore.analysis import get_internal_coordinate_rmsds, get_rmsd
+
+
+class TestAnalysis:
+    def test_rmsd(self, allicin):
+        allicin.generate_conformers(n_conformers=10)
+
+        # Passing the same conformers should return 0.0
+        last_last = get_rmsd(
+            molecule=allicin,
+            reference=allicin.conformers[-1],
+            target=allicin.conformers[-1],
+        )
+
+        assert last_last == 0.0
+
+        first_last = get_rmsd(
+            molecule=allicin,
+            reference=allicin.conformers[0],
+            target=allicin.conformers[-1],
+        )
+
+        assert isinstance(first_last, float)
+
+        first_second = get_rmsd(
+            molecule=allicin,
+            reference=allicin.conformers[0],
+            target=allicin.conformers[1],
+        )
+
+        assert first_second != first_last
+
+        last_first = get_rmsd(
+            molecule=allicin,
+            reference=allicin.conformers[-1],
+            target=allicin.conformers[0],
+        )
+        assert last_first == first_last
 
 
 class TestInternalCoordinateRMSD:

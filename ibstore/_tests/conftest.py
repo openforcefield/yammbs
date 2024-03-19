@@ -97,3 +97,9 @@ def tiny_cache() -> CachedResultCollection:
 def diphenylvinylbenzene():
     """Return 1,2-diphenylvinylbenzene"""
     return Molecule.from_smiles("c1ccc(cc1)C=C(c2ccccc2)c3ccccc3")
+
+
+@pytest.fixture()
+def allicin():
+    """Return allicin, inspired by PQR"""
+    return Molecule.from_smiles("C=CCSS(=O)CC=C", allow_undefined_stereo=True)
