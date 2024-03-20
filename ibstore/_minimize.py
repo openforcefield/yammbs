@@ -182,7 +182,11 @@ def _run_openmm(
     context.setPositions(
         (positions * openmm.unit.angstrom).in_units_of(openmm.unit.nanometer),
     )
-    openmm.LocalEnergyMinimizer.minimize(context, 5.0e-9, 1500)
+    openmm.LocalEnergyMinimizer.minimize(
+        context=context,
+        tolerance=10,
+        maxIterations=0,
+    )
 
     return MinimizationResult(
         qcarchive_id=qcarchive_id,
