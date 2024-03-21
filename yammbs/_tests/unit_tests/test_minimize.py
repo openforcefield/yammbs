@@ -3,9 +3,9 @@ import pytest
 from openff.toolkit import ForceField, Molecule
 from openff.units import unit
 
-from ibstore._minimize import MinimizationInput, _run_openmm
-from ibstore._store import MoleculeStore
-from ibstore.cached_result import CachedResultCollection
+from yammbs import MoleculeStore
+from yammbs._minimize import MinimizationInput, _run_openmm
+from yammbs.cached_result import CachedResultCollection
 
 
 @pytest.fixture()
@@ -93,7 +93,7 @@ def test_plugin_loadable(ethane):
 @pytest.mark.timeout(1)
 def test_cached_force_fields_load_quickly():
     """Test that cached force fields are loaded quickly."""
-    from ibstore._minimize import _lazy_load_force_field
+    from yammbs._minimize import _lazy_load_force_field
 
     # timeout includes the time it takes to load it the first time, but that should be << 1 second
     [_lazy_load_force_field("openff-1.0.0") for _ in range(1000)]

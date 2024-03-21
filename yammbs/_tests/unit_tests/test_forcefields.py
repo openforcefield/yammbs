@@ -2,7 +2,7 @@ import openmm
 import pytest
 from openff.toolkit import Molecule
 
-from ibstore._forcefields import _espaloma, _gaff, _smirnoff
+from yammbs._forcefields import _espaloma, _gaff, _smirnoff
 
 
 @pytest.fixture()

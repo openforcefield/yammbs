@@ -4,7 +4,7 @@ from typing import Dict, List
 from sqlalchemy import Column, Float, ForeignKey, Integer, PickleType, String
 from sqlalchemy.orm import declarative_base, relationship
 
-from ibstore.models import MMConformerRecord, QMConformerRecord
+from yammbs.models import MMConformerRecord, QMConformerRecord
 
 DBBase = declarative_base()
 

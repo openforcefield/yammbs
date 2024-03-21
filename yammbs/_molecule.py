@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from openff.toolkit import Molecule
 
-from ibstore._base.array import Array
+from yammbs._base.array import Array
 
 if TYPE_CHECKING:
     from geometric.molecule import Molecule as GeometricMolecule
