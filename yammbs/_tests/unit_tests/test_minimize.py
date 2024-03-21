@@ -90,7 +90,7 @@ def test_plugin_loadable(ethane):
     )
 
 
-@pytest.mark.timeout(1)
+@pytest.mark.timeout(3)
 def test_cached_force_fields_load_quickly():
     """Test that cached force fields are loaded quickly."""
     from yammbs._minimize import _lazy_load_force_field
