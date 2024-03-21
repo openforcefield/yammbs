@@ -33,9 +33,9 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest -v -n logical --durations=10 \
-          --cov=ibstore/ --cov-report=xml --cov-config=setup.cfg \
-          ibstore/
+        pytest -r fEx -n logical --durations=10 \
+          --cov=yammbs/ --cov-report=xml --cov-config=setup.cfg \
+          yammbs/
 
     - name: CodeCov
       uses: codecov/codecov-action@v3

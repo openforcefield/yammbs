@@ -2,7 +2,7 @@ import pandas
 import pytest
 from openff.toolkit import Molecule
 
-from ibstore.analysis import get_internal_coordinate_rmsds
+from yammbs.analysis import get_internal_coordinate_rmsds
 
 
 class TestInternalCoordinateRMSD:
