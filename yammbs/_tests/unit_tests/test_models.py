@@ -2,7 +2,7 @@ import numpy
 import qcelemental
 from openff.units import unit
 
-from ibstore.models import MoleculeRecord, QMConformerRecord
+from yammbs.models import MoleculeRecord, QMConformerRecord
 
 hartree2kcalmol = qcelemental.constants.hartree2kcalmol
 

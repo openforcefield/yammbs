@@ -1,9 +1,9 @@
-name: ib-dev
+name: yammbs-dev
 channels:
   - openeye
   - conda-forge
 dependencies:
-  - python =3.10
+  - python
 
   - openff-toolkit
   - openff-qcsubmit
@@ -27,4 +27,4 @@ dependencies:
   - pytest-timeout
 
   - pip:
-    - git+https://github.com/mattwthompson/de-forcefields.git@periodic-nonperiodic-methods
+    - git+https://github.com/jthorton/de-forcefields.git@eb99f5ea1347dc3fd079038a52a21554b9e44caf

@@ -2,13 +2,13 @@
 
 This file is built by calling this code
 
-``` python
+```python
 import logging
 
 import click
 from openff.qcsubmit.results import OptimizationResultCollection
 
-from ibstore.cached_result import CachedResultCollection
+from yammbs.cached_result import CachedResultCollection
 
 logging.getLogger("openff").setLevel(logging.ERROR)
 

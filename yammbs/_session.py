@@ -2,7 +2,7 @@
 from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional
 
-from ibstore._db import (
+from yammbs._db import (
     DB_VERSION,
     DBGeneralProvenance,
     DBInformation,
@@ -15,7 +15,7 @@ from ibstore._db import (
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-    from ibstore.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
+    from yammbs.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
 
 
 class DBQueryResult(NamedTuple):

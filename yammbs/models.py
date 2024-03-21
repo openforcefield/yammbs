@@ -4,8 +4,8 @@ import qcelemental
 from openff.toolkit import Molecule
 from pydantic.v1 import Field
 
-from ibstore._base.array import Array
-from ibstore._base.base import ImmutableModel
+from yammbs._base.array import Array
+from yammbs._base.base import ImmutableModel
 
 hartree2kcalmol = qcelemental.constants.hartree2kcalmol
 bohr2angstroms = qcelemental.constants.bohr2angstroms

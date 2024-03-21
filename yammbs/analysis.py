@@ -3,8 +3,8 @@ import pandas
 from openff.toolkit import Molecule
 from openff.units import Quantity, unit
 
-from ibstore._base.array import Array
-from ibstore._base.base import ImmutableModel
+from yammbs._base.array import Array
+from yammbs._base.base import ImmutableModel
 
 
 class DDE(ImmutableModel):
@@ -130,8 +130,8 @@ def get_internal_coordinate_rmsds(
         PrimitiveInternalCoordinates,
     )
 
-    from ibstore._forcebalance import compute_rmsd as forcebalance_rmsd
-    from ibstore._molecule import _to_geometric_molecule
+    from yammbs._forcebalance import compute_rmsd as forcebalance_rmsd
+    from yammbs._molecule import _to_geometric_molecule
 
     if isinstance(reference, Quantity):
         reference = reference.m_as(unit.angstrom)
