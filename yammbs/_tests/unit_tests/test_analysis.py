@@ -6,74 +6,70 @@ from yammbs.analysis import get_internal_coordinate_rmsds, get_rmsd, get_tfd
 
 
 class TestAnalysis:
-    def test_rmsd(self, allicin):
-        allicin.generate_conformers(n_conformers=10)
-
+    def test_rmsd(self, allicin, conformers):
         # Passing the same conformers should return 0.0
         last_last = get_rmsd(
             molecule=allicin,
-            reference=allicin.conformers[-1],
-            target=allicin.conformers[-1],
+            reference=conformers[-1],
+            target=conformers[-1],
         )
 
         assert last_last == 0.0
 
         first_last = get_rmsd(
             molecule=allicin,
-            reference=allicin.conformers[0],
-            target=allicin.conformers[-1],
+            reference=conformers[0],
+            target=conformers[-1],
         )
 
         assert isinstance(first_last, float)
 
         first_second = get_rmsd(
             molecule=allicin,
-            reference=allicin.conformers[0],
-            target=allicin.conformers[1],
+            reference=conformers[0],
+            target=conformers[1],
         )
 
         assert first_second != first_last
 
         last_first = get_rmsd(
             molecule=allicin,
-            reference=allicin.conformers[-1],
-            target=allicin.conformers[0],
+            reference=conformers[-1],
+            target=conformers[0],
         )
 
         assert last_first == first_last
 
-    def test_tfd(self, allicin):
-        allicin.generate_conformers(n_conformers=10)
-
+    def test_tfd(self, allicin, conformers):
         # Passing the same conformers should return 0.0
         last_last = get_tfd(
             molecule=allicin,
-            reference=allicin.conformers[-1],
-            target=allicin.conformers[-1],
+            reference=conformers[-1],
+            target=conformers[-1],
         )
 
         assert last_last == 0.0
 
         first_last = get_tfd(
             molecule=allicin,
-            reference=allicin.conformers[0],
-            target=allicin.conformers[-1],
+            reference=conformers[0],
+            target=conformers[-1],
         )
 
         assert isinstance(first_last, float)
 
         first_second = get_tfd(
             molecule=allicin,
-            reference=allicin.conformers[0],
-            target=allicin.conformers[1],
+            reference=conformers[0],
+            target=conformers[1],
         )
 
         assert first_second != first_last
 
         last_first = get_tfd(
             molecule=allicin,
-            reference=allicin.conformers[-1],
-            target=allicin.conformers[0],
+            reference=conformers[-1],
+            target=conformers[0],
         )
 
         assert last_first == first_last

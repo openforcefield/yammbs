@@ -97,11 +97,14 @@ def get_rmsd(
     from openff.units import Quantity, unit
 
     molecule1 = Molecule(molecule)
-    molecule1.conformers.clear()
+    molecule2 = Molecule(molecule)
+
+    for molecule in (molecule1, molecule2):
+        if molecule.conformers is not None:
+            molecule.conformers.clear()
+
     molecule1.add_conformer(Quantity(reference, unit.angstrom))
 
-    molecule2 = Molecule(molecule)
-    molecule2.conformers.clear()
     molecule2.add_conformer(Quantity(target, unit.angstrom))
 
     # oechem appears to not support named arguments, but it's hard to tell
@@ -237,7 +240,8 @@ def get_tfd(
             molecule.remap(mapping_dict=atom_map)
 
         molecule = Molecule(molecule)
-        molecule.conformers.clear()
+        if molecule.conformers is not None:
+            molecule.conformers.clear()
 
         molecule.add_conformer(Quantity(conformer, unit.angstrom))
 
