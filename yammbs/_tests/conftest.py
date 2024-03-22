@@ -97,3 +97,21 @@ def tiny_cache() -> CachedResultCollection:
 def diphenylvinylbenzene():
     """Return 1,2-diphenylvinylbenzene"""
     return Molecule.from_smiles("c1ccc(cc1)C=C(c2ccccc2)c3ccccc3")
+
+
+@pytest.fixture()
+def allicin():
+    """Return allicin, inspired by PQR"""
+    return Molecule.from_smiles(
+        "C=CCSS(=O)CC=C",
+        allow_undefined_stereo=True,
+    )
+
+
+@pytest.fixture()
+def conformers(allicin):
+    other_allicin = Molecule(allicin)
+
+    other_allicin.generate_conformers(n_conformers=10)
+
+    return other_allicin.conformers
