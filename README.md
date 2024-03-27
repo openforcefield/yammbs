@@ -1,7 +1,7 @@
 YAMMBS
 ======
 
-Yet Another Molecular Mechanics Benchmaring Suite (YAMMBS, pronounced like "yams") is a tool for
+Yet Another Molecular Mechanics Benchmarking Suite (YAMMBS, pronounced like "yams") is a tool for
 benchmarking force fields.
 
 YAMMBS is currently developed for internal use at Open Force Field. It is not currently recommended for external use. No guarantees are made about the stability of the API or the accuracy of any results.
