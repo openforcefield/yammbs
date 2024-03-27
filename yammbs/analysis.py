@@ -3,8 +3,8 @@ import pandas
 from openff.toolkit import Molecule
 from openff.units import Quantity, unit
 
-from ibstore._base.array import Array
-from ibstore._base.base import ImmutableModel
+from yammbs._base.array import Array
+from yammbs._base.base import ImmutableModel
 
 
 class DDE(ImmutableModel):
@@ -97,9 +97,14 @@ def get_rmsd(
     from openff.units import Quantity, unit
 
     molecule1 = Molecule(molecule)
+    molecule2 = Molecule(molecule)
+
+    for molecule in (molecule1, molecule2):
+        if molecule.conformers is not None:
+            molecule.conformers.clear()
+
     molecule1.add_conformer(Quantity(reference, unit.angstrom))
 
-    molecule2 = Molecule(molecule)
     molecule2.add_conformer(Quantity(target, unit.angstrom))
 
     # oechem appears to not support named arguments, but it's hard to tell
@@ -128,8 +133,8 @@ def get_internal_coordinate_rmsds(
         PrimitiveInternalCoordinates,
     )
 
-    from ibstore._forcebalance import compute_rmsd as forcebalance_rmsd
-    from ibstore._molecule import _to_geometric_molecule
+    from yammbs._forcebalance import compute_rmsd as forcebalance_rmsd
+    from yammbs._molecule import _to_geometric_molecule
 
     if isinstance(reference, Quantity):
         reference = reference.m_as(unit.angstrom)
@@ -210,8 +215,6 @@ def get_tfd(
         molecule: Molecule,
         conformer: Array,
     ):
-        from copy import deepcopy
-
         from openff.units import Quantity, unit
 
         # TODO: Do we need to remap indices?
@@ -236,11 +239,11 @@ def get_tfd(
 
             molecule.remap(mapping_dict=atom_map)
 
-        molecule = deepcopy(molecule)
+        molecule = Molecule(molecule)
+        if molecule.conformers is not None:
+            molecule.conformers.clear()
 
-        molecule.add_conformer(
-            Quantity(conformer, unit.angstrom),
-        )
+        molecule.add_conformer(Quantity(conformer, unit.angstrom))
 
         return molecule.to_rdkit()
 

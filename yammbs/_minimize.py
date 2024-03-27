@@ -12,8 +12,8 @@ from openff.toolkit.typing.engines.smirnoff import get_available_force_fields
 from pydantic.v1 import Field
 from tqdm import tqdm
 
-from ibstore._base.array import Array
-from ibstore._base.base import ImmutableModel
+from yammbs._base.array import Array
+from yammbs._base.base import ImmutableModel
 
 _AVAILABLE_FORCE_FIELDS = get_available_force_fields()
 
@@ -135,7 +135,7 @@ def _run_openmm(
     )
 
     if input.force_field.startswith("gaff"):
-        from ibstore._forcefields import _gaff
+        from yammbs._forcefields import _gaff
 
         system = _gaff(
             molecule=molecule,
@@ -143,7 +143,7 @@ def _run_openmm(
         )
 
     elif input.force_field.startswith("espaloma"):
-        from ibstore._forcefields import _espaloma
+        from yammbs._forcefields import _espaloma
 
         system = _espaloma(
             molecule=molecule,

@@ -15,8 +15,8 @@ from openff.qcsubmit.results import OptimizationResultCollection
 from openff.toolkit import Molecule
 from openff.utilities.utilities import get_data_file_path
 
-from ibstore._store import MoleculeStore
-from ibstore.cached_result import CachedResultCollection
+from yammbs import MoleculeStore
+from yammbs.cached_result import CachedResultCollection
 
 
 @pytest.fixture()
@@ -54,14 +54,14 @@ def ligand():
 @pytest.fixture()
 def small_collection() -> OptimizationResultCollection:
     return OptimizationResultCollection.parse_file(
-        get_data_file_path("_tests/data/01-processed-qm-ch.json", "ibstore"),
+        get_data_file_path("_tests/data/01-processed-qm-ch.json", "yammbs"),
     )
 
 
 @pytest.fixture()
 def small_cache() -> CachedResultCollection:
     return CachedResultCollection.from_json(
-        get_data_file_path("_tests/data/tiny-opt.json", "ibstore"),
+        get_data_file_path("_tests/data/tiny-opt.json", "yammbs"),
     )
 
 
@@ -71,7 +71,7 @@ def small_store(tmp_path) -> MoleculeStore:
     # This file manually generated from data/01-processed-qm-ch.json
     source_path = get_data_file_path(
         "_tests/data/ch.sqlite",
-        package_name="ibstore",
+        package_name="yammbs",
     )
 
     dest_path = (tmp_path / "ch.sqlite").as_posix()
@@ -88,7 +88,7 @@ def tiny_cache() -> CachedResultCollection:
     return CachedResultCollection.from_json(
         get_data_file_path(
             "_tests/data/tiny-opt.json",
-            package_name="ibstore",
+            package_name="yammbs",
         ),
     )
 
@@ -97,3 +97,21 @@ def tiny_cache() -> CachedResultCollection:
 def diphenylvinylbenzene():
     """Return 1,2-diphenylvinylbenzene"""
     return Molecule.from_smiles("c1ccc(cc1)C=C(c2ccccc2)c3ccccc3")
+
+
+@pytest.fixture()
+def allicin():
+    """Return allicin, inspired by PQR"""
+    return Molecule.from_smiles(
+        "C=CCSS(=O)CC=C",
+        allow_undefined_stereo=True,
+    )
+
+
+@pytest.fixture()
+def conformers(allicin):
+    other_allicin = Molecule(allicin)
+
+    other_allicin.generate_conformers(n_conformers=10)
+
+    return other_allicin.conformers

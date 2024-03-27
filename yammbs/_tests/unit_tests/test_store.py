@@ -8,9 +8,9 @@ from openff.qcsubmit.results import OptimizationResultCollection
 from openff.toolkit import Molecule
 from openff.utilities import get_data_file_path, temporary_cd
 
-from ibstore._store import MoleculeStore
-from ibstore.exceptions import DatabaseExistsError
-from ibstore.models import MMConformerRecord, QMConformerRecord
+from yammbs import MoleculeStore
+from yammbs.exceptions import DatabaseExistsError
+from yammbs.models import MMConformerRecord, QMConformerRecord
 
 
 def test_from_qcsubmit(small_collection):
@@ -68,7 +68,7 @@ def test_get_molecule_id_by_qcarchive_id(small_store):
 
 def test_molecules_sorted_by_qcarchive_id():
     raw_ch = json.load(
-        open(get_data_file_path("_tests/data/01-processed-qm-ch.json", "ibstore")),
+        open(get_data_file_path("_tests/data/01-processed-qm-ch.json", "yammbs")),
     )
 
     random.shuffle(raw_ch["entries"]["https://api.qcarchive.molssi.org:443/"])

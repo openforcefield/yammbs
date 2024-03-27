@@ -2,7 +2,7 @@ import numpy
 from openff.toolkit import Molecule
 from openff.units import unit
 
-from ibstore._molecule import _to_geometric_molecule
+from yammbs._molecule import _to_geometric_molecule
 
 
 def test_to_geometric_molecule():

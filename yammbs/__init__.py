@@ -1,5 +1,5 @@
-from ibstore._store import MoleculeStore
-from ibstore._version import get_versions
+from yammbs._store import MoleculeStore
+from yammbs._version import get_versions
 
 __all__ = ("MoleculeStore",)
 

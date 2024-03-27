@@ -10,15 +10,15 @@ from openff.toolkit import Molecule
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from ibstore._db import (
+from yammbs._db import (
     DBBase,
     DBMMConformerRecord,
     DBMoleculeRecord,
     DBQMConformerRecord,
 )
-from ibstore._session import DBSessionManager
-from ibstore._types import Pathlike
-from ibstore.analysis import (
+from yammbs._session import DBSessionManager
+from yammbs._types import Pathlike
+from yammbs.analysis import (
     DDE,
     ICRMSD,
     RMSD,
@@ -31,9 +31,9 @@ from ibstore.analysis import (
     get_rmsd,
     get_tfd,
 )
-from ibstore.cached_result import CachedResultCollection
-from ibstore.exceptions import DatabaseExistsError
-from ibstore.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
+from yammbs.cached_result import CachedResultCollection
+from yammbs.exceptions import DatabaseExistsError
+from yammbs.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
 
 LOGGER = logging.getLogger(__name__)
 
@@ -482,7 +482,7 @@ class MoleculeStore:
         n_processes: int = 2,
         chunksize=32,
     ):
-        from ibstore._minimize import _minimize_blob
+        from yammbs._minimize import _minimize_blob
 
         inchi_keys = self.get_inchi_keys()
 

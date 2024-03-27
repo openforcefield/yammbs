@@ -6,7 +6,7 @@ import pandas
 from matplotlib import pyplot
 from openff.qcsubmit.results import OptimizationResultCollection
 
-from ibstore._store import MoleculeStore
+from yammbs import MoleculeStore
 
 
 def main():
@@ -29,7 +29,7 @@ def main():
     else:
         store = MoleculeStore.from_qcsubmit_collection(
             OptimizationResultCollection.parse_file(
-                f"ibstore/_tests/data/01-processed-qm-{data}.json",
+                f"yammbs/_tests/data/01-processed-qm-{data}.json",
             ),
             database_name=f"{data}.sqlite",
         )
