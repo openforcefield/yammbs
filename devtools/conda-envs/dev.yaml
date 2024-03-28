@@ -12,6 +12,8 @@ dependencies:
   # espaloma =0.3
   - geometric =1
 
+  - pydantic =1
+
   - ipython
   - ipdb
   - pre-commit
