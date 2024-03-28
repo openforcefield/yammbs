@@ -5,13 +5,12 @@ channels:
 dependencies:
   - python
 
-  - openff-toolkit
-  - openff-qcsubmit
+  - openff-toolkit =0.14.3
+  - openff-qcsubmit =0.50.1
   - openmmforcefields
-  - smirnoff-plugins
+  - smirnoff-plugins =2023.08.0
   # espaloma =0.3
   - geometric =1
-  - pydantic =2
 
   - ipython
   - ipdb

@@ -9,7 +9,7 @@ import openmm.app
 import openmm.unit
 from openff.toolkit import ForceField, Molecule
 from openff.toolkit.typing.engines.smirnoff import get_available_force_fields
-from pydantic.v1 import Field
+from pydantic import Field
 from tqdm import tqdm
 
 from yammbs._base.array import Array

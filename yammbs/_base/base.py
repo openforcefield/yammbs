@@ -7,8 +7,8 @@ from typing import Any, ClassVar, Dict, List, Optional, Type, Union, no_type_che
 
 import numpy
 from openff.units import unit
-from pydantic.v1 import BaseModel
-from pydantic.v1.errors import DictError
+from pydantic import BaseModel
+from pydantic.errors import DictError
 
 FloatArrayLike = Union[List, numpy.ndarray, float]
 
