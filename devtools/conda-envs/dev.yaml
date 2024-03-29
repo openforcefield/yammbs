@@ -1,6 +1,5 @@
 name: yammbs-dev
 channels:
-  - openeye
   - conda-forge
 dependencies:
   - python
@@ -17,7 +16,6 @@ dependencies:
   - ipdb
   - pre-commit
 
-  - openeye::openeye-toolkits
   - rich
 
   - pytest
