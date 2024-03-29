@@ -476,21 +476,15 @@ class MoleculeStore:
 
         return store
 
-    def optimize_mm(
-        self,
-        force_field: str,
-        n_processes: int = 2,
-        chunksize=32,
-    ):
-        from yammbs._minimize import _minimize_blob
-
+    def _map_inchi_keys_to_qm_conformers(self, force_field: str) -> dict[str, list]:
         inchi_keys = self.get_inchi_keys()
 
-        inchi_key_qm_conformer_mapping = defaultdict(list)
+        mapping = defaultdict(list)
 
         for inchi_key in inchi_keys:
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
 
+            # TODO: Should the session be inside or outside of the inchi loop?
             with self._get_session() as db:
                 qm_conformers = [
                     {
@@ -510,9 +504,23 @@ class MoleculeStore:
                         qcarchive_id=qm_conformer["qcarchive_id"],
                         force_field=force_field,
                     ):
-                        inchi_key_qm_conformer_mapping[inchi_key].append(qm_conformer)
+                        mapping[inchi_key].append(qm_conformer)
                     else:
                         pass
+
+        return mapping
+
+    def optimize_mm(
+        self,
+        force_field: str,
+        n_processes: int = 2,
+        chunksize=32,
+    ):
+        from yammbs._minimize import _minimize_blob
+
+        inchi_key_qm_conformer_mapping = self._map_inchi_keys_to_qm_conformers(
+            force_field=force_field,
+        )
 
         if len(inchi_key_qm_conformer_mapping) == 0:
             return
@@ -524,15 +532,16 @@ class MoleculeStore:
             chunksize=chunksize,
         )
 
-        inchi_to_id: dict[str, int] = {
-            inchi_key: id
-            for (id, inchi_key) in reversed(
-                db.db.query(
-                    DBMoleculeRecord.id,
-                    DBMoleculeRecord.inchi_key,
-                ).all(),
-            )
-        }
+        with self._get_session() as db:
+            inchi_to_id: dict[str, int] = {
+                inchi_key: id
+                for (id, inchi_key) in reversed(
+                    db.db.query(
+                        DBMoleculeRecord.id,
+                        DBMoleculeRecord.inchi_key,
+                    ).all(),
+                )
+            }
 
         with self._get_session() as db:
             # from _mm_conformer_already_exists
@@ -546,7 +555,9 @@ class MoleculeStore:
             for result in _minimized_blob:
                 if result.qcarchive_id in seen:
                     continue
-                molecule_id = inchi_to_id[inchi_key]
+
+                molecule_id = inchi_to_id[result.inchi_key]
+
                 record = MMConformerRecord(
                     molecule_id=molecule_id,
                     qcarchive_id=result.qcarchive_id,
@@ -555,8 +566,10 @@ class MoleculeStore:
                     energy=result.energy,
                     coordinates=result.coordinates,
                 )
+
                 # inlined from MoleculeStore.store_conformer
                 seen.add(record.qcarchive_id)
+
                 db.store_mm_conformer_record(record)
 
     def get_dde(

@@ -75,6 +75,7 @@ def _minimize_blob(
 
     inputs = [
         MinimizationInput(
+            inchi_key=inchi_key,
             qcarchive_id=row["qcarchive_id"],
             force_field=force_field,
             mapped_smiles=row["mapped_smiles"],
@@ -97,6 +98,7 @@ def _minimize_blob(
 
 
 class MinimizationInput(ImmutableModel):
+    inchi_key: str = Field(..., description="The InChI key of the molecule")
     qcarchive_id: str = Field(
         ...,
         description="The ID of the molecule in the QCArchive",
@@ -116,6 +118,8 @@ class MinimizationInput(ImmutableModel):
 
 
 class MinimizationResult(ImmutableModel):
+    # This could probably just subclass and add on the energy field?
+    inchi_key: str = Field(..., description="The InChI key of the molecule")
     qcarchive_id: str
     force_field: str
     mapped_smiles: str
@@ -126,6 +130,7 @@ class MinimizationResult(ImmutableModel):
 def _run_openmm(
     input: MinimizationInput,
 ) -> MinimizationResult:
+    inchi_key: str = input.inchi_key
     qcarchive_id: str = input.qcarchive_id
     positions: numpy.ndarray = input.coordinates
 
@@ -189,6 +194,7 @@ def _run_openmm(
     )
 
     return MinimizationResult(
+        inchi_key=inchi_key,
         qcarchive_id=qcarchive_id,
         force_field=input.force_field,
         mapped_smiles=input.mapped_smiles,
