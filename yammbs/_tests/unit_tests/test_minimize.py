@@ -140,12 +140,14 @@ def test_plugin_not_needed_to_use_mainline_force_field(monkeypatch, ethane):
     )
 
 
-def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
+def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes, monkeypatch):
     """
     Test that minimizing with one force field produces expected results
 
     See https://github.com/mattwthompson/ib/pull/21#discussion_r1511804909
     """
+
+    monkeypatch.setenv("OE_LICNESE", "fOOOBAR")
 
     def get_n_mm_conformers(store, ff):
         molecule_ids = store.get_molecule_ids()
