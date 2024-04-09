@@ -53,7 +53,7 @@ class CachedResultCollection:
             collection.to_records(),
             desc="Converting records to molecules",
         ):
-            energy = qcarchive_record.get_final_energy() * hartree2kcalmol
+            energy = qcarchive_record.energies[-1] * hartree2kcalmol
             ret.inner.append(
                 CachedResult(
                     mapped_smiles=molecule.to_smiles(
