@@ -26,7 +26,7 @@ repos:
   - id: flake8
     additional_dependencies: [
         'flake8-absolute-import',
-        'flake8-pytest-style',
+        'flake8-pytest-style==1',
     ]
 - repo: https://github.com/asottile/pyupgrade
   rev: v3.10.1
