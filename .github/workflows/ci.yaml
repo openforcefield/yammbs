@@ -40,6 +40,13 @@ jobs:
         create-args: >-
           python=${{ matrix.python-version }}
 
+    - name: Install checkmol
+      run: |
+        curl https://homepage.univie.ac.at/norbert.haider/download/chemistry/checkmol/checkmol.pas > checkmol.pas
+        fpc checkmol.pas -S2
+
+        echo $(pwd) >> $GITHUB_PATH
+
     - name: Install package
       run: python -m pip install -e .
 
