@@ -32,6 +32,7 @@ from yammbs.analysis import (
     get_tfd,
 )
 from yammbs.cached_result import CachedResultCollection
+from yammbs.checkmol import ChemicalEnvironment
 from yammbs.exceptions import DatabaseExistsError
 from yammbs.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
 
@@ -746,6 +747,34 @@ class MoleculeStore:
                     logging.warning(f"Molecule {inchi_key} failed with {str(e)}")
 
         return tfds
+
+    def filter_by_checkmol(
+        self,
+        functional_group: ChemicalEnvironment,
+    ):
+        """
+        Use Checkmol to filter the store by the presence of certain chemical functional groups.
+
+        Parameters
+        ----------
+        functional_group
+            A ChemicalEnvironment enum objects to filter by.
+
+        Returns
+        -------
+        ids
+            A list of ids of molecules that contain the functional group.
+        """
+        from yammbs.checkmol import analyze_functional_groups
+
+        ids = list()
+        for id in self.get_molecule_ids():
+            if functional_group in analyze_functional_groups(
+                smiles=self.get_smiles_by_molecule_id(id),
+            ):
+                ids.append(id)
+
+        return ids
 
 
 def smiles_to_inchi_key(smiles: str) -> str:
