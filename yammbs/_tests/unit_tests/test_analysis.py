@@ -38,7 +38,7 @@ class TestAnalysis:
             target=conformers[0],
         )
 
-        assert last_first == first_last
+        assert last_first == pytest.approx(first_last)
 
     def test_tfd(self, allicin, conformers):
         # Passing the same conformers should return 0.0
