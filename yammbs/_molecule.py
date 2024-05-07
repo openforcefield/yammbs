@@ -1,4 +1,5 @@
 """Molecule conversion utilities"""
+
 from typing import TYPE_CHECKING
 
 from openff.toolkit import Molecule

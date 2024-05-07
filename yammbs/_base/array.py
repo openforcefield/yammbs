@@ -1,4 +1,5 @@
 """Copied from openff-nagl."""
+
 from typing import Any
 
 import numpy
