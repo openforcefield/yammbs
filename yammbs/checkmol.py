@@ -11,7 +11,8 @@ class MissingCheckmolError(MissingOptionalDependencyError):
         super().__init__(library_name, license_issue)
 
     def __str__(self):
-        return super().__str__() + (
+        return (
+            "The `checkmol` executable cannot be found. "
             "Checkmol can be obtained for free from "
             "http://merian.pch.univie.ac.at/~nhaider/cheminf/cmmm.html."
         )

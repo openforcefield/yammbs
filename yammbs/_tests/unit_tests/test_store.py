@@ -9,6 +9,7 @@ from openff.toolkit import Molecule
 from openff.utilities import get_data_file_path, temporary_cd
 
 from yammbs import MoleculeStore
+from yammbs.checkmol import ChemicalEnvironment
 from yammbs.exceptions import DatabaseExistsError
 from yammbs.models import MMConformerRecord, QMConformerRecord
 
@@ -184,3 +185,17 @@ def test_get_qm_energies_by_molecule_id(
         assert isinstance(energy, float)
 
     assert len(energies) == expected_len
+
+
+@pytest.mark.parametrize(
+    ("environment", "expected_len"),
+    [
+        (ChemicalEnvironment.Alkane, 9),
+        (ChemicalEnvironment.Alkene, 8),
+        (ChemicalEnvironment.Aromatic, 24),
+        (ChemicalEnvironment.Alcohol, 0),  # no O in dataset
+        (ChemicalEnvironment.Nitrile, 0),  # no N in dataset
+    ],
+)
+def test_filter_by_checkmol(small_store, environment, expected_len):
+    assert len(small_store.filter_by_checkmol(environment)) == expected_len
