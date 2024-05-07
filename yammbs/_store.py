@@ -240,7 +240,8 @@ class MoleculeStore:
         return Molecule.from_mapped_smiles(
             mapped_smiles=self.get_smiles_by_molecule_id(
                 id=self.get_molecule_id_by_inchi_key(inchi_key),
-            ),allow_undefined_stereo=True
+            ),
+            allow_undefined_stereo=True,
         )
 
     # TODO: if this can take a list of ids, should it sort by QCArchive ID
