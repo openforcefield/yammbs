@@ -19,7 +19,7 @@ from yammbs import MoleculeStore
 from yammbs.cached_result import CachedResultCollection
 
 
-@pytest.fixture()
+@pytest.fixture
 def guess_n_processes() -> int:
     if os.getenv("GITHUB_ACTIONS"):
         return 4
@@ -27,22 +27,22 @@ def guess_n_processes() -> int:
         return multiprocessing.cpu_count()
 
 
-@pytest.fixture()
+@pytest.fixture
 def water():
     return MoleculeWithConformer.from_smiles("O")
 
 
-@pytest.fixture()
+@pytest.fixture
 def hydrogen_peroxide():
     return MoleculeWithConformer.from_smiles("OO")
 
 
-@pytest.fixture()
+@pytest.fixture
 def formaldehyde():
     return MoleculeWithConformer.from_smiles("C=O")
 
 
-@pytest.fixture()
+@pytest.fixture
 def ligand():
     """Return a ligand that can have many viable conformers."""
     molecule = Molecule.from_smiles("C[C@@H](C(c1ccccc1)c2ccccc2)Nc3c4cc(c(cc4ncn3)F)F")
@@ -51,21 +51,21 @@ def ligand():
     return molecule
 
 
-@pytest.fixture()
+@pytest.fixture
 def small_collection() -> OptimizationResultCollection:
     return OptimizationResultCollection.parse_file(
         get_data_file_path("_tests/data/01-processed-qm-ch.json", "yammbs"),
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def small_cache() -> CachedResultCollection:
     return CachedResultCollection.from_json(
         get_data_file_path("_tests/data/tiny-opt.json", "yammbs"),
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def small_store(tmp_path) -> MoleculeStore:
     """Return a small molecule store, copied from a single source and provided as a temporary file."""
     # This file manually generated from data/01-processed-qm-ch.json
@@ -81,7 +81,7 @@ def small_store(tmp_path) -> MoleculeStore:
     return MoleculeStore(dest_path)
 
 
-@pytest.fixture()
+@pytest.fixture
 def tiny_cache() -> CachedResultCollection:
     """Return the "tiny" molecule store, copied from a single source and provided as a temporary file."""
 
@@ -93,13 +93,13 @@ def tiny_cache() -> CachedResultCollection:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def diphenylvinylbenzene():
     """Return 1,2-diphenylvinylbenzene"""
     return Molecule.from_smiles("c1ccc(cc1)C=C(c2ccccc2)c3ccccc3")
 
 
-@pytest.fixture()
+@pytest.fixture
 def allicin():
     """Return allicin, inspired by PQR"""
     return Molecule.from_smiles(
@@ -108,7 +108,7 @@ def allicin():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def conformers(allicin):
     other_allicin = Molecule(allicin)
 

@@ -1,4 +1,5 @@
 """Copied from openff-nagl."""
+
 import enum
 import hashlib
 import inspect

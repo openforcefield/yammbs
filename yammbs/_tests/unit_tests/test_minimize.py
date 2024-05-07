@@ -10,7 +10,7 @@ from yammbs._minimize import MinimizationInput, _run_openmm
 from yammbs.cached_result import CachedResultCollection
 
 
-@pytest.fixture()
+@pytest.fixture
 def ethane() -> Molecule:
     """Return an ethane with a bad conformer"""
     ethane = Molecule.from_smiles("CC")
@@ -19,7 +19,7 @@ def ethane() -> Molecule:
     return ethane
 
 
-@pytest.fixture()
+@pytest.fixture
 def perturbed_ethane(ethane) -> Molecule:
     """Return an ethane with a bad conformer"""
     ethane._conformers[0] *= 1.2
@@ -40,7 +40,7 @@ def basic_input(force_field="openff-1.0.0") -> MinimizationInput:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def perturbed_input(perturbed_ethane) -> MinimizationInput:
     return MinimizationInput(
         inchi_key=perturbed_ethane.to_inchikey(),
