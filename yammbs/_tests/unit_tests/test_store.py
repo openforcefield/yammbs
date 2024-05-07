@@ -188,6 +188,15 @@ def test_get_qm_energies_by_molecule_id(
 
 
 @pytest.mark.parametrize(
+    "func",
+    [
+        ("get_dde"),
+        ("get_rmsd"),
+        ("get_internal_coordinate_rmsd"),
+        ("get_tfd"),
+    ],
+)
+@pytest.mark.parametrize(
     ("environment", "expected_len"),
     [
         (ChemicalEnvironment.Alkane, 9),
@@ -197,5 +206,16 @@ def test_get_qm_energies_by_molecule_id(
         (ChemicalEnvironment.Nitrile, 0),  # no N in dataset
     ],
 )
-def test_filter_by_checkmol(small_store, environment, expected_len):
-    assert len(small_store.filter_by_checkmol(environment)) == expected_len
+def test_filter_by_checkmol(small_store, environment, expected_len, func):
+    all_values = getattr(small_store, func)(force_field="openff-2.1.0")
+
+    filtered_ids = small_store.filter_by_checkmol(environment)
+    assert len(filtered_ids) == expected_len
+
+    filtered_values = getattr(small_store, func)(
+        force_field="openff-2.1.0",
+        molecule_ids=filtered_ids,
+    )
+
+    for value in filtered_values:
+        assert value in all_values

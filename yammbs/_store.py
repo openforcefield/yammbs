@@ -576,8 +576,12 @@ class MoleculeStore:
     def get_dde(
         self,
         force_field: str,
+        molecule_ids: list[int] | None = None,
         skip_check: bool = False,
     ) -> DDECollection:
+        if not molecule_ids:
+            molecule_ids = self.get_molecule_ids()
+
         if not skip_check:
             self.optimize_mm(force_field=force_field)
 
@@ -585,6 +589,9 @@ class MoleculeStore:
 
         for inchi_key in self.get_inchi_keys():
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
+
+            if molecule_id not in molecule_ids:
+                continue
 
             qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
 
@@ -637,8 +644,12 @@ class MoleculeStore:
     def get_rmsd(
         self,
         force_field: str,
+        molecule_ids: list[int] | None = None,
         skip_check: bool = False,
     ) -> RMSDCollection:
+        if not molecule_ids:
+            molecule_ids = self.get_molecule_ids()
+
         if not skip_check:
             self.optimize_mm(force_field=force_field)
 
@@ -647,6 +658,9 @@ class MoleculeStore:
         for inchi_key in self.get_inchi_keys():
             molecule = Molecule.from_inchi(inchi_key, allow_undefined_stereo=True)
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
+
+            if molecule_id not in molecule_ids:
+                continue
 
             qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
 
@@ -674,8 +688,12 @@ class MoleculeStore:
     def get_internal_coordinate_rmsd(
         self,
         force_field: str,
+        molecule_ids: list[int] | None = None,
         skip_check: bool = False,
     ) -> ICRMSDCollection:
+        if not molecule_ids:
+            molecule_ids = self.get_molecule_ids()
+
         if not skip_check:
             self.optimize_mm(force_field=force_field)
 
@@ -684,6 +702,9 @@ class MoleculeStore:
         for inchi_key in self.get_inchi_keys():
             molecule = Molecule.from_inchi(inchi_key, allow_undefined_stereo=True)
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
+
+            if molecule_id not in molecule_ids:
+                continue
 
             qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
 
@@ -711,8 +732,12 @@ class MoleculeStore:
     def get_tfd(
         self,
         force_field: str,
+        molecule_ids: list[int] | None = None,
         skip_check: bool = False,
     ) -> TFDCollection:
+        if not molecule_ids:
+            molecule_ids = self.get_molecule_ids()
+
         if not skip_check:
             self.optimize_mm(force_field=force_field)
 
@@ -721,6 +746,9 @@ class MoleculeStore:
         for inchi_key in self.get_inchi_keys():
             molecule = Molecule.from_inchi(inchi_key, allow_undefined_stereo=True)
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
+
+            if molecule_id not in molecule_ids:
+                continue
 
             qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
 
@@ -751,7 +779,7 @@ class MoleculeStore:
     def filter_by_checkmol(
         self,
         functional_group: ChemicalEnvironment,
-    ):
+    ) -> list[int]:
         """
         Use Checkmol to filter the store by the presence of certain chemical functional groups.
 
@@ -767,14 +795,14 @@ class MoleculeStore:
         """
         from yammbs.checkmol import analyze_functional_groups
 
-        ids = list()
-        for id in self.get_molecule_ids():
-            if functional_group in analyze_functional_groups(
+        return [
+            id
+            for id in self.get_molecule_ids()
+            if functional_group
+            in analyze_functional_groups(
                 smiles=self.get_smiles_by_molecule_id(id),
-            ):
-                ids.append(id)
-
-        return ids
+            )
+        ]
 
 
 def smiles_to_inchi_key(smiles: str) -> str:
