@@ -5,7 +5,7 @@ from openff.toolkit import Molecule
 from yammbs._forcefields import _espaloma, _gaff, _smirnoff
 
 
-@pytest.fixture()
+@pytest.fixture
 def molecule():
     return Molecule.from_smiles("CCO")
 
@@ -17,6 +17,9 @@ def test_smirnoff_basic(molecule):
     assert system.getNumParticles() == molecule.n_atoms
 
 
+@pytest.mark.skip(
+    reason="Needs live GAFF support in `openmmforcefields",
+)
 def test_gaff_basic(molecule):
     system = _gaff(molecule, "gaff-2.11")
 
