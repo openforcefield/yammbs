@@ -5,7 +5,7 @@ from openff.toolkit import Molecule
 from yammbs._forcefields import _espaloma, _gaff, _smirnoff
 
 
-@pytest.fixture()
+@pytest.fixture
 def molecule():
     return Molecule.from_smiles("CCO")
 

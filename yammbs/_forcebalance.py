@@ -1,4 +1,5 @@
 """Code vendored from ForceBalance."""
+
 import numpy
 
 
