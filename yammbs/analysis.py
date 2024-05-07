@@ -218,6 +218,7 @@ def get_tfd(
         from openff.units import Quantity, unit
 
         # TODO: Do we need to remap indices?
+        #       maybe not, if this was made from **mapped** SMILES
         if False:
             # def _rdmol(inchi_key, mapped_smiles, ...)
 
