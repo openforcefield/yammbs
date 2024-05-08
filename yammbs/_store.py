@@ -232,6 +232,18 @@ class MoleculeStore:
                 .all()
             ]
 
+    def _get_molecule_by_inchi_key(self, inchi_key: str) -> Molecule:
+        """
+        Create a new `Molecule` object from the given inchi key, using atom mapping from the
+        **mapped** SMILES associated with the molecule id associated with the inchi key.
+        """
+        return Molecule.from_mapped_smiles(
+            mapped_smiles=self.get_smiles_by_molecule_id(
+                id=self.get_molecule_id_by_inchi_key(inchi_key),
+            ),
+            allow_undefined_stereo=True,
+        )
+
     # TODO: if this can take a list of ids, should it sort by QCArchive ID
     def get_molecule_id_by_qcarchive_id(self, id: str) -> int:
         with self._get_session() as db:
@@ -644,7 +656,6 @@ class MoleculeStore:
         rmsds = RMSDCollection()
 
         for inchi_key in self.get_inchi_keys():
-            molecule = Molecule.from_inchi(inchi_key, allow_undefined_stereo=True)
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
 
             qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
@@ -654,6 +665,8 @@ class MoleculeStore:
                 molecule_id,
                 force_field,
             )
+
+            molecule = self._get_molecule_by_inchi_key(inchi_key)
 
             for qm, mm, id in zip(
                 qm_conformers,
@@ -681,7 +694,6 @@ class MoleculeStore:
         icrmsds = ICRMSDCollection()
 
         for inchi_key in self.get_inchi_keys():
-            molecule = Molecule.from_inchi(inchi_key, allow_undefined_stereo=True)
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
 
             qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
@@ -691,6 +703,8 @@ class MoleculeStore:
                 molecule_id,
                 force_field,
             )
+
+            molecule = self._get_molecule_by_inchi_key(inchi_key)
 
             for qm, mm, id in zip(
                 qm_conformers,
@@ -718,7 +732,6 @@ class MoleculeStore:
         tfds = TFDCollection()
 
         for inchi_key in self.get_inchi_keys():
-            molecule = Molecule.from_inchi(inchi_key, allow_undefined_stereo=True)
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
 
             qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
@@ -728,6 +741,8 @@ class MoleculeStore:
                 molecule_id,
                 force_field,
             )
+
+            molecule = self._get_molecule_by_inchi_key(inchi_key)
 
             for qm, mm, id in zip(
                 qm_conformers,
