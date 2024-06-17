@@ -6,7 +6,7 @@ from typing import ContextManager, Dict, Iterable, List, TypeVar
 
 import numpy
 from openff.qcsubmit.results import OptimizationResultCollection
-from openff.toolkit import Molecule
+from openff.toolkit import Molecule, Quantity
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -33,6 +33,7 @@ from yammbs.analysis import (
 )
 from yammbs.cached_result import CachedResultCollection
 from yammbs.exceptions import DatabaseExistsError
+from yammbs.inputs import QCArchiveDataset
 from yammbs.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
 
 LOGGER = logging.getLogger(__name__)
@@ -473,6 +474,46 @@ class MoleculeStore:
                         energy=record.qc_record_final_energy,
                     ),
                 )
+
+        return store
+
+    @classmethod
+    def from_qcarchive_dataset(
+        cls,
+        dataset: QCArchiveDataset,
+        database_name: str,
+    ) -> MS:
+        """
+        Create a new MoleculeStore databset from YAMMBS's QCArchiveDataset model.
+
+        Largely adopted from `from_qcsubmit_collection`.
+        """
+        from tqdm import tqdm
+
+        if pathlib.Path(database_name).exists():
+            raise DatabaseExistsError(f"Database {database_name} already exists.")
+
+        store = cls(database_name)
+
+        for qm_molecule in tqdm(dataset.qm_molecules, desc="Storing molecules"):
+
+            molecule = Molecule.from_mapped_smiles(qm_molecule.mapped_smiles)
+            molecule.add_conformer(Quantity(qm_molecule.coordinates, "angstrom"))
+
+            molecule_record = MoleculeRecord.from_molecule(molecule)
+            store.store(molecule_record)
+
+            store.store_qcarchive(
+                QMConformerRecord(
+                    molecule_id=store.get_molecule_id_by_smiles(
+                        molecule_record.mapped_smiles,
+                    ),
+                    qcarchive_id=qm_molecule.qcarchive_id,
+                    mapped_smiles=qm_molecule.mapped_smiles,
+                    coordinates=qm_molecule.coordinates,
+                    energy=qm_molecule.final_energy,
+                ),
+            )
 
         return store
 

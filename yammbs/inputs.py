@@ -15,7 +15,9 @@ QMD = TypeVar("QMD", bound="QMDataset")
 class QMMolecule(ImmutableModel):
     id: int
     mapped_smiles: str
-    coordinates: numpy.ndarray
+    coordinates: numpy.ndarray = Field(
+        "Coordinates, stored with implicit Angstrom units",
+    )
 
     class Config:
         artbitrary_types_allowed = True

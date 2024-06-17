@@ -17,6 +17,7 @@ from openff.utilities.utilities import get_data_file_path
 
 from yammbs import MoleculeStore
 from yammbs.cached_result import CachedResultCollection
+from yammbs.inputs import QCArchiveDataset
 
 
 @pytest.fixture
@@ -63,6 +64,11 @@ def small_cache() -> CachedResultCollection:
     return CachedResultCollection.from_json(
         get_data_file_path("_tests/data/tiny-opt.json", "yammbs"),
     )
+
+
+@pytest.fixture
+def small_dataset(small_collection) -> QCArchiveDataset:
+    return QCArchiveDataset.from_qcsubmit_collection(small_collection)
 
 
 @pytest.fixture

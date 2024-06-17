@@ -10,6 +10,7 @@ from openff.utilities import get_data_file_path, temporary_cd
 
 from yammbs import MoleculeStore
 from yammbs.exceptions import DatabaseExistsError
+from yammbs.inputs import QCArchiveDataset
 from yammbs.models import MMConformerRecord, QMConformerRecord
 
 
@@ -29,6 +30,22 @@ def test_from_cached_collection(small_cache):
     db = "foo.sqlite"
     with temporary_cd():
         store = MoleculeStore.from_cached_result_collection(small_cache, db)
+
+        # Sanity check molecule deduplication
+        assert len(store.get_smiles()) == len({*store.get_smiles()})
+
+        # Ensure a new object can be created from the same database
+        assert len(MoleculeStore(db)) == len(store)
+
+
+def test_from_qcarchive_dataset(small_collection):
+    """Test loading from YAMMBS's QCArchive model"""
+    db = "foo.sqlite"
+    with temporary_cd():
+        store = MoleculeStore.from_qcarchive_dataset(
+            QCArchiveDataset.from_qcsubmit_collection(small_collection),
+            db,
+        )
 
         # Sanity check molecule deduplication
         assert len(store.get_smiles()) == len({*store.get_smiles()})

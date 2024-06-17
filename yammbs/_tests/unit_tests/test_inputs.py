@@ -1,5 +1,7 @@
-from yammbs.inputs import  QCArchiveDataset
 from openff.toolkit import Molecule
+
+from yammbs.inputs import QCArchiveDataset
+
 
 class TestQCArchiveDataset:
     def test_from_qcsubmit_collection(
