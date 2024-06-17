@@ -23,7 +23,7 @@ class QMMolecule(ImmutableModel):
 
 class QCArchiveMolecule(QMMolecule):
     qcarchive_id: int
-    energy: float
+    final_energy: float
 
 
 class QMDataset(ImmutableModel):
@@ -63,7 +63,7 @@ class QCArchiveDataset(QMDataset):
                         explicit_hydrogens=True,
                     ),
                     coordinates=molecule.conformers[0].m_as("angstrom"),
-                    energy=qcarchive_record.energies[-1] * hartree2kcalmol,
+                    final_energy=qcarchive_record.energies[-1] * hartree2kcalmol,
                 )
                 for id, (qcarchive_record, molecule) in enumerate(
                     collection.to_records(),
