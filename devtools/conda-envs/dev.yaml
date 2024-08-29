@@ -26,5 +26,3 @@ dependencies:
   - pytest-randomly
   - pytest-timeout
 
-  - pip:
-    - git+https://github.com/jthorton/de-forcefields.git@eb99f5ea1347dc3fd079038a52a21554b9e44caf

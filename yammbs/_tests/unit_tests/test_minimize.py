@@ -120,6 +120,7 @@ def test_finds_local_force_field(ethane, tmp_path):
 
 
 def test_plugin_not_needed_to_use_mainline_force_field(monkeypatch, ethane):
+    pytest.importorskip("deforcefields")
     from deforcefields import deforcefields
 
     assert len(deforcefields.get_forcefield_paths()) > 0
