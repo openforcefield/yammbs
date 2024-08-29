@@ -114,7 +114,7 @@ def run_command(
             if e.errno == errno.ENOENT:
                 continue
             if verbose:
-                print("unable to run %s" % dispcmd)
+                print(f"unable to run {dispcmd}")
                 print(e)
             return None, None
     else:
@@ -124,8 +124,8 @@ def run_command(
     stdout = process.communicate()[0].strip().decode()
     if process.returncode != 0:
         if verbose:
-            print("unable to run %s (error)" % dispcmd)
-            print("stdout was %s" % stdout)
+            print(f"unable to run {dispcmd} (error)")
+            print(f"stdout was {stdout}")
         return None, process.returncode
     return stdout, process.returncode
 
@@ -157,10 +157,7 @@ def versions_from_parentdir(
         root = os.path.dirname(root)  # up a level
 
     if verbose:
-        print(
-            "Tried directories %s but none started with prefix %s"
-            % (str(rootdirs), parentdir_prefix),
-        )
+        print(f"Tried directories {str(rootdirs)} but none started with prefix {parentdir_prefix}")
     raise NotThisMethod("rootdir doesn't start with parentdir_prefix")
 
 
@@ -234,9 +231,9 @@ def git_versions_from_keywords(
         # "stabilization", as well as "HEAD" and "master".
         tags = {r for r in refs if re.search(r"\d", r)}
         if verbose:
-            print("discarding '%s', no digits" % ",".join(refs - tags))
+            print("discarding '{}', no digits".format(",".join(refs - tags)))
     if verbose:
-        print("likely tags: %s" % ",".join(sorted(tags)))
+        print("likely tags: {}".format(",".join(sorted(tags))))
     for ref in sorted(tags):
         # sorting will prefer e.g. "2.0" over "2.0rc1"
         if ref.startswith(tag_prefix):
@@ -247,7 +244,7 @@ def git_versions_from_keywords(
             if not re.match(r"\d", r):
                 continue
             if verbose:
-                print("picking %s" % r)
+                print(f"picking {r}")
             return {
                 "version": r,
                 "full-revisionid": keywords["full"].strip(),
@@ -268,12 +265,7 @@ def git_versions_from_keywords(
 
 
 @register_vcs_handler("git", "pieces_from_vcs")
-def git_pieces_from_vcs(
-    tag_prefix: str,
-    root: str,
-    verbose: bool,
-    runner: Callable = run_command,
-) -> Dict[str, Any]:
+def git_pieces_from_vcs(tag_prefix: str, root: str, verbose: bool, runner: Callable = run_command) -> Dict[str, Any]:
     """Get version from 'git describe' in the root of the source tree.
 
     This only gets called if the git-archive 'subst' keywords were *not*
@@ -294,22 +286,14 @@ def git_pieces_from_vcs(
     _, rc = runner(GITS, ["rev-parse", "--git-dir"], cwd=root, hide_stderr=not verbose)
     if rc != 0:
         if verbose:
-            print("Directory %s not under git control" % root)
+            print(f"Directory {root} not under git control")
         raise NotThisMethod("'git rev-parse --git-dir' returned error")
 
     # if there is a tag matching tag_prefix, this yields TAG-NUM-gHEX[-dirty]
     # if there isn't one, this yields HEX[-dirty] (no NUM)
     describe_out, rc = runner(
         GITS,
-        [
-            "describe",
-            "--tags",
-            "--dirty",
-            "--always",
-            "--long",
-            "--match",
-            f"{tag_prefix}[[:digit:]]*",
-        ],
+        ["describe", "--tags", "--dirty", "--always", "--long", "--match", f"{tag_prefix}[[:digit:]]*"],
         cwd=root,
     )
     # --long was added in git-1.5.5
@@ -375,7 +359,7 @@ def git_pieces_from_vcs(
         mo = re.search(r"^(.+)-(\d+)-g([0-9a-f]+)$", git_describe)
         if not mo:
             # unparsable. Maybe git-describe is misbehaving?
-            pieces["error"] = "unable to parse git-describe output: '%s'" % describe_out
+            pieces["error"] = f"unable to parse git-describe output: '{describe_out}'"
             return pieces
 
         # tag
@@ -384,10 +368,7 @@ def git_pieces_from_vcs(
             if verbose:
                 fmt = "tag '%s' doesn't start with prefix '%s'"
                 print(fmt % (full_tag, tag_prefix))
-            pieces["error"] = "tag '{}' doesn't start with prefix '{}'".format(
-                full_tag,
-                tag_prefix,
-            )
+            pieces["error"] = f"tag '{full_tag}' doesn't start with prefix '{tag_prefix}'"
             return pieces
         pieces["closest-tag"] = full_tag[len(tag_prefix) :]
 
@@ -524,13 +505,13 @@ def render_pep440_post(pieces: Dict[str, Any]) -> str:
             if pieces["dirty"]:
                 rendered += ".dev0"
             rendered += plus_or_dot(pieces)
-            rendered += "g%s" % pieces["short"]
+            rendered += "g{}".format(pieces["short"])
     else:
         # exception #1
         rendered = "0.post%d" % pieces["distance"]
         if pieces["dirty"]:
             rendered += ".dev0"
-        rendered += "+g%s" % pieces["short"]
+        rendered += "+g{}".format(pieces["short"])
     return rendered
 
 
@@ -549,7 +530,7 @@ def render_pep440_post_branch(pieces: Dict[str, Any]) -> str:
             if pieces["branch"] != "master":
                 rendered += ".dev0"
             rendered += plus_or_dot(pieces)
-            rendered += "g%s" % pieces["short"]
+            rendered += "g{}".format(pieces["short"])
             if pieces["dirty"]:
                 rendered += ".dirty"
     else:
@@ -557,7 +538,7 @@ def render_pep440_post_branch(pieces: Dict[str, Any]) -> str:
         rendered = "0.post%d" % pieces["distance"]
         if pieces["branch"] != "master":
             rendered += ".dev0"
-        rendered += "+g%s" % pieces["short"]
+        rendered += "+g{}".format(pieces["short"])
         if pieces["dirty"]:
             rendered += ".dirty"
     return rendered
@@ -656,7 +637,7 @@ def render(pieces: Dict[str, Any], style: str) -> Dict[str, Any]:
     elif style == "git-describe-long":
         rendered = render_git_describe_long(pieces)
     else:
-        raise ValueError("unknown style '%s'" % style)
+        raise ValueError(f"unknown style '{style}'")
 
     return {
         "version": rendered,

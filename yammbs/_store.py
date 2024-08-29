@@ -51,8 +51,7 @@ class MoleculeStore:
 
         if not database_path.suffix.lower() == ".sqlite":
             raise NotImplementedError(
-                "Only paths to SQLite databases ending in .sqlite "
-                f"are supported. Given: {database_path}",
+                f"Only paths to SQLite databases ending in .sqlite are supported. Given: {database_path}",
             )
 
         self.database_url = f"sqlite:///{database_path.resolve()}"
@@ -164,64 +163,35 @@ class MoleculeStore:
         is not guaranteed.
         """
         with self._get_session() as db:
-            return [
-                molecule_id
-                for (molecule_id,) in db.db.query(DBMoleculeRecord.id).distinct()
-            ]
+            return [molecule_id for (molecule_id,) in db.db.query(DBMoleculeRecord.id).distinct()]
 
     def get_smiles(self) -> List[str]:
         """Get the (mapped) smiles of all records in the store."""
         with self._get_session() as db:
-            return [
-                smiles
-                for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles).distinct()
-            ]
+            return [smiles for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles).distinct()]
 
     def get_inchi_keys(self) -> List[str]:
         """Get the inchi keys of all records in the store."""
         with self._get_session() as db:
-            return [
-                inchi_key
-                for (inchi_key,) in db.db.query(DBMoleculeRecord.inchi_key).distinct()
-            ]
+            return [inchi_key for (inchi_key,) in db.db.query(DBMoleculeRecord.inchi_key).distinct()]
 
     # TODO: Allow by multiple selectors (smiles: list[str])
     def get_molecule_id_by_smiles(self, smiles: str) -> int:
         with self._get_session() as db:
-            return [
-                id
-                for (id,) in db.db.query(DBMoleculeRecord.id)
-                .filter_by(mapped_smiles=smiles)
-                .all()
-            ][0]
+            return next(id for (id,) in db.db.query(DBMoleculeRecord.id).filter_by(mapped_smiles=smiles).all())
 
     # TODO: Allow by multiple selectors (id: list[int])
     def get_smiles_by_molecule_id(self, id: int) -> str:
         with self._get_session() as db:
-            return [
-                smiles
-                for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles)
-                .filter_by(id=id)
-                .all()
-            ][0]
+            return next(smiles for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles).filter_by(id=id).all())
 
     def get_molecule_id_by_inchi_key(self, inchi_key: str) -> int:
         with self._get_session() as db:
-            return [
-                id
-                for (id,) in db.db.query(DBMoleculeRecord.id)
-                .filter_by(inchi_key=inchi_key)
-                .all()
-            ][0]
+            return next(id for (id,) in db.db.query(DBMoleculeRecord.id).filter_by(inchi_key=inchi_key).all())
 
     def get_inchi_key_by_molecule_id(self, id: int) -> str:
         with self._get_session() as db:
-            return [
-                inchi_key
-                for (inchi_key,) in db.db.query(DBMoleculeRecord.inchi_key)
-                .filter_by(id=id)
-                .all()
-            ][0]
+            return next(inchi_key for (inchi_key,) in db.db.query(DBMoleculeRecord.inchi_key).filter_by(id=id).all())
 
     def get_qcarchive_ids_by_molecule_id(self, id: int) -> list[str]:
         with self._get_session() as db:
@@ -236,12 +206,10 @@ class MoleculeStore:
     # TODO: if this can take a list of ids, should it sort by QCArchive ID
     def get_molecule_id_by_qcarchive_id(self, id: str) -> int:
         with self._get_session() as db:
-            return [
+            return next(
                 molecule_id
-                for (molecule_id,) in db.db.query(DBQMConformerRecord.parent_id)
-                .filter_by(qcarchive_id=id)
-                .all()
-            ][0]
+                for (molecule_id,) in db.db.query(DBQMConformerRecord.parent_id).filter_by(qcarchive_id=id).all()
+            )
 
     def get_qm_conformers_by_molecule_id(self, id: int) -> list:
         with self._get_session() as db:
@@ -282,22 +250,20 @@ class MoleculeStore:
 
     def get_qm_conformer_by_qcarchive_id(self, id: int):
         with self._get_session() as db:
-            return [
+            return next(
                 conformer
-                for (conformer,) in db.db.query(DBQMConformerRecord.coordinates)
-                .filter_by(qcarchive_id=id)
-                .all()
-            ][0]
+                for (conformer,) in db.db.query(DBQMConformerRecord.coordinates).filter_by(qcarchive_id=id).all()
+            )
 
     def get_mm_conformer_by_qcarchive_id(self, id: int, force_field: str):
         with self._get_session() as db:
-            return [
+            return next(
                 conformer
                 for (conformer,) in db.db.query(DBMMConformerRecord.coordinates)
                 .filter_by(qcarchive_id=id)
                 .filter_by(force_field=force_field)
                 .all()
-            ][0]
+            )
 
     # TODO: Allow by multiple selectors (id: list[int])
     def get_qm_energies_by_molecule_id(self, id: int) -> list[float]:
@@ -496,7 +462,6 @@ class MoleculeStore:
         store = cls(database_name)
 
         for qm_molecule in tqdm(dataset.qm_molecules, desc="Storing molecules"):
-
             molecule = Molecule.from_mapped_smiles(qm_molecule.mapped_smiles)
             molecule.add_conformer(Quantity(qm_molecule.coordinates, "angstrom"))
 
@@ -784,7 +749,7 @@ class MoleculeStore:
                         ),
                     )
                 except Exception as e:
-                    logging.warning(f"Molecule {inchi_key} failed with {str(e)}")
+                    logging.warning(f"Molecule {inchi_key} failed with {e!s}")
 
         return tfds
 
