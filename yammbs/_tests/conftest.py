@@ -55,7 +55,7 @@ def ligand():
 @pytest.fixture
 def small_collection() -> OptimizationResultCollection:
     return OptimizationResultCollection.parse_file(
-        get_data_file_path("_tests/data/01-processed-qm-ch.json", "yammbs"),
+        get_data_file_path("_tests/data/qcsubmit/01-processed-qm-ch.json", "yammbs"),
     )
 
 

@@ -85,6 +85,8 @@ def test_different_force_fields_different_results():
 
 
 def test_plugin_loadable(ethane):
+    pytest.importorskip("deforcefields")
+
     _run_openmm(
         MinimizationInput(
             inchi_key=ethane.to_inchikey(),

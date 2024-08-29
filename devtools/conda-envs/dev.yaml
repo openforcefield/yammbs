@@ -9,10 +9,12 @@ dependencies:
   - openff-qcsubmit
   - openmmforcefields
   - smirnoff-plugins
-  # espaloma =0.3
+
   - geometric =1
   - pydantic =2
 
+  # espaloma =0.3
+  - de-forcefields ~=1.0.3
   - ipython
   - ipdb
   - pre-commit
@@ -25,4 +27,3 @@ dependencies:
   - pytest-xdist
   - pytest-randomly
   - pytest-timeout
-

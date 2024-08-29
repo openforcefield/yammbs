@@ -85,7 +85,12 @@ def test_get_molecule_id_by_qcarchive_id(small_store):
 
 def test_molecules_sorted_by_qcarchive_id():
     raw_ch = json.load(
-        open(get_data_file_path("_tests/data/01-processed-qm-ch.json", "yammbs")),
+        open(
+            get_data_file_path(
+                "_tests/data/qcsubmit/01-processed-qm-ch.json",
+                "yammbs",
+            ),
+        ),
     )
 
     random.shuffle(raw_ch["entries"]["https://api.qcarchive.molssi.org:443/"])
