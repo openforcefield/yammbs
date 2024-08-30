@@ -107,16 +107,10 @@ class DBSessionManager:
         return self.db_info.version
 
     def get_general_provenance(self):
-        return {
-            provenance.key: provenance.value
-            for provenance in self.db_info.general_provenance
-        }
+        return {provenance.key: provenance.value for provenance in self.db_info.general_provenance}
 
     def get_software_provenance(self):
-        return {
-            provenance.key: provenance.value
-            for provenance in self.db_info.software_provenance
-        }
+        return {provenance.key: provenance.value for provenance in self.db_info.software_provenance}
 
     def set_provenance(
         self,
@@ -124,12 +118,10 @@ class DBSessionManager:
         software_provenance: Dict[str, str],
     ):
         self.db_info.general_provenance = [
-            DBGeneralProvenance(key=key, value=value)
-            for key, value in general_provenance.items()
+            DBGeneralProvenance(key=key, value=value) for key, value in general_provenance.items()
         ]
         self.db_info.software_provenance = [
-            DBSoftwareProvenance(key=key, value=value)
-            for key, value in software_provenance.items()
+            DBSoftwareProvenance(key=key, value=value) for key, value in software_provenance.items()
         ]
 
     @property
@@ -265,9 +257,7 @@ class DBSessionManager:
         expected_smiles = existing_db_record.mapped_smiles
 
         conformer_records = [
-            conformer_record
-            for record in records
-            for conformer_record in record.reorder(expected_smiles).conformers
+            conformer_record for record in records for conformer_record in record.reorder(expected_smiles).conformers
         ]
 
         existing_db_record.store_conformer_records(conformer_records)
@@ -291,19 +281,13 @@ class DBSessionManager:
         """
 
         existing_db_records: List[DBMoleculeRecord] = (
-            self.db.query(DBMoleculeRecord)
-            .filter(DBMoleculeRecord.inchi_key == inchi_key)
-            .all()
+            self.db.query(DBMoleculeRecord).filter(DBMoleculeRecord.inchi_key == inchi_key).all()
         )
 
         db_records_by_smiles = self.map_records_by_smiles(existing_db_records)
         # Sanity check that no two DB records have the same InChI key AND the
         # same canonical SMILES pattern.
-        multiple = [
-            smiles
-            for smiles, dbrecords in db_records_by_smiles.items()
-            if len(dbrecords) > 1
-        ]
+        multiple = [smiles for smiles, dbrecords in db_records_by_smiles.items() if len(dbrecords) > 1]
         if multiple:
             raise RuntimeError(
                 "The database is not self consistent."

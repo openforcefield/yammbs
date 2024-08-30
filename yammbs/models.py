@@ -35,9 +35,7 @@ class QMConformerRecord(Record):
     )
     coordinates: Array = Field(
         ...,
-        description=(
-            "The coordinates [Angstrom] of this conformer with shape=(n_atoms, 3)."
-        ),
+        description="The coordinates [Angstrom] of this conformer with shape=(n_atoms, 3).",
     )
     energy: float = Field(
         ...,
@@ -80,9 +78,7 @@ class MMConformerRecord(Record):
     )
     coordinates: Array = Field(
         ...,
-        description=(
-            "The coordinates [Angstrom] of this conformer with shape=(n_atoms, 3)."
-        ),
+        description="The coordinates [Angstrom] of this conformer with shape=(n_atoms, 3).",
     )
     energy: float = Field(
         ...,

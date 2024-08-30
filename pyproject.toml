@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools", "versioneer[toml]==0.29"]
+build-backend = "setuptools.build_meta"
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "yammbs/_version.py"
+versionfile_build = "yammbs/_version.py"
+tag_prefix = "v"
+
+[tool.ruff]
+line-length = 119
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "NPY", "UP", "I"]

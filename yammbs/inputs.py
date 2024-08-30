@@ -29,7 +29,6 @@ class QCArchiveMolecule(QMMolecule):
 
 
 class QMDataset(ImmutableModel):
-
     name: str
 
     qm_molecules: list[QMMolecule] = Field(
@@ -42,7 +41,6 @@ class QMDataset(ImmutableModel):
 
 
 class QCArchiveDataset(QMDataset):
-
     qm_molecules: list[QCArchiveMolecule] = Field(
         list(),
         description="A list of QM molecules in the dataset",
