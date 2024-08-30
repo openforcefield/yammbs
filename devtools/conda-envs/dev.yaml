@@ -15,6 +15,9 @@ dependencies:
   - geometric =1
   - pydantic =2
 
+  # Update when server is updated
+  - qcportal =0.55
+
   # espaloma =0.3
   - de-forcefields ~=1.0.3
   - ipython
