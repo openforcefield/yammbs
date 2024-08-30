@@ -33,7 +33,7 @@ from yammbs.analysis import (
 )
 from yammbs.cached_result import CachedResultCollection
 from yammbs.exceptions import DatabaseExistsError
-from yammbs.inputs import QCArchiveDataset
+from yammbs.inputs import QCArchiveDataset, QMDataset
 from yammbs.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
 
 LOGGER = logging.getLogger(__name__)
@@ -373,40 +373,50 @@ class MoleculeStore:
         return contents
 
     @classmethod
-    def from_qcsubmit_collection(
+    def from_qm_dataset(
         cls,
-        collection: OptimizationResultCollection,
+        dataset: QMDataset,
         database_name: str,
     ) -> MS:
-        from tqdm import tqdm
-
         if pathlib.Path(database_name).exists():
             raise DatabaseExistsError(f"Database {database_name} already exists.")
 
         store = cls(database_name)
 
-        for qcarchive_record, molecule in tqdm(
-            collection.to_records(),
-            desc="Converting records to molecules",
-        ):
-            # _toolkit_registry_manager could go here
+        for qm_molecule in dataset.qm_molecules:
 
-            molecule_record = MoleculeRecord.from_molecule(molecule)
+            molecule_record = MoleculeRecord(
+                mapped_smiles=qm_molecule.mapped_smiles,
+                inchi_key=smiles_to_inchi_key(qm_molecule.mapped_smiles),
+            )
 
             store.store(molecule_record)
 
-            store.store_qcarchive(
-                QMConformerRecord.from_qcarchive_record(
-                    molecule_id=store.get_molecule_id_by_smiles(
-                        molecule_record.mapped_smiles,
-                    ),
-                    mapped_smiles=molecule_record.mapped_smiles,
-                    qc_record=qcarchive_record,
-                    coordinates=molecule.conformers[0],
+            qm_conformer_record = QMConformerRecord(
+                molecule_id=store.get_molecule_id_by_smiles(
+                    molecule_record.mapped_smiles,
                 ),
+                qcarchive_id=qm_molecule.qcarchive_id,
+                mapped_smiles=qm_molecule.mapped_smiles,
+                coordinates=qm_molecule.coordinates,
+                energy=qm_molecule.final_energy,
             )
 
+            store.store_qcarchive(qm_conformer_record)
+
         return store
+
+    @classmethod
+    def from_qcsubmit_collection(
+        cls,
+        collection: OptimizationResultCollection,
+        database_name: str,
+    ):
+        """Convert a QCSubmit collection to QMDataset and use it to creat a MoleculeStore."""
+        return cls.from_qm_dataset(
+            dataset=QCArchiveDataset.from_qcsubmit_collection(collection),
+            database_name=database_name,
+        )
 
     @classmethod
     def from_cached_result_collection(
