@@ -10,6 +10,7 @@ dependencies:
   - openff-toolkit
   - openff-qcsubmit
   - openmmforcefields
+  - de-forcefields ~=1.0.1
   - smirnoff-plugins
 
   - geometric =1

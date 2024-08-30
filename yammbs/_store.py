@@ -2,7 +2,7 @@ import logging
 import pathlib
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import ContextManager, Dict, Iterable, List, TypeVar
+from typing import ContextManager, Iterable, TypeVar
 
 import numpy
 from openff.qcsubmit.results import OptimizationResultCollection
@@ -32,6 +32,7 @@ from yammbs.analysis import (
     get_tfd,
 )
 from yammbs.cached_result import CachedResultCollection
+from yammbs.checkmol import ChemicalEnvironment
 from yammbs.exceptions import DatabaseExistsError
 from yammbs.inputs import QCArchiveDataset, QMDataset
 from yammbs.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
@@ -83,8 +84,8 @@ class MoleculeStore:
 
     def _set_provenance(
         self,
-        general_provenance: Dict[str, str],
-        software_provenance: Dict[str, str],
+        general_provenance: dict[str, str],
+        software_provenance: dict[str, str],
     ):
         """Set the stores provenance information.
 
@@ -165,12 +166,12 @@ class MoleculeStore:
         with self._get_session() as db:
             return [molecule_id for (molecule_id,) in db.db.query(DBMoleculeRecord.id).distinct()]
 
-    def get_smiles(self) -> List[str]:
+    def get_smiles(self) -> list[str]:
         """Get the (mapped) smiles of all records in the store."""
         with self._get_session() as db:
             return [smiles for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles).distinct()]
 
-    def get_inchi_keys(self) -> List[str]:
+    def get_inchi_keys(self) -> list[str]:
         """Get the inchi keys of all records in the store."""
         with self._get_session() as db:
             return [inchi_key for (inchi_key,) in db.db.query(DBMoleculeRecord.inchi_key).distinct()]
@@ -202,6 +203,18 @@ class MoleculeStore:
                 .order_by(DBQMConformerRecord.qcarchive_id)
                 .all()
             ]
+
+    def _get_molecule_by_inchi_key(self, inchi_key: str) -> Molecule:
+        """
+        Create a new `Molecule` object from the given inchi key, using atom mapping from the
+        **mapped** SMILES associated with the molecule id associated with the inchi key.
+        """
+        return Molecule.from_mapped_smiles(
+            mapped_smiles=self.get_smiles_by_molecule_id(
+                id=self.get_molecule_id_by_inchi_key(inchi_key),
+            ),
+            allow_undefined_stereo=True,
+        )
 
     # TODO: if this can take a list of ids, should it sort by QCArchive ID
     def get_molecule_id_by_qcarchive_id(self, id: str) -> int:
@@ -590,8 +603,12 @@ class MoleculeStore:
     def get_dde(
         self,
         force_field: str,
+        molecule_ids: list[int] | None = None,
         skip_check: bool = False,
     ) -> DDECollection:
+        if not molecule_ids:
+            molecule_ids = self.get_molecule_ids()
+
         if not skip_check:
             self.optimize_mm(force_field=force_field)
 
@@ -599,6 +616,9 @@ class MoleculeStore:
 
         for inchi_key in self.get_inchi_keys():
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
+
+            if molecule_id not in molecule_ids:
+                continue
 
             qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
 
@@ -651,16 +671,22 @@ class MoleculeStore:
     def get_rmsd(
         self,
         force_field: str,
+        molecule_ids: list[int] | None = None,
         skip_check: bool = False,
     ) -> RMSDCollection:
+        if not molecule_ids:
+            molecule_ids = self.get_molecule_ids()
+
         if not skip_check:
             self.optimize_mm(force_field=force_field)
 
         rmsds = RMSDCollection()
 
         for inchi_key in self.get_inchi_keys():
-            molecule = Molecule.from_inchi(inchi_key, allow_undefined_stereo=True)
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
+
+            if molecule_id not in molecule_ids:
+                continue
 
             qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
 
@@ -669,6 +695,8 @@ class MoleculeStore:
                 molecule_id,
                 force_field,
             )
+
+            molecule = self._get_molecule_by_inchi_key(inchi_key)
 
             for qm, mm, id in zip(
                 qm_conformers,
@@ -688,16 +716,22 @@ class MoleculeStore:
     def get_internal_coordinate_rmsd(
         self,
         force_field: str,
+        molecule_ids: list[int] | None = None,
         skip_check: bool = False,
     ) -> ICRMSDCollection:
+        if not molecule_ids:
+            molecule_ids = self.get_molecule_ids()
+
         if not skip_check:
             self.optimize_mm(force_field=force_field)
 
         icrmsds = ICRMSDCollection()
 
         for inchi_key in self.get_inchi_keys():
-            molecule = Molecule.from_inchi(inchi_key, allow_undefined_stereo=True)
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
+
+            if molecule_id not in molecule_ids:
+                continue
 
             qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
 
@@ -706,6 +740,8 @@ class MoleculeStore:
                 molecule_id,
                 force_field,
             )
+
+            molecule = self._get_molecule_by_inchi_key(inchi_key)
 
             for qm, mm, id in zip(
                 qm_conformers,
@@ -725,16 +761,22 @@ class MoleculeStore:
     def get_tfd(
         self,
         force_field: str,
+        molecule_ids: list[int] | None = None,
         skip_check: bool = False,
     ) -> TFDCollection:
+        if not molecule_ids:
+            molecule_ids = self.get_molecule_ids()
+
         if not skip_check:
             self.optimize_mm(force_field=force_field)
 
         tfds = TFDCollection()
 
         for inchi_key in self.get_inchi_keys():
-            molecule = Molecule.from_inchi(inchi_key, allow_undefined_stereo=True)
             molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
+
+            if molecule_id not in molecule_ids:
+                continue
 
             qcarchive_ids = self.get_qcarchive_ids_by_molecule_id(molecule_id)
 
@@ -743,6 +785,8 @@ class MoleculeStore:
                 molecule_id,
                 force_field,
             )
+
+            molecule = self._get_molecule_by_inchi_key(inchi_key)
 
             for qm, mm, id in zip(
                 qm_conformers,
@@ -761,6 +805,53 @@ class MoleculeStore:
                     logging.warning(f"Molecule {inchi_key} failed with {e!s}")
 
         return tfds
+
+    def filter_by_checkmol(
+        self,
+        functional_group: ChemicalEnvironment,
+    ) -> list[int]:
+        """
+        Use Checkmol to filter the store by the presence of certain chemical functional groups.
+
+        Parameters
+        ----------
+        functional_group
+            A ChemicalEnvironment enum objects to filter by.
+
+        Returns
+        -------
+        ids
+            A list of ids of molecules that contain the functional group.
+        """
+        from yammbs.checkmol import analyze_functional_groups
+
+        return [
+            id
+            for id in self.get_molecule_ids()
+            if functional_group
+            in analyze_functional_groups(
+                smiles=self.get_smiles_by_molecule_id(id),
+            )
+        ]
+
+    def filter_by_smirks(
+        self,
+        smirks: str,
+    ) -> list[int]:
+        def smirks_in_smiles(smirks, smiles):
+            molecule = Molecule.from_mapped_smiles(smiles)
+            matches = molecule.chemical_environment_matches(smirks)
+
+            return len(matches) > 0
+
+        return [
+            id
+            for id in self.get_molecule_ids()
+            if smirks_in_smiles(
+                smirks=smirks,
+                smiles=self.get_smiles_by_molecule_id(id),
+            )
+        ]
 
 
 def smiles_to_inchi_key(smiles: str) -> str:

@@ -49,20 +49,11 @@ def _lazy_load_force_field(force_field_name: str) -> ForceField:
             make_unconstrained=False,
         )
 
-    if force_field_name.startswith("openff"):
-        if force_field_name in _AVAILABLE_FORCE_FIELDS:
-            return ForceField(force_field_name)
-
-        else:
-            # Attempt to load from local path, which might have "cosmetic" attributes from ForceBalance
-            return ForceField(
-                force_field_name,
-                allow_cosmetic_attributes=True,
-                load_plugins=True,
-            )
-
-    else:
-        return ForceField(force_field_name, load_plugins=True)
+    return ForceField(
+        force_field_name,
+        allow_cosmetic_attributes=True,
+        load_plugins=True,
+    )
 
 
 def _minimize_blob(
