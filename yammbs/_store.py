@@ -350,7 +350,6 @@ class MoleculeStore:
         store = cls(database_name)
 
         for qm_molecule in dataset.qm_molecules:
-
             molecule_record = MoleculeRecord(
                 mapped_smiles=qm_molecule.mapped_smiles,
                 inchi_key=smiles_to_inchi_key(qm_molecule.mapped_smiles),
