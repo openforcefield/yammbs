@@ -4,7 +4,6 @@ from multiprocessing import freeze_support
 import numpy
 import pandas
 from matplotlib import pyplot
-from openff.qcsubmit.results import OptimizationResultCollection
 
 from yammbs import MoleculeStore
 from yammbs.inputs import QCArchiveDataset
@@ -25,11 +24,7 @@ def main():
 
     data = "ch"
 
-    dataset = QCArchiveDataset.from_qcsubmit_collection(
-        OptimizationResultCollection.parse_file(
-            "yammbs/_tests/data/qcsubmit/01-processed-qm-ch.json",
-        ),
-    )
+    dataset = QCArchiveDataset.from_json("yammbs/_tests/data/yammbs/01-processed-qm-cho.json")
 
     if pathlib.Path(f"{data}.sqlite").exists():
         store = MoleculeStore(f"{data}.sqlite")

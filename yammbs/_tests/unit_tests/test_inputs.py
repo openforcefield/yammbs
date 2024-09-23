@@ -6,9 +6,9 @@ from yammbs.inputs import QCArchiveDataset
 class TestQCArchiveDataset:
     def test_from_qcsubmit_collection(
         self,
-        small_collection,
+        small_qcsubmit_collection,
     ):
-        collection = QCArchiveDataset.from_qcsubmit_collection(small_collection)
+        collection = QCArchiveDataset.from_qcsubmit_collection(small_qcsubmit_collection)
 
         for qm_molecule in collection.qm_molecules:
             assert isinstance(qm_molecule.final_energy, float)

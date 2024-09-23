@@ -1,10 +1,10 @@
 from typing import TypeVar
 
-import numpy
 import qcelemental
 from openff.qcsubmit.results import OptimizationResultCollection
-from pydantic import Field
+from pydantic.v1 import Field
 
+from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
 
 hartree2kcalmol = qcelemental.constants.hartree2kcalmol
@@ -15,7 +15,7 @@ QMD = TypeVar("QMD", bound="QMDataset")
 class QMMolecule(ImmutableModel):
     id: int
     mapped_smiles: str
-    coordinates: numpy.ndarray = Field(
+    coordinates: Array = Field(
         "Coordinates, stored with implicit Angstrom units",
     )
 

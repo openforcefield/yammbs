@@ -15,10 +15,10 @@ from yammbs.inputs import QCArchiveDataset
 from yammbs.models import MMConformerRecord, QMConformerRecord
 
 
-def test_from_qcsubmit(small_collection):
+def test_from_qcsubmit(small_qcsubmit_collection):
     db = "foo.sqlite"
     with temporary_cd():
-        store = MoleculeStore.from_qcsubmit_collection(small_collection, db)
+        store = MoleculeStore.from_qcsubmit_collection(small_qcsubmit_collection, db)
 
         # Sanity check molecule deduplication
         assert len(store.get_smiles()) == len({*store.get_smiles()})
@@ -39,12 +39,12 @@ def test_from_cached_collection(small_cache):
         assert len(MoleculeStore(db)) == len(store)
 
 
-def test_from_qcarchive_dataset(small_collection):
+def test_from_qcarchive_dataset(small_qcsubmit_collection):
     """Test loading from YAMMBS's QCArchive model"""
     db = "foo.sqlite"
     with temporary_cd():
         store = MoleculeStore.from_qcarchive_dataset(
-            QCArchiveDataset.from_qcsubmit_collection(small_collection),
+            QCArchiveDataset.from_qcsubmit_collection(small_qcsubmit_collection),
             db,
         )
 
@@ -55,11 +55,11 @@ def test_from_qcarchive_dataset(small_collection):
         assert len(MoleculeStore(db)) == len(store)
 
 
-def test_do_not_overwrite(small_collection):
+def test_do_not_overwrite(small_qcsubmit_collection):
     with tempfile.NamedTemporaryFile(suffix=".sqlite") as file:
         with pytest.raises(DatabaseExistsError, match="already exists."):
             MoleculeStore.from_qcsubmit_collection(
-                small_collection,
+                small_qcsubmit_collection,
                 file.name,
             )
 
