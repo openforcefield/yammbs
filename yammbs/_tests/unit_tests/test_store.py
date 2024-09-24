@@ -6,7 +6,7 @@ import numpy
 import pytest
 from openff.qcsubmit.results import OptimizationResultCollection
 from openff.toolkit import Molecule
-from openff.utilities import get_data_file_path, temporary_cd
+from openff.utilities import get_data_file_path, has_executable, temporary_cd
 
 from yammbs import MoleculeStore
 from yammbs.checkmol import ChemicalEnvironment
@@ -209,6 +209,7 @@ def test_get_qm_energies_by_molecule_id(
     assert len(energies) == expected_len
 
 
+@pytest.mark.skipif(not has_executable("checkmol"), reason="checkmol not installed")
 @pytest.mark.parametrize(
     "func",
     [
