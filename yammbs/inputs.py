@@ -29,7 +29,7 @@ class QCArchiveMolecule(QMMolecule):
 
 
 class QMDataset(ImmutableModel):
-    name: str
+    tag: str
 
     qm_molecules: list[QMMolecule] = Field(
         list(),
@@ -41,6 +41,10 @@ class QMDataset(ImmutableModel):
 
 
 class QCArchiveDataset(QMDataset):
+    tag: str = Field("QCArchive dataset", description="A tag for the dataset")
+
+    version: int = Field(1, description="The version of this model")
+
     qm_molecules: list[QCArchiveMolecule] = Field(
         list(),
         description="A list of QM molecules in the dataset",
@@ -52,7 +56,6 @@ class QCArchiveDataset(QMDataset):
         collection: OptimizationResultCollection,
     ) -> QMD:
         return cls(
-            name="foobar",
             qm_molecules=[
                 QCArchiveMolecule(
                     id=id,

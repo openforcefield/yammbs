@@ -1,4 +1,6 @@
+import numpy
 from openff.toolkit import Molecule
+from openff.utilities.utilities import get_data_file_path
 
 from yammbs.inputs import QCArchiveDataset
 
@@ -19,3 +21,16 @@ class TestQCArchiveDataset:
             molecule = Molecule.from_mapped_smiles(qm_molecule.mapped_smiles)
 
             assert (molecule.n_atoms, 3) == qm_molecule.coordinates.shape
+
+
+class TestSerialization:
+    def test_json_roundtrip(self):
+        dataset = QCArchiveDataset.from_json(
+            get_data_file_path("_tests/data/qcsubmit/01-processed-qm-ch.json", "yammbs"),
+        )
+
+        roundtripped = QCArchiveDataset.parse_raw(dataset.json())
+
+        assert len(dataset.qm_molecules) == len(roundtripped.qm_molecules)
+
+        assert numpy.all(dataset.qm_molecules[-1].coordinates == roundtripped.qm_molecules[-1].coordinates)
