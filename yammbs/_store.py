@@ -35,6 +35,7 @@ from yammbs.cached_result import CachedResultCollection
 from yammbs.checkmol import ChemicalEnvironment
 from yammbs.exceptions import DatabaseExistsError
 from yammbs.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
+from yammbs.outputs import MinimizedQMDataset
 
 LOGGER = logging.getLogger(__name__)
 
@@ -790,6 +791,30 @@ class MoleculeStore:
                     logging.warning(f"Molecule {inchi_key} failed with {str(e)}")
 
         return tfds
+
+    def get_outputs(
+        self,
+        force_field: str,
+    ) -> MinimizedQMDataset:
+        from yammbs.outputs import MinimizedQCArchiveDataset, MinimizedQCArchiveMolecule
+
+        output_dataset = MinimizedQCArchiveDataset()
+
+        with self._get_session() as db:
+            for force_field in self.get_force_fields():
+                output_dataset.mm_molecules[force_field] = [
+                    MinimizedQCArchiveMolecule(
+                        qcarchive_id=record.qcarchive_id,
+                        mapped_smiles=record.mapped_smiles,
+                        final_energy=record.energy,
+                        coordinates=record.coordinates,
+                    )
+                    for record in db.db.query(DBMMConformerRecord)
+                    .filter_by(force_field=force_field)
+                    .all()
+                ]
+
+        return output_dataset
 
     def filter_by_checkmol(
         self,
