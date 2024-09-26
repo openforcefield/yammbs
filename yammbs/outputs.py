@@ -38,3 +38,17 @@ class MinimizedQCArchiveDataset(MinimizedQMDataset):
         list(),
         description="Molecules minimized with QM",
     )
+
+
+class Metric(ImmutableModel):
+    dde: float
+    rmsd: float
+    tfd: float
+    icrmsd: dict[str, float]
+
+
+class MetricCollection(ImmutableModel):
+    metrics: dict[str, dict[int, Metric]] = Field(
+        dict(),
+        description="The metrics, keyed by the QM reference ID, then keyed by force field.",
+    )

@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from typing import ContextManager, Iterable, TypeVar
 
 import numpy
+import pandas
 from openff.qcsubmit.results import OptimizationResultCollection
 from openff.toolkit import Molecule
 from sqlalchemy import create_engine
@@ -648,7 +649,6 @@ class MoleculeStore:
                     DDE(
                         qcarchive_id=id,
                         difference=mm - qm,
-                        force_field=force_field,
                     ),
                 )
 
@@ -693,7 +693,6 @@ class MoleculeStore:
                     RMSD(
                         qcarchive_id=id,
                         rmsd=get_rmsd(molecule, qm, mm),
-                        force_field=force_field,
                     ),
                 )
 
@@ -738,7 +737,6 @@ class MoleculeStore:
                     ICRMSD(
                         qcarchive_id=id,
                         icrmsd=get_internal_coordinate_rmsds(molecule, qm, mm),
-                        force_field=force_field,
                     ),
                 )
 
@@ -784,7 +782,6 @@ class MoleculeStore:
                         TFD(
                             qcarchive_id=id,
                             tfd=get_tfd(molecule, qm, mm),
-                            force_field=force_field,
                         ),
                     )
                 except Exception as e:
@@ -814,6 +811,44 @@ class MoleculeStore:
                 ]
 
         return output_dataset
+
+    def get_metrics(
+        self,
+    ):
+        from yammbs.outputs import Metric, MetricCollection
+
+        metrics = MetricCollection()
+
+        # TODO: Optimize this for speed
+        for force_field in self.get_force_fields():
+
+            ddes = self.get_dde(force_field=force_field).to_dataframe()
+            rmsds = self.get_rmsd(force_field=force_field).to_dataframe()
+            tfds = self.get_tfd(force_field=force_field).to_dataframe()
+            icrmsds = self.get_internal_coordinate_rmsd(
+                force_field=force_field,
+            ).to_dataframe()
+
+            dataframe = ddes.join(rmsds).join(tfds).join(icrmsds)
+
+            dataframe = dataframe.replace({pandas.NA: numpy.nan})
+
+            metrics.metrics[force_field] = {
+                id: Metric(
+                    dde=row["difference"],
+                    rmsd=row["rmsd"],
+                    tfd=row["tfd"],
+                    icrmsd={
+                        "Bond": row["Bond"],
+                        "Angle": row["Angle"],
+                        "Dihedral": row["Dihedral"],
+                        "Improper": row["Improper"],
+                    },
+                )
+                for id, row in dataframe.iterrows()
+            }
+
+        return metrics
 
     def filter_by_checkmol(
         self,
