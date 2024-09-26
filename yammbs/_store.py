@@ -794,7 +794,6 @@ class MoleculeStore:
 
     def get_outputs(
         self,
-        force_field: str,
     ) -> MinimizedQMDataset:
         from yammbs.outputs import MinimizedQCArchiveDataset, MinimizedQCArchiveMolecule
 
