@@ -80,6 +80,10 @@ jobs:
           --cov=yammbs/ --cov-report=xml --cov-config=setup.cfg \
           yammbs/
 
+    - name: Run mypy
+      if: ${{ matrix.python-version == '3.10' }}
+      run: python -m mypy -p "yammbs" --exclude "yammbs/_tests"
+
     - name: CodeCov
       uses: codecov/codecov-action@v4
       with:
