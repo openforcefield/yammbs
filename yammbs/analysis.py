@@ -9,7 +9,6 @@ from yammbs._base.base import ImmutableModel
 
 class DDE(ImmutableModel):
     qcarchive_id: int
-    force_field: str
     difference: float
 
 
@@ -27,7 +26,6 @@ class DDECollection(list):
 
 class RMSD(ImmutableModel):
     qcarchive_id: int
-    force_field: str
     rmsd: float
 
 
@@ -45,7 +43,6 @@ class RMSDCollection(list):
 
 class ICRMSD(ImmutableModel):
     qcarchive_id: int
-    force_field: str
     icrmsd: dict[str, float]
 
 
@@ -71,7 +68,6 @@ class ICRMSDCollection(list):
 
 class TFD(ImmutableModel):
     qcarchive_id: int
-    force_field: str
     tfd: float
 
 
@@ -199,9 +195,7 @@ def _get_rmsd(
     target: Array,
 ) -> float:
     """Native, naive implementation of RMSD."""
-    assert (
-        reference.shape == target.shape
-    ), "reference and target must have the same shape"
+    assert reference.shape == target.shape, "reference and target must have the same shape"
 
     return numpy.sqrt(numpy.sum((reference - target) ** 2) / len(reference))
 
@@ -218,6 +212,7 @@ def get_tfd(
         from openff.units import Quantity, unit
 
         # TODO: Do we need to remap indices?
+        #       maybe not, if this was made from **mapped** SMILES
         if False:
             # def _rdmol(inchi_key, mapped_smiles, ...)
 

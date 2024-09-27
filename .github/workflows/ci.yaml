@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - "main"
+      - "yammbs-models"
   pull_request:
     branches:
       - "main"
+      - "yammbs-models"
   workflow_dispatch:
 
 defaults:
@@ -36,9 +38,25 @@ jobs:
     - name: Set up conda environment
       uses: mamba-org/setup-micromamba@v1
       with:
+        micromamba-version: '1.5.10-0'
         environment-file: devtools/conda-envs/dev.yaml
         create-args: >-
           python=${{ matrix.python-version }}
+
+    - name: Install PASCAL Compiler (MacOS)
+      if: startsWith(matrix.os, 'mac')
+      run: brew install fpc
+
+    - name: Install PASCAL Compiler (Ubuntu)
+      if: startsWith(matrix.os, 'ubuntu')
+      run: sudo apt-get install fp-compiler
+
+    - name: Install checkmol
+      run: |
+        curl https://homepage.univie.ac.at/norbert.haider/download/chemistry/checkmol/checkmol.pas > checkmol.pas
+        fpc checkmol.pas -S2
+
+        echo $(pwd) >> $GITHUB_PATH
 
     - name: Install package
       run: python -m pip install -e .

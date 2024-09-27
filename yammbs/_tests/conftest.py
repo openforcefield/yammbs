@@ -53,7 +53,7 @@ def ligand():
 
 
 @pytest.fixture
-def small_collection() -> OptimizationResultCollection:
+def small_qcsubmit_collection() -> OptimizationResultCollection:
     return OptimizationResultCollection.parse_file(
         get_data_file_path("_tests/data/qcsubmit/01-processed-qm-ch.json", "yammbs"),
     )
@@ -67,8 +67,10 @@ def small_cache() -> CachedResultCollection:
 
 
 @pytest.fixture
-def small_dataset(small_collection) -> QCArchiveDataset:
-    return QCArchiveDataset.from_qcsubmit_collection(small_collection)
+def small_dataset() -> QCArchiveDataset:
+    return QCArchiveDataset.from_json(
+        get_data_file_path("_tests/data/yammbs/01-processed-qm-ch.json", "yammbs"),
+    )
 
 
 @pytest.fixture
