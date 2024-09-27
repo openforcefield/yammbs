@@ -6,18 +6,19 @@ import numpy
 import pytest
 from openff.qcsubmit.results import OptimizationResultCollection
 from openff.toolkit import Molecule
-from openff.utilities import get_data_file_path, temporary_cd
+from openff.utilities import get_data_file_path, has_executable, temporary_cd
 
 from yammbs import MoleculeStore
 from yammbs.checkmol import ChemicalEnvironment
 from yammbs.exceptions import DatabaseExistsError
+from yammbs.inputs import QCArchiveDataset
 from yammbs.models import MMConformerRecord, QMConformerRecord
 
 
-def test_from_qcsubmit(small_collection):
+def test_from_qcsubmit(small_qcsubmit_collection):
     db = "foo.sqlite"
     with temporary_cd():
-        store = MoleculeStore.from_qcsubmit_collection(small_collection, db)
+        store = MoleculeStore.from_qcsubmit_collection(small_qcsubmit_collection, db)
 
         # Sanity check molecule deduplication
         assert len(store.get_smiles()) == len({*store.get_smiles()})
@@ -38,11 +39,27 @@ def test_from_cached_collection(small_cache):
         assert len(MoleculeStore(db)) == len(store)
 
 
-def test_do_not_overwrite(small_collection):
+def test_from_qcarchive_dataset(small_qcsubmit_collection):
+    """Test loading from YAMMBS's QCArchive model"""
+    db = "foo.sqlite"
+    with temporary_cd():
+        store = MoleculeStore.from_qcarchive_dataset(
+            QCArchiveDataset.from_qcsubmit_collection(small_qcsubmit_collection),
+            db,
+        )
+
+        # Sanity check molecule deduplication
+        assert len(store.get_smiles()) == len({*store.get_smiles()})
+
+        # Ensure a new object can be created from the same database
+        assert len(MoleculeStore(db)) == len(store)
+
+
+def test_do_not_overwrite(small_qcsubmit_collection):
     with tempfile.NamedTemporaryFile(suffix=".sqlite") as file:
         with pytest.raises(DatabaseExistsError, match="already exists."):
             MoleculeStore.from_qcsubmit_collection(
-                small_collection,
+                small_qcsubmit_collection,
                 file.name,
             )
 
@@ -69,7 +86,12 @@ def test_get_molecule_id_by_qcarchive_id(small_store):
 
 def test_molecules_sorted_by_qcarchive_id():
     raw_ch = json.load(
-        open(get_data_file_path("_tests/data/01-processed-qm-ch.json", "yammbs")),
+        open(
+            get_data_file_path(
+                "_tests/data/qcsubmit/01-processed-qm-ch.json",
+                "yammbs",
+            ),
+        ),
     )
 
     random.shuffle(raw_ch["entries"]["https://api.qcarchive.molssi.org:443/"])
@@ -187,6 +209,7 @@ def test_get_qm_energies_by_molecule_id(
     assert len(energies) == expected_len
 
 
+@pytest.mark.skipif(not has_executable("checkmol"), reason="checkmol not installed")
 @pytest.mark.parametrize(
     "func",
     [
