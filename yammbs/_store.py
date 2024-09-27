@@ -7,7 +7,7 @@ from typing import ContextManager, Iterable, TypeVar
 import numpy
 import pandas
 from openff.qcsubmit.results import OptimizationResultCollection
-from openff.toolkit import Molecule
+from openff.toolkit import Molecule, Quantity
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -35,6 +35,7 @@ from yammbs.analysis import (
 from yammbs.cached_result import CachedResultCollection
 from yammbs.checkmol import ChemicalEnvironment
 from yammbs.exceptions import DatabaseExistsError
+from yammbs.inputs import QCArchiveDataset, QMDataset
 from yammbs.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
 from yammbs.outputs import MinimizedQMDataset
 
@@ -53,8 +54,7 @@ class MoleculeStore:
 
         if not database_path.suffix.lower() == ".sqlite":
             raise NotImplementedError(
-                "Only paths to SQLite databases ending in .sqlite "
-                f"are supported. Given: {database_path}",
+                f"Only paths to SQLite databases ending in .sqlite are supported. Given: {database_path}",
             )
 
         self.database_url = f"sqlite:///{database_path.resolve()}"
@@ -166,64 +166,35 @@ class MoleculeStore:
         is not guaranteed.
         """
         with self._get_session() as db:
-            return [
-                molecule_id
-                for (molecule_id,) in db.db.query(DBMoleculeRecord.id).distinct()
-            ]
+            return [molecule_id for (molecule_id,) in db.db.query(DBMoleculeRecord.id).distinct()]
 
     def get_smiles(self) -> list[str]:
         """Get the (mapped) smiles of all records in the store."""
         with self._get_session() as db:
-            return [
-                smiles
-                for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles).distinct()
-            ]
+            return [smiles for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles).distinct()]
 
     def get_inchi_keys(self) -> list[str]:
         """Get the inchi keys of all records in the store."""
         with self._get_session() as db:
-            return [
-                inchi_key
-                for (inchi_key,) in db.db.query(DBMoleculeRecord.inchi_key).distinct()
-            ]
+            return [inchi_key for (inchi_key,) in db.db.query(DBMoleculeRecord.inchi_key).distinct()]
 
     # TODO: Allow by multiple selectors (smiles: list[str])
     def get_molecule_id_by_smiles(self, smiles: str) -> int:
         with self._get_session() as db:
-            return [
-                id
-                for (id,) in db.db.query(DBMoleculeRecord.id)
-                .filter_by(mapped_smiles=smiles)
-                .all()
-            ][0]
+            return next(id for (id,) in db.db.query(DBMoleculeRecord.id).filter_by(mapped_smiles=smiles).all())
 
     # TODO: Allow by multiple selectors (id: list[int])
     def get_smiles_by_molecule_id(self, id: int) -> str:
         with self._get_session() as db:
-            return [
-                smiles
-                for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles)
-                .filter_by(id=id)
-                .all()
-            ][0]
+            return next(smiles for (smiles,) in db.db.query(DBMoleculeRecord.mapped_smiles).filter_by(id=id).all())
 
     def get_molecule_id_by_inchi_key(self, inchi_key: str) -> int:
         with self._get_session() as db:
-            return [
-                id
-                for (id,) in db.db.query(DBMoleculeRecord.id)
-                .filter_by(inchi_key=inchi_key)
-                .all()
-            ][0]
+            return next(id for (id,) in db.db.query(DBMoleculeRecord.id).filter_by(inchi_key=inchi_key).all())
 
     def get_inchi_key_by_molecule_id(self, id: int) -> str:
         with self._get_session() as db:
-            return [
-                inchi_key
-                for (inchi_key,) in db.db.query(DBMoleculeRecord.inchi_key)
-                .filter_by(id=id)
-                .all()
-            ][0]
+            return next(inchi_key for (inchi_key,) in db.db.query(DBMoleculeRecord.inchi_key).filter_by(id=id).all())
 
     def get_qcarchive_ids_by_molecule_id(self, id: int) -> list[str]:
         with self._get_session() as db:
@@ -250,12 +221,10 @@ class MoleculeStore:
     # TODO: if this can take a list of ids, should it sort by QCArchive ID
     def get_molecule_id_by_qcarchive_id(self, id: str) -> int:
         with self._get_session() as db:
-            return [
+            return next(
                 molecule_id
-                for (molecule_id,) in db.db.query(DBQMConformerRecord.parent_id)
-                .filter_by(qcarchive_id=id)
-                .all()
-            ][0]
+                for (molecule_id,) in db.db.query(DBQMConformerRecord.parent_id).filter_by(qcarchive_id=id).all()
+            )
 
     def get_qm_conformers_by_molecule_id(self, id: int) -> list:
         with self._get_session() as db:
@@ -296,22 +265,20 @@ class MoleculeStore:
 
     def get_qm_conformer_by_qcarchive_id(self, id: int):
         with self._get_session() as db:
-            return [
+            return next(
                 conformer
-                for (conformer,) in db.db.query(DBQMConformerRecord.coordinates)
-                .filter_by(qcarchive_id=id)
-                .all()
-            ][0]
+                for (conformer,) in db.db.query(DBQMConformerRecord.coordinates).filter_by(qcarchive_id=id).all()
+            )
 
     def get_mm_conformer_by_qcarchive_id(self, id: int, force_field: str):
         with self._get_session() as db:
-            return [
+            return next(
                 conformer
                 for (conformer,) in db.db.query(DBMMConformerRecord.coordinates)
                 .filter_by(qcarchive_id=id)
                 .filter_by(force_field=force_field)
                 .all()
-            ][0]
+            )
 
     # TODO: Allow by multiple selectors (id: list[int])
     def get_qm_energies_by_molecule_id(self, id: int) -> list[float]:
@@ -387,40 +354,49 @@ class MoleculeStore:
         return contents
 
     @classmethod
-    def from_qcsubmit_collection(
+    def from_qm_dataset(
         cls,
-        collection: OptimizationResultCollection,
+        dataset: QMDataset,
         database_name: str,
     ) -> MS:
-        from tqdm import tqdm
-
         if pathlib.Path(database_name).exists():
             raise DatabaseExistsError(f"Database {database_name} already exists.")
 
         store = cls(database_name)
 
-        for qcarchive_record, molecule in tqdm(
-            collection.to_records(),
-            desc="Converting records to molecules",
-        ):
-            # _toolkit_registry_manager could go here
-
-            molecule_record = MoleculeRecord.from_molecule(molecule)
+        for qm_molecule in dataset.qm_molecules:
+            molecule_record = MoleculeRecord(
+                mapped_smiles=qm_molecule.mapped_smiles,
+                inchi_key=smiles_to_inchi_key(qm_molecule.mapped_smiles),
+            )
 
             store.store(molecule_record)
 
-            store.store_qcarchive(
-                QMConformerRecord.from_qcarchive_record(
-                    molecule_id=store.get_molecule_id_by_smiles(
-                        molecule_record.mapped_smiles,
-                    ),
-                    mapped_smiles=molecule_record.mapped_smiles,
-                    qc_record=qcarchive_record,
-                    coordinates=molecule.conformers[0],
+            qm_conformer_record = QMConformerRecord(
+                molecule_id=store.get_molecule_id_by_smiles(
+                    molecule_record.mapped_smiles,
                 ),
+                qcarchive_id=qm_molecule.qcarchive_id,
+                mapped_smiles=qm_molecule.mapped_smiles,
+                coordinates=qm_molecule.coordinates,
+                energy=qm_molecule.final_energy,
             )
 
+            store.store_qcarchive(qm_conformer_record)
+
         return store
+
+    @classmethod
+    def from_qcsubmit_collection(
+        cls,
+        collection: OptimizationResultCollection,
+        database_name: str,
+    ):
+        """Convert a QCSubmit collection to QMDataset and use it to creat a MoleculeStore."""
+        return cls.from_qm_dataset(
+            dataset=QCArchiveDataset.from_qcsubmit_collection(collection),
+            database_name=database_name,
+        )
 
     @classmethod
     def from_cached_result_collection(
@@ -488,6 +464,45 @@ class MoleculeStore:
                         energy=record.qc_record_final_energy,
                     ),
                 )
+
+        return store
+
+    @classmethod
+    def from_qcarchive_dataset(
+        cls,
+        dataset: QCArchiveDataset,
+        database_name: str,
+    ) -> MS:
+        """
+        Create a new MoleculeStore databset from YAMMBS's QCArchiveDataset model.
+
+        Largely adopted from `from_qcsubmit_collection`.
+        """
+        from tqdm import tqdm
+
+        if pathlib.Path(database_name).exists():
+            raise DatabaseExistsError(f"Database {database_name} already exists.")
+
+        store = cls(database_name)
+
+        for qm_molecule in tqdm(dataset.qm_molecules, desc="Storing molecules"):
+            molecule = Molecule.from_mapped_smiles(qm_molecule.mapped_smiles)
+            molecule.add_conformer(Quantity(qm_molecule.coordinates, "angstrom"))
+
+            molecule_record = MoleculeRecord.from_molecule(molecule)
+            store.store(molecule_record)
+
+            store.store_qcarchive(
+                QMConformerRecord(
+                    molecule_id=store.get_molecule_id_by_smiles(
+                        molecule_record.mapped_smiles,
+                    ),
+                    qcarchive_id=qm_molecule.qcarchive_id,
+                    mapped_smiles=qm_molecule.mapped_smiles,
+                    coordinates=qm_molecule.coordinates,
+                    energy=qm_molecule.final_energy,
+                ),
+            )
 
         return store
 
@@ -785,7 +800,7 @@ class MoleculeStore:
                         ),
                     )
                 except Exception as e:
-                    logging.warning(f"Molecule {inchi_key} failed with {str(e)}")
+                    logging.warning(f"Molecule {inchi_key} failed with {e!s}")
 
         return tfds
 
@@ -805,9 +820,7 @@ class MoleculeStore:
                         final_energy=record.energy,
                         coordinates=record.coordinates,
                     )
-                    for record in db.db.query(DBMMConformerRecord)
-                    .filter_by(force_field=force_field)
-                    .all()
+                    for record in db.db.query(DBMMConformerRecord).filter_by(force_field=force_field).all()
                 ]
 
         return output_dataset
@@ -821,7 +834,6 @@ class MoleculeStore:
 
         # TODO: Optimize this for speed
         for force_field in self.get_force_fields():
-
             ddes = self.get_dde(force_field=force_field).to_dataframe()
             rmsds = self.get_rmsd(force_field=force_field).to_dataframe()
             tfds = self.get_tfd(force_field=force_field).to_dataframe()
@@ -882,7 +894,6 @@ class MoleculeStore:
         self,
         smirks: str,
     ) -> list[int]:
-
         def smirks_in_smiles(smirks, smiles):
             molecule = Molecule.from_mapped_smiles(smiles)
             matches = molecule.chemical_environment_matches(smirks)

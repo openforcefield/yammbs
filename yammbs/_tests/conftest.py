@@ -17,6 +17,7 @@ from openff.utilities.utilities import get_data_file_path
 
 from yammbs import MoleculeStore
 from yammbs.cached_result import CachedResultCollection
+from yammbs.inputs import QCArchiveDataset
 
 
 @pytest.fixture
@@ -52,9 +53,9 @@ def ligand():
 
 
 @pytest.fixture
-def small_collection() -> OptimizationResultCollection:
+def small_qcsubmit_collection() -> OptimizationResultCollection:
     return OptimizationResultCollection.parse_file(
-        get_data_file_path("_tests/data/01-processed-qm-ch.json", "yammbs"),
+        get_data_file_path("_tests/data/qcsubmit/01-processed-qm-ch.json", "yammbs"),
     )
 
 
@@ -62,6 +63,13 @@ def small_collection() -> OptimizationResultCollection:
 def small_cache() -> CachedResultCollection:
     return CachedResultCollection.from_json(
         get_data_file_path("_tests/data/tiny-opt.json", "yammbs"),
+    )
+
+
+@pytest.fixture
+def small_dataset() -> QCArchiveDataset:
+    return QCArchiveDataset.from_json(
+        get_data_file_path("_tests/data/yammbs/01-processed-qm-ch.json", "yammbs"),
     )
 
 

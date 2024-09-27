@@ -1,9 +1,8 @@
 import pathlib
 from multiprocessing import freeze_support
 
-from openff.qcsubmit.results import OptimizationResultCollection
-
 from yammbs import MoleculeStore
+from yammbs.inputs import QCArchiveDataset
 
 
 def main():
@@ -21,13 +20,13 @@ def main():
 
     data = "ch"
 
+    dataset = QCArchiveDataset.from_json("yammbs/_tests/data/yammbs/01-processed-qm-cho.json")
+
     if pathlib.Path(f"{data}.sqlite").exists():
         store = MoleculeStore(f"{data}.sqlite")
     else:
-        store = MoleculeStore.from_qcsubmit_collection(
-            OptimizationResultCollection.parse_file(
-                f"yammbs/_tests/data/01-processed-qm-{data}.json",
-            ),
+        store = MoleculeStore.from_qm_dataset(
+            dataset,
             database_name=f"{data}.sqlite",
         )
 

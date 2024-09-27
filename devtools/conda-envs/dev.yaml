@@ -4,16 +4,23 @@ channels:
   - conda-forge
 dependencies:
   - python
+  - pip
+  - versioneer-518
 
   - openff-toolkit
   - openff-qcsubmit
   - openmmforcefields
   - de-forcefields ~=1.0.1
   - smirnoff-plugins
-  # espaloma =0.3
+
   - geometric =1
   - pydantic =2
 
+  # Update when server is updated
+  - qcportal =0.55
+
+  # espaloma =0.3
+  - de-forcefields ~=1.0.3
   - ipython
   - ipdb
   - pre-commit

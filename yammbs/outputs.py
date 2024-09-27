@@ -5,7 +5,6 @@ from yammbs._base.base import ImmutableModel
 
 
 class MinimizedMolecule(ImmutableModel):
-
     final_energy: float
     mapped_smiles: str
     coordinates: Array = Field(
@@ -21,7 +20,6 @@ class MinimizedQCArchiveMolecule(MinimizedMolecule):
 
 
 class MinimizedQMDataset(ImmutableModel):
-
     tag: str = Field("QCArchive dataset", description="A tag for the dataset")
 
     version: int = Field(1, description="The version of this model")
@@ -33,7 +31,6 @@ class MinimizedQMDataset(ImmutableModel):
 
 
 class MinimizedQCArchiveDataset(MinimizedQMDataset):
-
     qm_molecules: dict[str, list[MinimizedQCArchiveMolecule]] = Field(
         list(),
         description="Molecules minimized with QM",
