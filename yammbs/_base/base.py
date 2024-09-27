@@ -1,14 +1,11 @@
 """Copied from openff-nagl."""
 
-import enum
 import hashlib
 import inspect
-import pathlib
 from typing import Any, ClassVar, Dict, List, Optional, Type, Union, no_type_check
 
 import numpy
-from openff.units import unit
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 FloatArrayLike = Union[List, numpy.ndarray, float]
 
@@ -31,20 +28,12 @@ class MutableModel(BaseModel):
     Base class that all classes should subclass.
     """
 
-    class Config:
-        validate_all = True
-        arbitrary_types_allowed = True
-        underscore_attrs_are_private = True
-        validate_assignment = True
-        extra = "forbid"
-        json_encoders = {
-            numpy.ndarray: lambda x: x.tolist(),
-            tuple: list,
-            set: list,
-            unit.Quantity: lambda x: x.to_tuple(),
-            enum.Enum: lambda x: x.name,
-            pathlib.Path: str,
-        }
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_default=True,
+        validate_assignment=True,
+        frozen=False,
+    )
 
     _hash_fields: ClassVar[Optional[List[str]]] = None
     _float_fields: ClassVar[List[str]] = []
@@ -187,5 +176,9 @@ class MutableModel(BaseModel):
 
 
 class ImmutableModel(MutableModel):
-    class Config(MutableModel.Config):
-        allow_mutation = False
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_default=True,
+        validate_assignment=True,
+        frozen=True,
+    )

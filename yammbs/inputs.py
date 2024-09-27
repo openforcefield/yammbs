@@ -2,7 +2,7 @@ from typing import TypeVar
 
 import qcelemental
 from openff.qcsubmit.results import OptimizationResultCollection
-from pydantic.v1 import Field
+from pydantic import Field
 
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
@@ -19,9 +19,6 @@ class QMMolecule(ImmutableModel):
         "Coordinates, stored with implicit Angstrom units",
     )
 
-    class Config:
-        artbitrary_types_allowed = True
-
 
 class QCArchiveMolecule(QMMolecule):
     qcarchive_id: int
@@ -35,9 +32,6 @@ class QMDataset(ImmutableModel):
         list(),
         description="A list of QM molecules in the dataset",
     )
-
-    class Config:
-        artbitrary_types_allowed = True
 
 
 class QCArchiveDataset(QMDataset):

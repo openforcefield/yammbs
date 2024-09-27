@@ -2,17 +2,16 @@
 
 from typing import Annotated
 
-import numpy
 from numpy.typing import NDArray
 from openff.toolkit import Quantity
 from pydantic import BeforeValidator
 
 
-def _strip_units(val: Quantity | NDArray) -> NDArray:
+def _strip_units(val: list[float] | Quantity | NDArray) -> list[float]:
     if hasattr(val, "magnitude"):
         return val.magnitude
     else:
         return val
 
 
-Array = Annotated[numpy.ndarray, BeforeValidator(_strip_units)]
+Array = Annotated[list, BeforeValidator(_strip_units)]
