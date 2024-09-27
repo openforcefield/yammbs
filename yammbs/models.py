@@ -2,7 +2,7 @@ from typing import Any, TypeVar
 
 import qcelemental
 from openff.toolkit import Molecule
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
@@ -14,8 +14,13 @@ MR = TypeVar("MR", bound="MoleculeRecord")
 
 
 class Record(ImmutableModel):
-    class Config(ImmutableModel.Config):
-        orm_mode = True
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_default=True,
+        validate_assignment=True,
+        frozen=False,
+        from_attribute=True,
+    )
 
 
 class QMConformerRecord(Record):

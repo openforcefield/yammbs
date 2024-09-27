@@ -1,4 +1,4 @@
-from pydantic.v1 import Field
+from pydantic import Field
 
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
@@ -10,9 +10,6 @@ class MinimizedMolecule(ImmutableModel):
     coordinates: Array = Field(
         "Coordinates, stored with implicit Angstrom units",
     )
-
-    class Config:
-        artbitrary_types_allowed = True
 
 
 class MinimizedQCArchiveMolecule(MinimizedMolecule):
