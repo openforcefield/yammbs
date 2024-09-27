@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from typing import ContextManager, Iterable, TypeVar
 
 import numpy
+import pandas
 from openff.qcsubmit.results import OptimizationResultCollection
 from openff.toolkit import Molecule, Quantity
 from sqlalchemy import create_engine
@@ -36,6 +37,7 @@ from yammbs.checkmol import ChemicalEnvironment
 from yammbs.exceptions import DatabaseExistsError
 from yammbs.inputs import QCArchiveDataset, QMDataset
 from yammbs.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
+from yammbs.outputs import MinimizedQMDataset
 
 LOGGER = logging.getLogger(__name__)
 
@@ -662,7 +664,6 @@ class MoleculeStore:
                     DDE(
                         qcarchive_id=id,
                         difference=mm - qm,
-                        force_field=force_field,
                     ),
                 )
 
@@ -707,7 +708,6 @@ class MoleculeStore:
                     RMSD(
                         qcarchive_id=id,
                         rmsd=get_rmsd(molecule, qm, mm),
-                        force_field=force_field,
                     ),
                 )
 
@@ -752,7 +752,6 @@ class MoleculeStore:
                     ICRMSD(
                         qcarchive_id=id,
                         icrmsd=get_internal_coordinate_rmsds(molecule, qm, mm),
-                        force_field=force_field,
                     ),
                 )
 
@@ -798,13 +797,70 @@ class MoleculeStore:
                         TFD(
                             qcarchive_id=id,
                             tfd=get_tfd(molecule, qm, mm),
-                            force_field=force_field,
                         ),
                     )
                 except Exception as e:
                     logging.warning(f"Molecule {inchi_key} failed with {e!s}")
 
         return tfds
+
+    def get_outputs(
+        self,
+    ) -> MinimizedQMDataset:
+        from yammbs.outputs import MinimizedQCArchiveDataset, MinimizedQCArchiveMolecule
+
+        output_dataset = MinimizedQCArchiveDataset()
+
+        with self._get_session() as db:
+            for force_field in self.get_force_fields():
+                output_dataset.mm_molecules[force_field] = [
+                    MinimizedQCArchiveMolecule(
+                        qcarchive_id=record.qcarchive_id,
+                        mapped_smiles=record.mapped_smiles,
+                        final_energy=record.energy,
+                        coordinates=record.coordinates,
+                    )
+                    for record in db.db.query(DBMMConformerRecord).filter_by(force_field=force_field).all()
+                ]
+
+        return output_dataset
+
+    def get_metrics(
+        self,
+    ):
+        from yammbs.outputs import Metric, MetricCollection
+
+        metrics = MetricCollection()
+
+        # TODO: Optimize this for speed
+        for force_field in self.get_force_fields():
+            ddes = self.get_dde(force_field=force_field).to_dataframe()
+            rmsds = self.get_rmsd(force_field=force_field).to_dataframe()
+            tfds = self.get_tfd(force_field=force_field).to_dataframe()
+            icrmsds = self.get_internal_coordinate_rmsd(
+                force_field=force_field,
+            ).to_dataframe()
+
+            dataframe = ddes.join(rmsds).join(tfds).join(icrmsds)
+
+            dataframe = dataframe.replace({pandas.NA: numpy.nan})
+
+            metrics.metrics[force_field] = {
+                id: Metric(
+                    dde=row["difference"],
+                    rmsd=row["rmsd"],
+                    tfd=row["tfd"],
+                    icrmsd={
+                        "Bond": row["Bond"],
+                        "Angle": row["Angle"],
+                        "Dihedral": row["Dihedral"],
+                        "Improper": row["Improper"],
+                    },
+                )
+                for id, row in dataframe.iterrows()
+            }
+
+        return metrics
 
     def filter_by_checkmol(
         self,
