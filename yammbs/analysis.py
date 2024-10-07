@@ -190,16 +190,6 @@ def get_internal_coordinate_rmsds(
     return internal_coordinate_rmsd
 
 
-def _get_rmsd(
-    reference: Array,
-    target: Array,
-) -> float:
-    """Native, naive implementation of RMSD."""
-    assert reference.shape == target.shape, "reference and target must have the same shape"
-
-    return numpy.sqrt(numpy.sum((reference - target) ** 2) / len(reference))
-
-
 def get_tfd(
     molecule: Molecule,
     reference: Array,
