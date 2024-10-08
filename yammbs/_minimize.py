@@ -1,7 +1,7 @@
 import functools
 import re
 from multiprocessing import Pool
-from typing import Union, Iterator
+from typing import Iterator, Union
 
 import numpy
 import openmm
