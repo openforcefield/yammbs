@@ -16,10 +16,9 @@ dependencies:
   - geometric =1
   - pydantic =2
 
-  # Update when server is updated
-  - qcportal =0.55
+  - qcportal ~=0.55
 
-  # espaloma =0.3
+  # espaloma ~=0.3
   - ipython
   - ipdb
   - pre-commit

@@ -87,7 +87,7 @@ class DBSoftwareProvenance(DBBase):
     __tablename__ = "software_provenance"
 
     key = Column(String, primary_key=True, index=True, unique=True)
-    value = Column(String, nullable=False)
+    value = Column(String, nullable=True)
 
     parent_id = Column(Integer, ForeignKey("db_info.version"))
 
