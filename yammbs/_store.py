@@ -84,6 +84,29 @@ class MoleculeStore:
         finally:
             session.close()
 
+    def _infer_single_version(self, package_name: str) -> str | None:
+        import importlib
+
+        try:
+            return importlib.import_module(package_name).__version__
+        except ModuleNotFoundError:
+            return None
+
+    def _infer_software_versions(self) -> dict[str, str | None]:
+        return {
+            package: self._infer_single_version(package)
+            for package in [
+                "yammbs",
+                "rdkit",
+                "openeye",
+                "openff.toolkit",
+                "openff.interchange",
+                "openff.qcsubmit",
+                "qcportal",
+                "qcfractal",
+            ]
+        }
+
     def _set_provenance(
         self,
         general_provenance: dict[str, str],
@@ -554,6 +577,15 @@ class MoleculeStore:
 
         if len(inchi_key_qm_conformer_mapping) == 0:
             return
+
+        # TODO: not clear if these should be set at DB creation or when MM is run; currently not
+        #       even a mechanism to enforce that results from different force fields use the same
+        #       environment
+
+        self._set_provenance(
+            general_provenance={},
+            software_provenance=self._infer_software_versions(),
+        )
 
         _minimized_blob = _minimize_blob(
             input=inchi_key_qm_conformer_mapping,
