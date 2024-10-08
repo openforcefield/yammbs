@@ -1,7 +1,7 @@
 import functools
 import re
 from multiprocessing import Pool
-from typing import Union
+from typing import Union, Iterator
 
 import numpy
 import openmm
@@ -61,7 +61,7 @@ def _minimize_blob(
     force_field: str,
     n_processes: int = 2,
     chunksize=32,
-) -> dict[str, list["MinimizationResult"]]:
+) -> Iterator["MinimizationResult"]:
     inputs = list()
 
     inputs = [
@@ -77,7 +77,7 @@ def _minimize_blob(
     ]
 
     with Pool(processes=n_processes) as pool:
-        yield from tqdm(
+        for val in tqdm(
             pool.imap(
                 _run_openmm,
                 inputs,
@@ -85,7 +85,9 @@ def _minimize_blob(
             ),
             desc=f"Building and minimizing systems with {force_field}",
             total=len(inputs),
-        )
+        ):
+            if val is not None:
+                yield val
 
 
 class MinimizationInput(ImmutableModel):
@@ -120,7 +122,9 @@ class MinimizationResult(ImmutableModel):
 
 def _run_openmm(
     input: MinimizationInput,
-) -> MinimizationResult:
+) -> MinimizationResult | None:
+    from openff.interchange.exceptions import UnassignedValenceError
+
     inchi_key: str = input.inchi_key
     qcarchive_id: str = input.qcarchive_id
     positions: numpy.ndarray = input.coordinates
@@ -165,9 +169,12 @@ def _run_openmm(
                     f"Could not find or parse force field {input.force_field}",
                 ) from error
 
-        system = force_field.create_interchange(molecule.to_topology()).to_openmm(
-            combine_nonbonded_forces=False,
-        )
+        try:
+            system = force_field.create_interchange(molecule.to_topology()).to_openmm(
+                combine_nonbonded_forces=False,
+            )
+        except UnassignedValenceError:
+            return None
 
     context = openmm.Context(
         system,
