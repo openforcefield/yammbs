@@ -25,7 +25,7 @@ class TestQCArchiveDataset:
 
 class TestSerialization:
     def test_json_roundtrip(self):
-        dataset = QCArchiveDataset.from_json(
+        dataset = QCArchiveDataset.model_validate_json(
             get_data_file_path("_tests/data/yammbs/01-processed-qm-ch.json", "yammbs"),
         )
 
