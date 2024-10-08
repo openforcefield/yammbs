@@ -10,17 +10,15 @@ dependencies:
   - openff-toolkit
   - openff-qcsubmit
   - openmmforcefields
-  - de-forcefields ~=1.0.1
+  - de-forcefields ~=1.0.3
   - smirnoff-plugins
 
   - geometric =1
   - pydantic =2
 
-  # Update when server is updated
-  - qcportal =0.55
+  - qcportal ~=0.55
 
-  # espaloma =0.3
-  - de-forcefields ~=1.0.3
+  # espaloma ~=0.3
   - ipython
   - ipdb
   - pre-commit

@@ -2,8 +2,8 @@ import platform
 
 import numpy
 import pytest
-from openff.toolkit import ForceField, Molecule
-from openff.units import unit
+from openff.toolkit import ForceField, Molecule, unit
+from openff.toolkit import __version__ as __toolkit_version__
 
 from yammbs import MoleculeStore
 from yammbs._minimize import MinimizationInput, _run_openmm
@@ -152,6 +152,7 @@ def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
 
     See https://github.com/mattwthompson/ib/pull/21#discussion_r1511804909
     """
+    import yammbs
 
     def get_n_mm_conformers(store, ff):
         molecule_ids = store.get_molecule_ids()
@@ -195,3 +196,7 @@ def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
     tinier_store.optimize_mm(force_field="openff-2.0.0", n_processes=guess_n_processes)
 
     assert get_n_results(tinier_store) == (12, 12)
+
+    assert tinier_store.software_provenance["yammbs"] == yammbs.__version__
+    assert tinier_store.software_provenance["openff.toolkit"] == __toolkit_version__
+    assert tinier_store.software_provenance["qcfractal"] is None
