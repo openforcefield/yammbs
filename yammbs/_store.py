@@ -945,6 +945,6 @@ class MoleculeStore:
 def smiles_to_inchi_key(smiles: str) -> str:
     from openff.toolkit import Molecule
 
-    return Molecule.from_smiles(smiles, allow_undefined_stereo=True).to_inchi(
+    return Molecule.from_mapped_smiles(smiles, allow_undefined_stereo=True).to_inchi(
         fixed_hydrogens=True,
     )

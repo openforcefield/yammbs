@@ -5,7 +5,7 @@ from typing import Annotated
 import numpy
 from numpy.typing import NDArray
 from openff.toolkit import Quantity
-from pydantic import BeforeValidator
+from pydantic import BeforeValidator, WrapSerializer
 
 
 def _strip_units(val: list[float] | Quantity | NDArray) -> NDArray:
@@ -17,6 +17,10 @@ def _strip_units(val: list[float] | Quantity | NDArray) -> NDArray:
     return numpy.asarray(unitless_val).reshape((-3, 3))
 
 
-CoordinateArray = Annotated[numpy.ndarray, BeforeValidator(_strip_units)]
+def _array_serializer(val: NDArray, nxt) -> list[float]:
+    return val.flatten().tolist()
+
+
+CoordinateArray = Annotated[numpy.ndarray, BeforeValidator(_strip_units), WrapSerializer(_array_serializer)]
 
 Array = CoordinateArray
