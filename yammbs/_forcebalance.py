@@ -1,9 +1,10 @@
 """Code vendored from ForceBalance."""
 
 import numpy
+from numpy.typing import NDArray
 
 
-def periodic_diff(a, b, v_periodic):
+def periodic_diff(a: float, b: float, v_periodic: float) -> float:
     """convenient function for computing the minimum difference in periodic coordinates
     Parameters
     ----------
@@ -36,7 +37,7 @@ def periodic_diff(a, b, v_periodic):
     return (a - b + h) % v_periodic - h
 
 
-def compute_rmsd(ref, tar, v_periodic=None):
+def compute_rmsd(ref: NDArray, tar: NDArray, v_periodic: float | None) -> float:
     """
     Compute the RMSD between two arrays, supporting periodic difference
     """

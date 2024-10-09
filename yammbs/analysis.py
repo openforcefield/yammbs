@@ -12,7 +12,7 @@ class DDE(ImmutableModel):
     difference: float
 
 
-class DDECollection(list):
+class DDECollection(list[DDE]):
     def to_dataframe(self) -> pandas.DataFrame:
         return pandas.DataFrame(
             [dde.difference for dde in self],
@@ -29,7 +29,7 @@ class RMSD(ImmutableModel):
     rmsd: float
 
 
-class RMSDCollection(list):
+class RMSDCollection(list[RMSD]):
     def to_dataframe(self) -> pandas.DataFrame:
         return pandas.DataFrame(
             [rmsd.rmsd for rmsd in self],

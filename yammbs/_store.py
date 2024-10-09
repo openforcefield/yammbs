@@ -6,6 +6,7 @@ from typing import ContextManager, Iterable, TypeVar
 
 import numpy
 import pandas
+from numpy.typing import NDArray
 from openff.qcsubmit.results import OptimizationResultCollection
 from openff.toolkit import Molecule, Quantity
 from sqlalchemy import create_engine
@@ -37,7 +38,7 @@ from yammbs.checkmol import ChemicalEnvironment
 from yammbs.exceptions import DatabaseExistsError
 from yammbs.inputs import QCArchiveDataset, QMDataset
 from yammbs.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
-from yammbs.outputs import MinimizedQMDataset
+from yammbs.outputs import Metric, MetricCollection, MinimizedQMDataset
 
 LOGGER = logging.getLogger(__name__)
 
@@ -219,7 +220,7 @@ class MoleculeStore:
         with self._get_session() as db:
             return next(inchi_key for (inchi_key,) in db.db.query(DBMoleculeRecord.inchi_key).filter_by(id=id).all())
 
-    def get_qcarchive_ids_by_molecule_id(self, id: int) -> list[str]:
+    def get_qcarchive_ids_by_molecule_id(self, id: int) -> list[int]:
         with self._get_session() as db:
             return [
                 qcarchive_id
@@ -249,7 +250,7 @@ class MoleculeStore:
                 for (molecule_id,) in db.db.query(DBQMConformerRecord.parent_id).filter_by(qcarchive_id=id).all()
             )
 
-    def get_qm_conformers_by_molecule_id(self, id: int) -> list:
+    def get_qm_conformers_by_molecule_id(self, id: int) -> list[NDArray]:
         with self._get_session() as db:
             return [
                 conformer
@@ -859,9 +860,7 @@ class MoleculeStore:
 
     def get_metrics(
         self,
-    ):
-        from yammbs.outputs import Metric, MetricCollection
-
+    ) -> MetricCollection:
         metrics = MetricCollection()
 
         # TODO: Optimize this for speed
@@ -926,7 +925,7 @@ class MoleculeStore:
         self,
         smirks: str,
     ) -> list[int]:
-        def smirks_in_smiles(smirks, smiles):
+        def smirks_in_smiles(smirks: str, smiles: str) -> bool:
             molecule = Molecule.from_mapped_smiles(smiles)
             matches = molecule.chemical_environment_matches(smirks)
 
