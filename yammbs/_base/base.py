@@ -6,12 +6,13 @@ Originally copied from openff-nagl.
 
 import hashlib
 import json
-from typing import Any, ClassVar, List, Union
+from typing import Any, ClassVar, Union
 
 import numpy
+from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict
 
-FloatArrayLike = Union[List, numpy.ndarray, float]
+FloatArrayLike = Union[list[float], NDArray[numpy.float64], float]
 
 
 def round_floats(

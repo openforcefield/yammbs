@@ -81,8 +81,8 @@ jobs:
           yammbs/
 
     - name: Run mypy
-      if: ${{ matrix.python-version == '3.10' }}
-      run: python -m mypy -p "yammbs" --exclude "yammbs/_tests"
+      if: ${{ matrix.python-version == '3.12' }}
+      run: mypy --install-types && python -m mypy -p "yammbs" --exclude "yammbs/_tests"
 
     - name: CodeCov
       uses: codecov/codecov-action@v4

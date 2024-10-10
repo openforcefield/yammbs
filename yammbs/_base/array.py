@@ -25,6 +25,10 @@ def _array_serializer(val: NDArray, nxt) -> list[float]:
     return val.flatten().tolist()
 
 
-CoordinateArray = Annotated[numpy.ndarray, BeforeValidator(_strip_units), WrapSerializer(_array_serializer)]
+CoordinateArray = Annotated[
+    NDArray[numpy.float64],
+    BeforeValidator(_strip_units),
+    WrapSerializer(_array_serializer),
+]
 
 Array = CoordinateArray

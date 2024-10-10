@@ -1,4 +1,4 @@
-from typing import TypeVar
+from typing import Sequence, TypeVar
 
 import qcelemental
 from openff.qcsubmit.results import OptimizationResultCollection
@@ -16,7 +16,7 @@ class QMMolecule(ImmutableModel):
     id: int
     mapped_smiles: str
     coordinates: Array = Field(
-        "Coordinates, stored with implicit Angstrom units",
+        description="Coordinates, stored with implicit Angstrom units",
     )
 
 
@@ -28,7 +28,7 @@ class QCArchiveMolecule(QMMolecule):
 class QMDataset(ImmutableModel):
     tag: str
 
-    qm_molecules: list[QMMolecule] = Field(
+    qm_molecules: Sequence[QMMolecule] = Field(
         list(),
         description="A list of QM molecules in the dataset",
     )
@@ -39,7 +39,7 @@ class QCArchiveDataset(QMDataset):
 
     version: int = Field(1, description="The version of this model")
 
-    qm_molecules: list[QCArchiveMolecule] = Field(
+    qm_molecules: Sequence[QCArchiveMolecule] = Field(
         list(),
         description="A list of QM molecules in the dataset",
     )
@@ -48,7 +48,7 @@ class QCArchiveDataset(QMDataset):
     def from_qcsubmit_collection(
         cls,
         collection: OptimizationResultCollection,
-    ) -> QMD:
+    ) -> "QCArchiveDataset":
         return cls(
             qm_molecules=[
                 QCArchiveMolecule(
