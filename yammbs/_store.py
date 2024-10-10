@@ -2,7 +2,7 @@ import logging
 import pathlib
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import Generator, Iterable, Self, TypeVar
+from typing import Generator, Iterable, TypeVar
 
 import numpy
 import pandas
@@ -11,6 +11,7 @@ from openff.qcsubmit.results import OptimizationResultCollection
 from openff.toolkit import Molecule, Quantity
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from typing_extensions import Self
 
 from yammbs._db import (
     DBBase,

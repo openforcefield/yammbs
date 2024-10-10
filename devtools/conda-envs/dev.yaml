@@ -31,3 +31,6 @@ dependencies:
   - pytest-xdist
   - pytest-randomly
   - pytest-timeout
+
+  - mypy
+  - typing-extensions
