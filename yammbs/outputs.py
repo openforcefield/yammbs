@@ -31,7 +31,7 @@ class MinimizedQMDataset(ImmutableModel):
 
 
 class MinimizedQCArchiveDataset(MinimizedQMDataset):
-    qm_molecules: dict[str, list[MinimizedQCArchiveMolecule]] = Field(
+    mm_molecules: dict[str, list[MinimizedQCArchiveMolecule]] = Field(
         list(),
         description="Molecules minimized with QM",
     )
