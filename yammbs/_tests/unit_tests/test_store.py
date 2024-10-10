@@ -84,6 +84,10 @@ def test_get_molecule_id_by_qcarchive_id(small_store):
     assert small_store.get_molecule_id_by_qcarchive_id(qcarchive_id) == molecule_id
 
 
+def test_get_inchi_by_molecule_id(small_store):
+    Molecule.from_inchi(small_store.get_inchi_key_by_molecule_id(40))
+
+
 def test_molecules_sorted_by_qcarchive_id():
     raw_ch = json.load(
         open(
@@ -275,3 +279,30 @@ def test_filter_by_smirks(small_store, smirks, expected_len, func):
 
     for value in filtered_values:
         assert value in all_values
+
+
+def test_get_metrics(small_store):
+    metrics = small_store.get_metrics()
+
+    sage_metrics = metrics.metrics["openff-2.1.0"]
+
+    assert len(sage_metrics) > 0
+
+    for other_force_field in [
+        "openff-1.0.0",
+        "openff-1.3.0",
+        "openff-2.1.0",
+        "gaff-2.11",
+    ]:
+        assert len(sage_metrics) == len(metrics.metrics[other_force_field])
+
+    this_metric = sage_metrics[37016887]
+
+    # semi hard-coded ranges, which shouldn't change with source code anyway
+    assert abs(this_metric.dde) < 0.01
+    assert this_metric.rmsd < 0.2
+    assert this_metric.tfd < 0.2
+    assert this_metric.icrmsd["Bond"] < 0.1
+    assert this_metric.icrmsd["Angle"] < 2
+    assert this_metric.icrmsd["Dihedral"] < 15
+    assert this_metric.icrmsd["Improper"] < 1

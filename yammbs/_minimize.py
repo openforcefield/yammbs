@@ -1,7 +1,7 @@
 import functools
 import re
 from multiprocessing import Pool
-from typing import Iterator, Union
+from typing import Iterator
 
 import numpy
 import openmm
@@ -9,7 +9,7 @@ import openmm.app
 import openmm.unit
 from openff.toolkit import ForceField, Molecule
 from openff.toolkit.typing.engines.smirnoff import get_available_force_fields
-from pydantic.v1 import Field
+from pydantic import Field
 from tqdm import tqdm
 
 from yammbs._base.array import Array
@@ -57,7 +57,7 @@ def _lazy_load_force_field(force_field_name: str) -> ForceField:
 
 
 def _minimize_blob(
-    input: dict[str, dict[str, Union[str, numpy.ndarray]]],
+    input: dict[str, list],
     force_field: str,
     n_processes: int = 2,
     chunksize=32,
@@ -92,7 +92,7 @@ def _minimize_blob(
 
 class MinimizationInput(ImmutableModel):
     inchi_key: str = Field(..., description="The InChI key of the molecule")
-    qcarchive_id: str = Field(
+    qcarchive_id: int = Field(
         ...,
         description="The ID of the molecule in the QCArchive",
     )
@@ -113,7 +113,7 @@ class MinimizationInput(ImmutableModel):
 class MinimizationResult(ImmutableModel):
     # This could probably just subclass and add on the energy field?
     inchi_key: str = Field(..., description="The InChI key of the molecule")
-    qcarchive_id: str
+    qcarchive_id: int
     force_field: str
     mapped_smiles: str
     coordinates: Array
@@ -126,7 +126,7 @@ def _run_openmm(
     from openff.interchange.exceptions import UnassignedValenceError
 
     inchi_key: str = input.inchi_key
-    qcarchive_id: str = input.qcarchive_id
+    qcarchive_id: int = input.qcarchive_id
     positions: numpy.ndarray = input.coordinates
 
     molecule = Molecule.from_mapped_smiles(
@@ -196,7 +196,7 @@ def _run_openmm(
         qcarchive_id=qcarchive_id,
         force_field=input.force_field,
         mapped_smiles=input.mapped_smiles,
-        coordinates=context.getState(getPositions=True).getPositions().value_in_unit(openmm.unit.angstrom),
+        coordinates=context.getState(getPositions=True).getPositions(asNumpy=True).value_in_unit(openmm.unit.angstrom),
         energy=context.getState(
             getEnergy=True,
         )

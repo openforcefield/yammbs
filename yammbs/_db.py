@@ -1,8 +1,7 @@
 import logging
-from typing import Dict, List
 
 from sqlalchemy import Column, Float, ForeignKey, Integer, PickleType, String
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import declarative_base, relationship  # type: ignore[attr-defined]
 
 from yammbs.models import MMConformerRecord, QMConformerRecord
 
@@ -13,7 +12,7 @@ DB_VERSION = 1
 LOGGER = logging.getLogger(__name__)
 
 
-class DBQMConformerRecord(DBBase):
+class DBQMConformerRecord(DBBase):  # type: ignore
     __tablename__ = "qm_conformers"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -26,7 +25,7 @@ class DBQMConformerRecord(DBBase):
     energy = Column(Float, nullable=False)
 
 
-class DBMMConformerRecord(DBBase):
+class DBMMConformerRecord(DBBase):  # type: ignore
     __tablename__ = "mm_conformers"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -40,7 +39,7 @@ class DBMMConformerRecord(DBBase):
     energy = Column(Float, nullable=False)
 
 
-class DBMoleculeRecord(DBBase):
+class DBMoleculeRecord(DBBase):  # type: ignore
     __tablename__ = "molecules"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -48,7 +47,7 @@ class DBMoleculeRecord(DBBase):
     inchi_key = Column(String, nullable=False, index=True)
     mapped_smiles = Column(String, nullable=False)
 
-    def store_qm_conformer_records(self, records: List[QMConformerRecord]):
+    def store_qm_conformer_records(self, records: list[QMConformerRecord]):
         if not isinstance(records, list):
             raise ValueError("records must be a list")
         # TODO: match conformers?
@@ -60,7 +59,7 @@ class DBMoleculeRecord(DBBase):
             )
             self.qm_conformers.append(db_record)
 
-    def store_mm_conformer_records(self, records: List[MMConformerRecord]):
+    def store_mm_conformer_records(self, records: list[MMConformerRecord]):
         if not isinstance(records, list):
             raise ValueError("records must be a list")
         # TODO: match conformers?
@@ -74,7 +73,7 @@ class DBMoleculeRecord(DBBase):
             self.mm_conformers.append(db_record)
 
 
-class DBGeneralProvenance(DBBase):
+class DBGeneralProvenance(DBBase):  # type: ignore
     __tablename__ = "general_provenance"
 
     key = Column(String, primary_key=True, index=True, unique=True)
@@ -83,16 +82,16 @@ class DBGeneralProvenance(DBBase):
     parent_id = Column(Integer, ForeignKey("db_info.version"))
 
 
-class DBSoftwareProvenance(DBBase):
+class DBSoftwareProvenance(DBBase):  # type: ignore
     __tablename__ = "software_provenance"
 
     key = Column(String, primary_key=True, index=True, unique=True)
-    value = Column(String, nullable=False)
+    value = Column(String, nullable=True)
 
     parent_id = Column(Integer, ForeignKey("db_info.version"))
 
 
-class DBInformation(DBBase):
+class DBInformation(DBBase):  # type: ignore
     """A class which keeps track of the current database
     settings.
     """
@@ -113,9 +112,9 @@ class DBInformation(DBBase):
 
 def _match_conformers(
     indexed_mapped_smiles: str,
-    db_conformers: List,
-    query_conformers: List,
-) -> Dict[int, int]:
+    db_conformers: list,
+    query_conformers: list,
+) -> dict[int, int]:
     """A method which attempts to match a set of new conformers to store with
     conformers already present in the database by comparing the RMS of the
     two sets.

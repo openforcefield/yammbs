@@ -30,6 +30,11 @@ jobs:
           - "3.10"
           - "3.11"
           - "3.12"
+        exclude:
+          - os: macOS-12
+            python-version: "3.12"
+          - os: mac-latest
+            python-version: "3.12"
 
     env:
       OE_LICENSE: ${{ github.workspace }}/oe_license.txt
@@ -74,6 +79,11 @@ jobs:
         pytest -r fEx -n logical --durations=10 \
           --cov=yammbs/ --cov-report=xml --cov-config=setup.cfg \
           yammbs/
+
+    - name: Run mypy
+      # RDKit packages have bad stubs on Linux for some reason
+      if: ${{ matrix.python-version == '3.12' && matrix.os == 'macos-latest' }}
+      run: pip install -r typing-requirements.txt && python -m mypy -p "yammbs" --exclude "yammbs/_tests"
 
     - name: CodeCov
       uses: codecov/codecov-action@v4

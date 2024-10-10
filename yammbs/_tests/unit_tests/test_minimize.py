@@ -2,8 +2,8 @@ import platform
 
 import numpy
 import pytest
-from openff.toolkit import ForceField, Molecule
-from openff.units import unit
+from openff.toolkit import ForceField, Molecule, unit
+from openff.toolkit import __version__ as __toolkit_version__
 
 from yammbs import MoleculeStore
 from yammbs._minimize import MinimizationInput, _run_openmm
@@ -33,7 +33,7 @@ def basic_input(force_field="openff-1.0.0") -> MinimizationInput:
 
     return MinimizationInput(
         inchi_key=ethane.to_inchikey(),
-        qcarchive_id="test",
+        qcarchive_id=123485854848,
         force_field=force_field,
         mapped_smiles=ethane.to_smiles(mapped=True),
         coordinates=ethane.conformers[0].m_as(unit.angstrom),
@@ -44,7 +44,7 @@ def basic_input(force_field="openff-1.0.0") -> MinimizationInput:
 def perturbed_input(perturbed_ethane) -> MinimizationInput:
     return MinimizationInput(
         inchi_key=perturbed_ethane.to_inchikey(),
-        qcarchive_id="test",
+        qcarchive_id=348483483,
         force_field="openff-1.0.0",
         mapped_smiles=perturbed_ethane.to_smiles(mapped=True),
         coordinates=perturbed_ethane.conformers[0].m_as(unit.angstrom),
@@ -90,7 +90,7 @@ def test_plugin_loadable(ethane):
     _run_openmm(
         MinimizationInput(
             inchi_key=ethane.to_inchikey(),
-            qcarchive_id="test",
+            qcarchive_id=38483483483481384183412831832,
             force_field="de-force-1.0.1",
             mapped_smiles=ethane.to_smiles(mapped=True),
             coordinates=ethane.conformers[0].m_as(unit.angstrom),
@@ -113,7 +113,7 @@ def test_finds_local_force_field(ethane, tmp_path):
     _run_openmm(
         MinimizationInput(
             inchi_key=ethane.to_inchikey(),
-            qcarchive_id="test",
+            qcarchive_id=5,
             force_field=(tmp_path / "fOOOO.offxml").as_posix(),
             mapped_smiles=ethane.to_smiles(mapped=True),
             coordinates=ethane.conformers[0].m_as(unit.angstrom),
@@ -137,7 +137,7 @@ def test_plugin_not_needed_to_use_mainline_force_field(monkeypatch, ethane):
     _run_openmm(
         MinimizationInput(
             inchi_key=ethane.to_inchikey(),
-            qcarchive_id="test",
+            qcarchive_id=5,
             force_field="openff-1.0.0",
             mapped_smiles=ethane.to_smiles(mapped=True),
             coordinates=ethane.conformers[0].m_as(unit.angstrom),
@@ -152,6 +152,7 @@ def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
 
     See https://github.com/mattwthompson/ib/pull/21#discussion_r1511804909
     """
+    import yammbs
 
     def get_n_mm_conformers(store, ff):
         molecule_ids = store.get_molecule_ids()
@@ -195,3 +196,7 @@ def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
     tinier_store.optimize_mm(force_field="openff-2.0.0", n_processes=guess_n_processes)
 
     assert get_n_results(tinier_store) == (12, 12)
+
+    assert tinier_store.software_provenance["yammbs"] == yammbs.__version__
+    assert tinier_store.software_provenance["openff.toolkit"] == __toolkit_version__
+    assert tinier_store.software_provenance["qcfractal"] is None

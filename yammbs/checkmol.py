@@ -7,10 +7,10 @@ from openff.utilities import MissingOptionalDependencyError
 
 
 class MissingCheckmolError(MissingOptionalDependencyError):
-    def __init__(self, library_name="checkmol", license_issue=False):
+    def __init__(self, library_name: str = "checkmol", license_issue: bool = False):
         super().__init__(library_name, license_issue)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return (
             "The `checkmol` executable cannot be found. "
             "Checkmol can be obtained for free from "
@@ -18,7 +18,7 @@ class MissingCheckmolError(MissingOptionalDependencyError):
         )
 
 
-def _check_checkmol():
+def _check_checkmol() -> None:
     import shutil
 
     if shutil.which("checkmol") is None:
@@ -234,7 +234,7 @@ class ChemicalEnvironment(Enum):
     Aqueous = "Aqueous"
 
 
-def checkmol_code_to_environment(checkmol_code) -> ChemicalEnvironment:
+def checkmol_code_to_environment(checkmol_code: str) -> ChemicalEnvironment:
     checkmol_code_map = {
         "000": ChemicalEnvironment.Alkane,
         "001": ChemicalEnvironment.Cation,
@@ -446,7 +446,7 @@ def checkmol_code_to_environment(checkmol_code) -> ChemicalEnvironment:
 
 
 @functools.lru_cache(1000)
-def analyze_functional_groups(smiles):
+def analyze_functional_groups(smiles: str) -> dict[ChemicalEnvironment, int] | None:
     """Employs checkmol to determine which chemical moieties
     are encoded by a given smiles pattern.
 
