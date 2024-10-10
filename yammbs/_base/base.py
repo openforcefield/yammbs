@@ -1,4 +1,8 @@
-"""Copied from openff-nagl."""
+"""
+Helpers for dealing with Pydantic.
+
+Originally copied from openff-nagl.
+"""
 
 import hashlib
 import json
