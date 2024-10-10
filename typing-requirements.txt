@@ -1,0 +1,11 @@
+types-cffi
+types-colorama
+types-docutils
+types-Pygments
+types-python-dateutil
+types-pytz
+types-pywin32
+types-setuptools
+types-tqdm
+sqlalchemy-stubs
+pandas-stubs

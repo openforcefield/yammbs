@@ -82,7 +82,7 @@ jobs:
 
     - name: Run mypy
       if: ${{ matrix.python-version == '3.12' }}
-      run: mypy --install-types && python -m mypy -p "yammbs" --exclude "yammbs/_tests"
+      run: pip install -r typing-requirements.txt && python -m mypy -p "yammbs" --exclude "yammbs/_tests"
 
     - name: CodeCov
       uses: codecov/codecov-action@v4
