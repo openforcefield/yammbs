@@ -8,8 +8,7 @@ from typing import Any, ClassVar, Dict, List, Optional, Type, Union, no_type_che
 
 import numpy
 from openff.units import unit
-from pydantic.v1 import BaseModel
-from pydantic.v1.errors import DictError
+from pydantic import BaseModel
 
 FloatArrayLike = Union[List, numpy.ndarray, float]
 
@@ -164,7 +163,7 @@ class MutableModel(BaseModel):
             try:
                 value_as_dict = dict(value)
             except (TypeError, ValueError) as e:
-                raise DictError() from e
+                raise Exception() from e
             return cls(**value_as_dict)
 
     @classmethod

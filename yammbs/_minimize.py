@@ -9,7 +9,7 @@ import openmm.app
 import openmm.unit
 from openff.toolkit import ForceField, Molecule
 from openff.toolkit.typing.engines.smirnoff import get_available_force_fields
-from pydantic.v1 import Field
+from pydantic import Field
 from tqdm import tqdm
 
 from yammbs._base.array import Array
@@ -189,7 +189,9 @@ def _run_openmm(
         qcarchive_id=qcarchive_id,
         force_field=input.force_field,
         mapped_smiles=input.mapped_smiles,
-        coordinates=context.getState(getPositions=True).getPositions().value_in_unit(openmm.unit.angstrom),
+        coordinates=context.getState(getPositions=True)
+        .getPositions(asNumpy=True)
+        .value_in_unit(openmm.unit.angstrom),
         energy=context.getState(
             getEnergy=True,
         )

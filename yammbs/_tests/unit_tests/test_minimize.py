@@ -33,7 +33,7 @@ def basic_input(force_field="openff-1.0.0") -> MinimizationInput:
 
     return MinimizationInput(
         inchi_key=ethane.to_inchikey(),
-        qcarchive_id="test",
+        qcarchive_id=123485854848,
         force_field=force_field,
         mapped_smiles=ethane.to_smiles(mapped=True),
         coordinates=ethane.conformers[0].m_as(unit.angstrom),
@@ -44,7 +44,7 @@ def basic_input(force_field="openff-1.0.0") -> MinimizationInput:
 def perturbed_input(perturbed_ethane) -> MinimizationInput:
     return MinimizationInput(
         inchi_key=perturbed_ethane.to_inchikey(),
-        qcarchive_id="test",
+        qcarchive_id=348483483,
         force_field="openff-1.0.0",
         mapped_smiles=perturbed_ethane.to_smiles(mapped=True),
         coordinates=perturbed_ethane.conformers[0].m_as(unit.angstrom),
@@ -90,7 +90,7 @@ def test_plugin_loadable(ethane):
     _run_openmm(
         MinimizationInput(
             inchi_key=ethane.to_inchikey(),
-            qcarchive_id="test",
+            qcarchive_id=38483483483481384183412831832,
             force_field="de-force-1.0.1",
             mapped_smiles=ethane.to_smiles(mapped=True),
             coordinates=ethane.conformers[0].m_as(unit.angstrom),
@@ -113,7 +113,7 @@ def test_finds_local_force_field(ethane, tmp_path):
     _run_openmm(
         MinimizationInput(
             inchi_key=ethane.to_inchikey(),
-            qcarchive_id="test",
+            qcarchive_id=5,
             force_field=(tmp_path / "fOOOO.offxml").as_posix(),
             mapped_smiles=ethane.to_smiles(mapped=True),
             coordinates=ethane.conformers[0].m_as(unit.angstrom),
@@ -137,7 +137,7 @@ def test_plugin_not_needed_to_use_mainline_force_field(monkeypatch, ethane):
     _run_openmm(
         MinimizationInput(
             inchi_key=ethane.to_inchikey(),
-            qcarchive_id="test",
+            qcarchive_id=5,
             force_field="openff-1.0.0",
             mapped_smiles=ethane.to_smiles(mapped=True),
             coordinates=ethane.conformers[0].m_as(unit.angstrom),
