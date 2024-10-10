@@ -8,7 +8,7 @@ class MinimizedMolecule(ImmutableModel):
     final_energy: float
     mapped_smiles: str
     coordinates: Array = Field(
-        "Coordinates, stored with implicit Angstrom units",
+        description="Coordinates, stored with implicit Angstrom units",
     )
 
 
@@ -22,14 +22,14 @@ class MinimizedQMDataset(ImmutableModel):
     version: int = Field(1, description="The version of this model")
 
     mm_molecules: dict[str, list[MinimizedMolecule]] = Field(
-        list(),
+        dict(),
         description="Molecules minimized with MM, keyed by the force field.",
     )
 
 
 class MinimizedQCArchiveDataset(MinimizedQMDataset):
     qm_molecules: dict[str, list[MinimizedQCArchiveMolecule]] = Field(
-        list(),
+        dict(),
         description="Molecules minimized with QM",
     )
 

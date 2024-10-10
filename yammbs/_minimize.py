@@ -1,7 +1,7 @@
 import functools
 import re
 from multiprocessing import Pool
-from typing import Union
+from typing import Iterator
 
 import numpy
 import openmm
@@ -57,11 +57,11 @@ def _lazy_load_force_field(force_field_name: str) -> ForceField:
 
 
 def _minimize_blob(
-    input: dict[str, dict[str, Union[str, numpy.ndarray]]],
+    input: dict[str, list],
     force_field: str,
     n_processes: int = 2,
     chunksize=32,
-) -> dict[str, list["MinimizationResult"]]:
+) -> Iterator["MinimizationResult"]:
     inputs = list()
 
     inputs = [
@@ -189,7 +189,7 @@ def _run_openmm(
         qcarchive_id=qcarchive_id,
         force_field=input.force_field,
         mapped_smiles=input.mapped_smiles,
-        coordinates=context.getState(getPositions=True).getPositions().value_in_unit(openmm.unit.angstrom),
+        coordinates=context.getState(getPositions=True).getPositions(asNumpy=True).value_in_unit(openmm.unit.angstrom),
         energy=context.getState(
             getEnergy=True,
         )

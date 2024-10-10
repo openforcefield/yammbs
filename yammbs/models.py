@@ -19,7 +19,6 @@ class Record(ImmutableModel):
         validate_default=True,
         validate_assignment=True,
         frozen=False,
-        from_attribute=True,
     )
 
 
@@ -111,7 +110,7 @@ class MoleculeRecord(Record):
 
     @classmethod
     def from_molecule(
-        cls,
+        cls: type[MR],
         molecule: Molecule,
     ) -> MR:
         assert molecule.n_conformers == 1
