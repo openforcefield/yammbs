@@ -1,4 +1,8 @@
-"""Helpers for dealing with NumPy arrays."""
+"""
+Helpers for dealing with NumPy arrays.
+
+Originally copied from openff-nagl.
+"""
 
 from typing import Annotated
 
