@@ -25,11 +25,11 @@ class TestQCArchiveDataset:
 
 class TestSerialization:
     def test_json_roundtrip(self):
-        dataset = QCArchiveDataset.from_json(
-            get_data_file_path("_tests/data/yammbs/01-processed-qm-ch.json", "yammbs"),
+        dataset = QCArchiveDataset.model_validate_json(
+            open(get_data_file_path("_tests/data/yammbs/01-processed-qm-ch.json", "yammbs")).read(),
         )
 
-        roundtripped = QCArchiveDataset.parse_raw(dataset.json())
+        roundtripped = QCArchiveDataset.model_validate_json(dataset.model_dump_json())
 
         assert len(dataset.qm_molecules) == len(roundtripped.qm_molecules)
 

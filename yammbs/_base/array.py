@@ -1,30 +1,34 @@
-"""Copied from openff-nagl."""
+"""
+Helpers for dealing with NumPy arrays.
 
-from typing import Any
+Originally copied from openff-nagl.
+"""
+
+from typing import Annotated
 
 import numpy
+from numpy.typing import NDArray
+from openff.toolkit import Quantity
+from pydantic import BeforeValidator, WrapSerializer
 
 
-class ArrayMeta(type):
-    def __getitem__(cls, T):
-        return type("Array", (Array,), {"__dtype__": T})
+def _strip_units(val: list[float] | Quantity | NDArray) -> NDArray:
+    if hasattr(val, "magnitude"):
+        unitless_val = val.magnitude
+    else:
+        unitless_val = val
+
+    return numpy.asarray(unitless_val).reshape((-3, 3))
 
 
-class Array(numpy.ndarray, metaclass=ArrayMeta):
-    """A typeable numpy array"""
+def _array_serializer(val: NDArray, nxt) -> list[float]:
+    return val.flatten().tolist()
 
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate_type
 
-    @classmethod
-    def validate_type(cls, val):
-        dtype = getattr(cls, "__dtype__", Any)
-        if dtype is Any:
-            dtype = None
+CoordinateArray = Annotated[
+    NDArray[numpy.float64],
+    BeforeValidator(_strip_units),
+    WrapSerializer(_array_serializer),
+]
 
-        # If Quantity, manually strip units to avoid downcast warning
-        if hasattr(val, "magnitude"):
-            val = val.magnitude
-
-        return numpy.asanyarray(val, dtype=dtype)
+Array = CoordinateArray

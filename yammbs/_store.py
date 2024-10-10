@@ -2,14 +2,16 @@ import logging
 import pathlib
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import ContextManager, Iterable, TypeVar
+from typing import Generator, Iterable, TypeVar
 
 import numpy
 import pandas
+from numpy.typing import NDArray
 from openff.qcsubmit.results import OptimizationResultCollection
 from openff.toolkit import Molecule, Quantity
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
+from typing_extensions import Self
 
 from yammbs._db import (
     DBBase,
@@ -35,9 +37,9 @@ from yammbs.analysis import (
 from yammbs.cached_result import CachedResultCollection
 from yammbs.checkmol import ChemicalEnvironment
 from yammbs.exceptions import DatabaseExistsError
-from yammbs.inputs import QCArchiveDataset, QMDataset
+from yammbs.inputs import QCArchiveDataset
 from yammbs.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
-from yammbs.outputs import MinimizedQMDataset
+from yammbs.outputs import Metric, MetricCollection, MinimizedQMDataset
 
 LOGGER = logging.getLogger(__name__)
 
@@ -73,7 +75,7 @@ class MoleculeStore:
             self.software_provenance = db.get_software_provenance()
 
     @contextmanager
-    def _get_session(self) -> ContextManager[Session]:
+    def _get_session(self) -> Generator[DBSessionManager, None, None]:
         session = self._sessionmaker()
         try:
             yield DBSessionManager(session)
@@ -110,7 +112,7 @@ class MoleculeStore:
     def _set_provenance(
         self,
         general_provenance: dict[str, str],
-        software_provenance: dict[str, str],
+        software_provenance: dict[str, str | None],
     ):
         """Set the stores provenance information.
 
@@ -134,7 +136,7 @@ class MoleculeStore:
 
     def store(
         self,
-        records: Iterable[MoleculeRecord],
+        records: MoleculeRecord | Iterable[MoleculeRecord],
     ):
         """Store molecules and their computed properties in the data store.
 
@@ -152,7 +154,7 @@ class MoleculeStore:
 
     def store_qcarchive(
         self,
-        records: Iterable[QMConformerRecord],
+        records: QMConformerRecord | Iterable[QMConformerRecord],
     ):
         if isinstance(records, QMConformerRecord):
             records = [records]
@@ -219,7 +221,7 @@ class MoleculeStore:
         with self._get_session() as db:
             return next(inchi_key for (inchi_key,) in db.db.query(DBMoleculeRecord.inchi_key).filter_by(id=id).all())
 
-    def get_qcarchive_ids_by_molecule_id(self, id: int) -> list[str]:
+    def get_qcarchive_ids_by_molecule_id(self, id: int) -> list[int]:
         with self._get_session() as db:
             return [
                 qcarchive_id
@@ -249,7 +251,7 @@ class MoleculeStore:
                 for (molecule_id,) in db.db.query(DBQMConformerRecord.parent_id).filter_by(qcarchive_id=id).all()
             )
 
-    def get_qm_conformers_by_molecule_id(self, id: int) -> list:
+    def get_qm_conformers_by_molecule_id(self, id: int) -> list[NDArray]:
         with self._get_session() as db:
             return [
                 conformer
@@ -379,9 +381,11 @@ class MoleculeStore:
     @classmethod
     def from_qm_dataset(
         cls,
-        dataset: QMDataset,
+        dataset: QCArchiveDataset,
         database_name: str,
-    ) -> MS:
+    ) -> Self:
+        # TODO: This only works on the child class QCArchiveDataset, should be
+        #       rewritten to work on the parent QMDataset
         if pathlib.Path(database_name).exists():
             raise DatabaseExistsError(f"Database {database_name} already exists.")
 
@@ -426,7 +430,7 @@ class MoleculeStore:
         cls,
         collection: CachedResultCollection,
         database_name: str,
-    ) -> MS:
+    ) -> Self:
         from tqdm import tqdm
 
         if pathlib.Path(database_name).exists():
@@ -495,7 +499,7 @@ class MoleculeStore:
         cls,
         dataset: QCArchiveDataset,
         database_name: str,
-    ) -> MS:
+    ) -> Self:
         """
         Create a new MoleculeStore databset from YAMMBS's QCArchiveDataset model.
 
@@ -859,9 +863,7 @@ class MoleculeStore:
 
     def get_metrics(
         self,
-    ):
-        from yammbs.outputs import Metric, MetricCollection
-
+    ) -> MetricCollection:
         metrics = MetricCollection()
 
         # TODO: Optimize this for speed
@@ -878,7 +880,7 @@ class MoleculeStore:
             dataframe = dataframe.replace({pandas.NA: numpy.nan})
 
             metrics.metrics[force_field] = {
-                id: Metric(
+                id: Metric(  # type: ignore[misc]
                     dde=row["difference"],
                     rmsd=row["rmsd"],
                     tfd=row["tfd"],
@@ -916,7 +918,7 @@ class MoleculeStore:
         return [
             id
             for id in self.get_molecule_ids()
-            if functional_group
+            if functional_group  # type: ignore[operator]
             in analyze_functional_groups(
                 smiles=self.get_smiles_by_molecule_id(id),
             )
@@ -926,7 +928,7 @@ class MoleculeStore:
         self,
         smirks: str,
     ) -> list[int]:
-        def smirks_in_smiles(smirks, smiles):
+        def smirks_in_smiles(smirks: str, smiles: str) -> bool:
             molecule = Molecule.from_mapped_smiles(smiles)
             matches = molecule.chemical_environment_matches(smirks)
 
@@ -945,6 +947,6 @@ class MoleculeStore:
 def smiles_to_inchi_key(smiles: str) -> str:
     from openff.toolkit import Molecule
 
-    return Molecule.from_smiles(smiles, allow_undefined_stereo=True).to_inchi(
+    return Molecule.from_mapped_smiles(smiles, allow_undefined_stereo=True).to_inchi(
         fixed_hydrogens=True,
     )
