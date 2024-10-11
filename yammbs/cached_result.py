@@ -3,7 +3,6 @@ from dataclasses import dataclass
 
 import numpy
 from openff.qcsubmit.results import OptimizationResultCollection
-from openff.units import unit
 
 
 @dataclass
@@ -21,12 +20,10 @@ class CachedResult:
     qc_record_final_energy: float
 
     def to_dict(self):
-        assert self.coordinates.units == unit.angstrom
         return dict(
             mapped_smiles=self.mapped_smiles,
             inchi_key=self.inchi_key,
-            # this is a pint.Quantity-wrapped numpy array
-            coordinates=self.coordinates.magnitude.tolist(),
+            coordinates=self.coordinates.tolist(),
             qc_record_id=self.qc_record_id,
             qc_record_final_energy=self.qc_record_final_energy,
         )
