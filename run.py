@@ -22,16 +22,19 @@ def main():
         "de-force-1.0.1.offxml",
     ]
 
-    data = "ch"
+    # pre-processed data is stored in the repository, just a larger dataset
+    # filtered by elements, takes values of "ch" (~40) and "cho" (~1600 molecules)
+    data_key = "ch"
 
-    dataset = QCArchiveDataset.parse_file(f"yammbs/_tests/data/yammbs/01-processed-qm-{data}.json")
+    dataset = QCArchiveDataset.model_validate_json(f"yammbs/_tests/data/yammbs/01-processed-qm-{data_key}.json")
 
-    if pathlib.Path(f"{data}.sqlite").exists():
-        store = MoleculeStore(f"{data}.sqlite")
+    # This file is also store at f"yammbs/_tests/data/yammbs/01-processed-qm-{data_key}.json"
+    if pathlib.Path(f"{data_key}.sqlite").exists():
+        store = MoleculeStore(f"{data_key}.sqlite")
     else:
         store = MoleculeStore.from_qm_dataset(
             dataset,
-            database_name=f"{data}.sqlite",
+            database_name=f"{data_key}.sqlite",
         )
 
     for force_field in force_fields:
@@ -40,10 +43,10 @@ def main():
         store.optimize_mm(force_field=force_field, n_processes=10)
 
     with open("minimized.json", "w") as f:
-        f.write(store.get_outputs().json())
+        f.write(store.get_outputs().model_dump_json())
 
     with open("metrics.json", "w") as f:
-        f.write(store.get_metrics().json())
+        f.write(store.get_metrics().model_dump_json())
 
     plot(force_fields)
 
