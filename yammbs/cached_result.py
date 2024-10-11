@@ -79,7 +79,7 @@ class CachedResultCollection:
 
         ret = cls()
         for entry in data:
-            coordinates = numpy.array(entry["coordinates"]) * unit.angstrom
+            coordinates = numpy.array(entry["coordinates"]).reshape(-1, 3)
             ret.inner.append(
                 CachedResult(
                     mapped_smiles=entry["mapped_smiles"],
