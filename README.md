@@ -77,6 +77,8 @@ This input model (`QCArchiveDataset`) stores a miniimum amount of information to
 * Final energy from QM optimization
 * An ID uniquely defining this structure within the datasets
 
+If running many benchmarks, we recommend using this file as a starting point.
+
 Note: This JSON file ("input.json") is from a different model that the JSON file written from QCSUbmit - they are not interchangeable.
 
 Note: Both QCSubmit and YAMMBS rely on Pydantic for model validation and serialization. Even though both use V2 in packaging, YAMMBS uses the V2 API and (as of October 2024) QCSubmit still uses the V1 API. Usage like above should work fine; only esoteric use cases (in particular, defining a new model that has both YAMMBS and QCSubmit models as fields) should be unsupported.
@@ -152,6 +154,10 @@ The basic structure of the metrics is a hierarchical dictionary. It is keyed by 
 ```
 
 This data can be transformed for plotting, summary statistics, etc. which compare the metrics of each force field (for this molecule dataset).
+
+## Custom analyses
+
+See `examples.ipynb` for some examples of interacting with benchmarking results and a starting point for custom analyses.
 
 ### License
 
