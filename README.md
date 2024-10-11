@@ -26,7 +26,6 @@ if __name__ == "__main__":
 
 must be used for Python's `multiprocessing` module to behave well.
 
-
 ### Data sources
 
 It is assumed that the input molecules are stored in a `openff-qcsubmit` model like `OptimizationResultCollection` or YAMMBS's own input models.
@@ -55,7 +54,12 @@ season1_dataset = OptimizationResultCollection.from_server(
 
 ```
 
-After retrieving it, probably after applying some filters, you can dump it to disk with `season1_dataset.json("qcsubmit.json")` to avoid pulling down all of the data from the server again.
+After retrieving it, probably after applying some filters, you can dump it to disk to avoid pulling down all of the data from the server again.
+
+```python
+with open("qcsubmit.json", "w") as f:
+    f.write(season1_dataset.json())
+```
 
 Once a `OptimizationResultCollection` is in memory, either by pulling it down from QCArchive or loading it from disk, convert it to a "YAMMBS input" model using the API:
 
@@ -63,7 +67,7 @@ Once a `OptimizationResultCollection` is in memory, either by pulling it down fr
 from yammbs.inputs import QCArchiveDataset
 
 
-season1_dataset = OptimizationResultCollection.parse_raw("qcsubmit.json")
+season1_dataset = OptimizationResultCollection.parse_raw(open("qcsubmit.json").read())
 
 dataset = QCArchiveDataset.from_qcsubmit_collection(season1_dataset)
 
