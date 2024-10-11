@@ -39,7 +39,7 @@ def test_from_cached_collection(small_cache):
         assert len(MoleculeStore(db)) == len(store)
 
         # check output type for #67
-        assert type(store.get_qm_conformer_by_qcarchive_id(18433006)) == numpy.ndarray
+        assert isinstance(store.get_qm_conformer_by_qcarchive_id(18433006), numpy.ndarray)
 
 
 def test_from_qcarchive_dataset(small_qcsubmit_collection):
