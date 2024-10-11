@@ -9,6 +9,7 @@ import pandas
 from numpy.typing import NDArray
 from openff.qcsubmit.results import OptimizationResultCollection
 from openff.toolkit import Molecule, Quantity
+from openff.units import unit
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from typing_extensions import Self
@@ -304,6 +305,37 @@ class MoleculeStore:
                 .filter_by(force_field=force_field)
                 .all()
             )
+
+    def get_qm_molecule_by_qcarchive_id(self, id: int) -> Molecule:
+        with self._get_session() as db:
+            conformer, smiles = next(
+                (conformer, smiles)
+                for (conformer, smiles) in db.db.query(
+                    DBQMConformerRecord.coordinates,
+                    DBQMConformerRecord.mapped_smiles,
+                )
+                .filter_by(qcarchive_id=id)
+                .all()
+            )
+            ret = Molecule.from_mapped_smiles(smiles, allow_undefined_stereo=True)
+            ret.add_conformer(conformer * unit.angstroms)
+            return ret
+
+    def get_mm_molecule_by_qcarchive_id(self, id: int, force_field: str) -> Molecule:
+        with self._get_session() as db:
+            conformer, smiles = next(
+                (conformer, smiles)
+                for (conformer, smiles) in db.db.query(
+                    DBMMConformerRecord.coordinates,
+                    DBMMConformerRecord.mapped_smiles,
+                )
+                .filter_by(qcarchive_id=id)
+                .filter_by(force_field=force_field)
+                .all()
+            )
+            ret = Molecule.from_mapped_smiles(smiles, allow_undefined_stereo=True)
+            ret.add_conformer(conformer * unit.angstroms)
+            return ret
 
     # TODO: Allow by multiple selectors (id: list[int])
     def get_qm_energies_by_molecule_id(self, id: int) -> list[float]:
