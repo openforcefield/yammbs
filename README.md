@@ -51,10 +51,9 @@ season1_dataset = OptimizationResultCollection.from_server(
     datasets="OpenFF Industry Benchmark Season 1 v1.1",
     spec_name="default",
 )
-
 ```
 
-After retrieving it, probably after applying some filters, you can dump it to disk to avoid pulling down all of the data from the server again.
+After retrieving it - and after applying filters to remove problematic records - you can dump it to disk to avoid pulling down all of the data from the server again.
 
 ```python
 with open("qcsubmit.json", "w") as f:
@@ -71,7 +70,8 @@ season1_dataset = OptimizationResultCollection.parse_raw(open("qcsubmit.json").r
 
 dataset = QCArchiveDataset.from_qcsubmit_collection(season1_dataset)
 
-dataset.model_dump_json("input.json")
+with open("input.json", "w") as f:
+    f.write(dataset.model_dump_json())
 ```
 
 This input model (`QCArchiveDataset`) stores a miniimum amount of information to use these QM geometries as reference structures. The dataset has fields for tagging the name and model version, but mostly stores a list of structures. Each QM-optimized structure is stored as a `QCArchiveMolecule` object which stores:
