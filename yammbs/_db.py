@@ -57,6 +57,7 @@ class DBMoleculeRecord(DBBase):  # type: ignore
                 coordinates=record.coordinates,
                 energy=record.energy,
             )
+
             self.qm_conformers.append(db_record)
 
     def store_mm_conformer_records(self, records: list[MMConformerRecord]):

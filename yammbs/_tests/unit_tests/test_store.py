@@ -139,6 +139,32 @@ def test_get_conformers(small_store):
     )
 
 
+def test_get_molecules(small_store):
+    force_field = "openff-2.0.0"
+    molecule_id = 40
+    qcarchive_id = small_store.get_qcarchive_ids_by_molecule_id(molecule_id)[-1]
+
+    numpy.testing.assert_allclose(
+        small_store.get_qm_conformer_by_qcarchive_id(
+            qcarchive_id,
+        ),
+        small_store.get_qm_molecule_by_qcarchive_id(qcarchive_id).conformers[0].m_as("angstroms"),
+    )
+
+    numpy.testing.assert_allclose(
+        small_store.get_mm_conformer_by_qcarchive_id(
+            qcarchive_id,
+            force_field=force_field,
+        ),
+        small_store.get_mm_molecule_by_qcarchive_id(
+            qcarchive_id,
+            force_field=force_field,
+        )
+        .conformers[0]
+        .m_as("angstroms"),
+    )
+
+
 def test_get_force_fields(small_store):
     force_fields = small_store.get_force_fields()
 
