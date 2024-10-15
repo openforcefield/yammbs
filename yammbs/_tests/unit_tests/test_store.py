@@ -6,7 +6,6 @@ import numpy
 import pytest
 from openff.qcsubmit.results import OptimizationResultCollection
 from openff.toolkit import Molecule
-from openff.units import unit
 from openff.utilities import get_data_file_path, has_executable, temporary_cd
 
 from yammbs import MoleculeStore
@@ -149,7 +148,7 @@ def test_get_molecules(small_store):
         small_store.get_qm_conformer_by_qcarchive_id(
             qcarchive_id,
         ),
-        small_store.get_qm_molecule_by_qcarchive_id(qcarchive_id).conformers[0].m_as(unit.angstroms),
+        small_store.get_qm_molecule_by_qcarchive_id(qcarchive_id).conformers[0].m_as("angstroms"),
     )
 
     numpy.testing.assert_allclose(
@@ -162,7 +161,7 @@ def test_get_molecules(small_store):
             force_field=force_field,
         )
         .conformers[0]
-        .m_as(unit.angstroms),
+        .m_as("angstroms"),
     )
 
 

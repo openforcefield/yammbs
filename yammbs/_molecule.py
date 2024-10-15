@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-from openff.toolkit import Molecule
+from openff.toolkit import Molecule, Quantity
 
 from yammbs._base.array import Array
 
@@ -28,3 +28,14 @@ def _to_geometric_molecule(
     }
 
     return geometric_molecule
+
+
+def _molecule_with_conformer_from_smiles(
+    mapped_smiles: str,
+    conformer: Array,
+) -> Molecule:
+    """Create a molecule from mapped SMILES and attach a single conformer."""
+    molecule = Molecule.from_mapped_smiles(mapped_smiles, allow_undefined_stereo=True)
+    molecule.add_conformer(Quantity(conformer, "angstrom"))
+
+    return molecule
