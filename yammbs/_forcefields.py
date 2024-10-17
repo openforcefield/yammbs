@@ -53,13 +53,11 @@ def _espaloma(molecule: Molecule, force_field_name: str) -> openmm.System:
 
     ff = force_field_name.split("-", 1)[1:2]
 
-    if ff == []:
+    if len(ff) == 0:
         raise ValueError("espaloma force field must have an OpenFF force field too")
-    else:
-        ff = ff[0]
 
     mol_graph = espaloma.Graph(molecule)
     model = espaloma.get_model("latest")
     model(mol_graph.heterograph)
 
-    return espaloma.graphs.deploy.openmm_system_from_graph(mol_graph, forcefield=ff)
+    return espaloma.graphs.deploy.openmm_system_from_graph(mol_graph, forcefield=ff[0])

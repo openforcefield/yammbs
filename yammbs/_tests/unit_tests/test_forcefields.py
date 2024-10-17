@@ -17,9 +17,6 @@ def test_smirnoff_basic(molecule):
     assert system.getNumParticles() == molecule.n_atoms
 
 
-@pytest.mark.skip(
-    reason="Needs live GAFF support in `openmmforcefields",
-)
 def test_gaff_basic(molecule):
     system = _gaff(molecule, "gaff-2.11")
 

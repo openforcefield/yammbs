@@ -1,6 +1,6 @@
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.6.0
+  rev: v5.0.0
   hooks:
   - id: check-yaml
   - id: end-of-file-fixer
@@ -11,28 +11,11 @@ repos:
   rev: v2.5.0
   hooks:
   - id: setup-cfg-fmt
-- repo: https://github.com/psf/black
-  rev: 24.4.2
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.6.9
   hooks:
-  - id: black
-  - id: black-jupyter
-- repo: https://github.com/PyCQA/isort
-  rev: 5.13.2
-  hooks:
-  - id: isort
-- repo: https://github.com/PyCQA/flake8
-  rev: 7.1.0
-  hooks:
-  - id: flake8
-    additional_dependencies: [
-        'flake8-absolute-import',
-        'flake8-pytest-style==2',
-    ]
-- repo: https://github.com/asottile/pyupgrade
-  rev: v3.17.0
-  hooks:
-  - id: pyupgrade
-    args: [--py38-plus]
+    - id: ruff
+    - id: ruff-format
 - repo: https://github.com/asottile/add-trailing-comma
   rev: v3.1.0
   hooks:

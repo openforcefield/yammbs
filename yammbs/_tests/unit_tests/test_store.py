@@ -6,18 +6,19 @@ import numpy
 import pytest
 from openff.qcsubmit.results import OptimizationResultCollection
 from openff.toolkit import Molecule
-from openff.utilities import get_data_file_path, temporary_cd
+from openff.utilities import get_data_file_path, has_executable, temporary_cd
 
 from yammbs import MoleculeStore
 from yammbs.checkmol import ChemicalEnvironment
 from yammbs.exceptions import DatabaseExistsError
+from yammbs.inputs import QCArchiveDataset
 from yammbs.models import MMConformerRecord, QMConformerRecord
 
 
-def test_from_qcsubmit(small_collection):
+def test_from_qcsubmit(small_qcsubmit_collection):
     db = "foo.sqlite"
     with temporary_cd():
-        store = MoleculeStore.from_qcsubmit_collection(small_collection, db)
+        store = MoleculeStore.from_qcsubmit_collection(small_qcsubmit_collection, db)
 
         # Sanity check molecule deduplication
         assert len(store.get_smiles()) == len({*store.get_smiles()})
@@ -37,12 +38,31 @@ def test_from_cached_collection(small_cache):
         # Ensure a new object can be created from the same database
         assert len(MoleculeStore(db)) == len(store)
 
+        # check output type for #67
+        assert isinstance(store.get_qm_conformer_by_qcarchive_id(18433006), numpy.ndarray)
 
-def test_do_not_overwrite(small_collection):
+
+def test_from_qcarchive_dataset(small_qcsubmit_collection):
+    """Test loading from YAMMBS's QCArchive model"""
+    db = "foo.sqlite"
+    with temporary_cd():
+        store = MoleculeStore.from_qcarchive_dataset(
+            QCArchiveDataset.from_qcsubmit_collection(small_qcsubmit_collection),
+            db,
+        )
+
+        # Sanity check molecule deduplication
+        assert len(store.get_smiles()) == len({*store.get_smiles()})
+
+        # Ensure a new object can be created from the same database
+        assert len(MoleculeStore(db)) == len(store)
+
+
+def test_do_not_overwrite(small_qcsubmit_collection):
     with tempfile.NamedTemporaryFile(suffix=".sqlite") as file:
         with pytest.raises(DatabaseExistsError, match="already exists."):
             MoleculeStore.from_qcsubmit_collection(
-                small_collection,
+                small_qcsubmit_collection,
                 file.name,
             )
 
@@ -67,9 +87,18 @@ def test_get_molecule_id_by_qcarchive_id(small_store):
     assert small_store.get_molecule_id_by_qcarchive_id(qcarchive_id) == molecule_id
 
 
+def test_get_inchi_by_molecule_id(small_store):
+    Molecule.from_inchi(small_store.get_inchi_key_by_molecule_id(40))
+
+
 def test_molecules_sorted_by_qcarchive_id():
     raw_ch = json.load(
-        open(get_data_file_path("_tests/data/01-processed-qm-ch.json", "yammbs")),
+        open(
+            get_data_file_path(
+                "_tests/data/qcsubmit/01-processed-qm-ch.json",
+                "yammbs",
+            ),
+        ),
     )
 
     random.shuffle(raw_ch["entries"]["https://api.qcarchive.molssi.org:443/"])
@@ -110,6 +139,32 @@ def test_get_conformers(small_store):
             molecule_id,
             force_field=force_field,
         )[-1],
+    )
+
+
+def test_get_molecules(small_store):
+    force_field = "openff-2.0.0"
+    molecule_id = 40
+    qcarchive_id = small_store.get_qcarchive_ids_by_molecule_id(molecule_id)[-1]
+
+    numpy.testing.assert_allclose(
+        small_store.get_qm_conformer_by_qcarchive_id(
+            qcarchive_id,
+        ),
+        small_store.get_qm_molecule_by_qcarchive_id(qcarchive_id).conformers[0].m_as("angstroms"),
+    )
+
+    numpy.testing.assert_allclose(
+        small_store.get_mm_conformer_by_qcarchive_id(
+            qcarchive_id,
+            force_field=force_field,
+        ),
+        small_store.get_mm_molecule_by_qcarchive_id(
+            qcarchive_id,
+            force_field=force_field,
+        )
+        .conformers[0]
+        .m_as("angstroms"),
     )
 
 
@@ -187,6 +242,7 @@ def test_get_qm_energies_by_molecule_id(
     assert len(energies) == expected_len
 
 
+@pytest.mark.skipif(not has_executable("checkmol"), reason="checkmol not installed")
 @pytest.mark.parametrize(
     "func",
     [
@@ -252,3 +308,30 @@ def test_filter_by_smirks(small_store, smirks, expected_len, func):
 
     for value in filtered_values:
         assert value in all_values
+
+
+def test_get_metrics(small_store):
+    metrics = small_store.get_metrics()
+
+    sage_metrics = metrics.metrics["openff-2.1.0"]
+
+    assert len(sage_metrics) > 0
+
+    for other_force_field in [
+        "openff-1.0.0",
+        "openff-1.3.0",
+        "openff-2.1.0",
+        "gaff-2.11",
+    ]:
+        assert len(sage_metrics) == len(metrics.metrics[other_force_field])
+
+    this_metric = sage_metrics[37016887]
+
+    # semi hard-coded ranges, which shouldn't change with source code anyway
+    assert abs(this_metric.dde) < 0.01
+    assert this_metric.rmsd < 0.2
+    assert this_metric.tfd < 0.2
+    assert this_metric.icrmsd["Bond"] < 0.1
+    assert this_metric.icrmsd["Angle"] < 2
+    assert this_metric.icrmsd["Dihedral"] < 15
+    assert this_metric.icrmsd["Improper"] < 1
