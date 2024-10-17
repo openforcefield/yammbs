@@ -24,9 +24,11 @@ def main():
 
     # pre-processed data is stored in the repository, just a larger dataset
     # filtered by elements, takes values of "ch" (~40) and "cho" (~1600 molecules)
-    data_key = "ch"
+    data_key = "cho"
 
-    dataset = QCArchiveDataset.model_validate_json(f"yammbs/_tests/data/yammbs/01-processed-qm-{data_key}.json")
+    dataset = QCArchiveDataset.model_validate_json(
+        open(f"yammbs/_tests/data/yammbs/01-processed-qm-{data_key}.json").read(),
+    )
 
     # This file is also store at f"yammbs/_tests/data/yammbs/01-processed-qm-{data_key}.json"
     if pathlib.Path(f"{data_key}.sqlite").exists():
@@ -90,8 +92,13 @@ def plot(force_fields: list[str]):
 
         for force_field in force_fields:
             if key == "dde":
-                counts, bins = numpy.histogram(
+                _data = numpy.array(
                     [*data[key][force_field].values()],
+                    dtype=float,
+                )
+
+                counts, bins = numpy.histogram(
+                    _data[numpy.isfinite(_data)],
                     bins=numpy.linspace(-15, 15, 31),
                 )
 
