@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import Field
 
 from yammbs._base.array import Array
@@ -35,10 +37,10 @@ class MinimizedQCArchiveDataset(MinimizedQMDataset):
 
 
 class Metric(ImmutableModel):
-    dde: float
+    dde: float | None
     rmsd: float
     tfd: float
-    icrmsd: dict[str, float]
+    icrmsd: dict[str, float | None]  # This could maybe be NamedTuple for cleaner typing
 
 
 class MetricCollection(ImmutableModel):

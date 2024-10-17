@@ -9,7 +9,7 @@ from yammbs._base.base import ImmutableModel
 
 class DDE(ImmutableModel):
     qcarchive_id: int
-    difference: float
+    difference: float | None
 
 
 class DDECollection(list[DDE]):
