@@ -3,7 +3,7 @@
 Yet Another Molecular Mechanics Benchmarking Suite (YAMMBS, pronounced like "yams") is a tool for
 benchmarking force fields.
 
-YAMMBS is currently developed for internal use at Open Force Field. It is not currently recommended for external use. No guarantees are made about the stability of the API or the accuracy of any results. Feed back and contributions are welcome [on GitHub](https://github.com/openforcefield/yammbs)
+YAMMBS is currently developed for internal use at Open Force Field. It is not currently recommended for external use. No guarantees are made about the stability of the API or the accuracy of any results. Feedback and contributions are welcome [on GitHub](https://github.com/openforcefield/yammbs).
 
 ## Installation
 
@@ -11,7 +11,7 @@ Use the file `./devtools/conda-envs/dev.yaml` and also install `yammbs` with som
 
 ## Getting started
 
-See the file `run.py` for a start-to-finish example. Note that the pattern in the script
+See the file [run.py](run.py) for a start-to-finish example. Note that the pattern in the script
 
 ```python
 from multiprocessing import freeze_support
@@ -28,11 +28,11 @@ must be used for Python's `multiprocessing` module to behave well.
 
 ### Data sources
 
-It is assumed that the input molecules are stored in a `openff-qcsubmit` model like `OptimizationResultCollection` or YAMMBS's own input models.
+It is assumed that the input molecules are stored in an `openff-qcsubmit` model like `OptimizationResultCollection` or YAMMBS's own input models.
 
 ### Preparing an input dataset
 
-YAMMBS relies on QCSumbit to provide datasets from QCArchive. See [their docs](https://docs.openforcefield.org/projects/qcsubmit/en/stable/), particularly the [dataset retrieval example](https://docs.openforcefield.org/projects/qcsubmit/en/stable/examples/retrieving-results.html), for more.
+YAMMBS relies on QCSubmit to provide datasets from QCArchive. See [their docs](https://docs.openforcefield.org/projects/qcsubmit/en/stable/), particularly the [dataset retrieval example](https://docs.openforcefield.org/projects/qcsubmit/en/stable/examples/retrieving-results.html), for more.
 
 Currently only optimization datasets (`OptimizationResultCollection` in QCSubmit) are supported.
 
@@ -60,13 +60,13 @@ with open("qcsubmit.json", "w") as f:
     f.write(season1_dataset.json())
 ```
 
-Once a `OptimizationResultCollection` is in memory, either by pulling it down from QCArchive or loading it from disk, convert it to a "YAMMBS input" model using the API:
+Once an `OptimizationResultCollection` is in memory, either by pulling it down from QCArchive or loading it from disk, convert it to a "YAMMBS input" model using the API:
 
 ```python
 from yammbs.inputs import QCArchiveDataset
 
 
-season1_dataset = OptimizationResultCollection.parse_raw(open("qcsubmit.json").read())
+season1_dataset = OptimizationResultCollection.parse_file("qcsubmit.json")
 
 dataset = QCArchiveDataset.from_qcsubmit_collection(season1_dataset)
 
@@ -74,7 +74,7 @@ with open("input.json", "w") as f:
     f.write(dataset.model_dump_json())
 ```
 
-This input model (`QCArchiveDataset`) stores a miniimum amount of information to use these QM geometries as reference structures. The dataset has fields for tagging the name and model version, but mostly stores a list of structures. Each QM-optimized structure is stored as a `QCArchiveMolecule` object which stores:
+This input model (`QCArchiveDataset`) stores a minimum amount of information to use these QM geometries as reference structures. The dataset has fields for tagging the name and model version, but mostly stores a list of structures. Each QM-optimized structure is stored as a `QCArchiveMolecule` object which stores:
 
 * (Mapped) SMILES which can be used to regenerate the `openff.toolkit.Molecule` and similar objects
 * QM-optimized geometry
@@ -83,7 +83,7 @@ This input model (`QCArchiveDataset`) stores a miniimum amount of information to
 
 If running many benchmarks, we recommend using this file as a starting point.
 
-Note: This JSON file ("input.json") is from a different model that the JSON file written from QCSUbmit - they are not interchangeable.
+Note: This JSON file ("input.json") is from a different model than the JSON file written from QCSubmit - they are not interchangeable.
 
 Note: Both QCSubmit and YAMMBS rely on Pydantic for model validation and serialization. Even though both use V2 in packaging, YAMMBS uses the V2 API and (as of October 2024) QCSubmit still uses the V1 API. Usage like above should work fine; only esoteric use cases (in particular, defining a new model that has both YAMMBS and QCSubmit models as fields) should be unsupported.
 
@@ -119,7 +119,7 @@ for force_field in [
 
 This method short-circuits (i.e. does not run minimizations) if a force field's results are already stored. i.e. the Sage 2.1 optimizations in the loop will be skipped.
 
-There are "output" models that mirroring the input models, basically storing MM-minimized geometries without needing to re-load or re-optimize the QM geometries. This can again be saved out to disk as JSON:
+There are "output" models that mirror the input models, basically storing MM-minimized geometries without needing to re-load or re-optimize the QM geometries. This can again be saved out to disk as JSON:
 
 ```python
 store.get_outputs().model_dump_json("output.json")
@@ -161,7 +161,7 @@ This data can be transformed for plotting, summary statistics, etc. which compar
 
 ## Custom analyses
 
-See `examples.ipynb` for some examples of interacting with benchmarking results and a starting point for custom analyses.
+See [examples.ipynb](examples.ipynb) for some examples of interacting with benchmarking results and a starting point for custom analyses.
 
 ### License
 
