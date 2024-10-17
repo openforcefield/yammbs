@@ -1,4 +1,5 @@
 import functools
+import logging
 import re
 from multiprocessing import Pool
 from typing import Iterator
@@ -16,6 +17,9 @@ from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
 
 _AVAILABLE_FORCE_FIELDS = get_available_force_fields()
+
+logger = logging.getLogger(__name__)
+logging.basicConfig()
 
 
 def _shorthand_to_full_force_field_name(
@@ -174,6 +178,7 @@ def _run_openmm(
                 combine_nonbonded_forces=False,
             )
         except UnassignedValenceError:
+            logger.warning(f"Skipping record {qcarchive_id} with unassigned valence terms")
             return None
 
     context = openmm.Context(
