@@ -2,9 +2,8 @@ import platform
 
 import numpy
 import pytest
-from openff.toolkit import ForceField, Molecule
+from openff.toolkit import ForceField, Molecule, unit
 from openff.toolkit import __version__ as __toolkit_version__
-from openff.toolkit import unit
 
 from yammbs import MoleculeStore
 from yammbs._minimize import MinimizationInput, _run_openmm
