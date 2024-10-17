@@ -2,8 +2,9 @@ import platform
 
 import numpy
 import pytest
-from openff.toolkit import ForceField, Molecule, unit
+from openff.toolkit import ForceField, Molecule
 from openff.toolkit import __version__ as __toolkit_version__
+from openff.toolkit import unit
 
 from yammbs import MoleculeStore
 from yammbs._minimize import MinimizationInput, _run_openmm
@@ -68,6 +69,34 @@ def test_minimization_basic(perturbed_input):
     # Check that the C-C bond distance has settled to ~1.5 A
     final = result.coordinates[0] - result.coordinates[1]
     assert 1.5 < numpy.linalg.norm(final) < 1.6
+
+
+def test_minimization_unassigned_torsion(caplog):
+    """Test that ``_run_openmm`` returns None and logs a warning when there are
+    unassigned valence terms."""
+
+    smiles = (
+        "[H:6][C@@:5]([C:16](=[O:17])[O:18][F:19])([C@:4]([H:31])([C:2]"
+        "([H:27])([C:1]([H:24])([H:25])[H:26])[C:3]([H:28])([H:29])[H:30])"
+        "[C:20]([C:21]([H:44])([H:45])[H:46])([C:22]([H:47])([H:48])[H:49])"
+        "[O:23][H:50])[N:7]([C:9](=[O:10])[O:11][C:12]([C:13]([H:35])([H:36])"
+        "[H:37])([C:14]([H:38])([H:39])[H:40])[C:15]([H:41])([H:42])[H:43])"
+        "[C:8]([H:32])([H:33])[H:34]"
+    )
+    mol = Molecule.from_mapped_smiles(smiles)
+    mol.generate_conformers(n_conformers=1)
+    min_input = MinimizationInput(
+        inchi_key=mol.to_inchikey(),
+        qcarchive_id=36955694,
+        force_field="openff-1.0.0",
+        mapped_smiles=mol.to_smiles(mapped=True),
+        coordinates=mol.conformers[0].m_as(unit.angstrom),
+    )
+
+    result = _run_openmm(min_input)
+
+    assert "unassigned valence terms" in caplog.text
+    assert result is None
 
 
 def test_same_force_field_same_results():
