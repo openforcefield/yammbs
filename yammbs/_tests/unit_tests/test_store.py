@@ -11,7 +11,7 @@ from openff.utilities import get_data_file_path, has_executable, temporary_cd
 from yammbs import MoleculeStore
 from yammbs.checkmol import ChemicalEnvironment
 from yammbs.exceptions import DatabaseExistsError
-from yammbs.inputs import QCArchiveDataset
+from yammbs.inputs import QCArchiveDataset, QCArchiveMolecule
 from yammbs.models import MMConformerRecord, QMConformerRecord
 
 
@@ -50,6 +50,27 @@ def test_from_qcarchive_dataset(small_qcsubmit_collection):
             QCArchiveDataset.from_qcsubmit_collection(small_qcsubmit_collection),
             db,
         )
+
+        # Sanity check molecule deduplication
+        assert len(store.get_smiles()) == len({*store.get_smiles()})
+
+        # Ensure a new object can be created from the same database
+        assert len(MoleculeStore(db)) == len(store)
+
+
+def test_from_qcarchive_dataset_undefined_stereo():
+    """Test loading from YAMMBS's QCArchive model with undefined stereochemistry"""
+    db = "foo.sqlite"
+
+    ds = QCArchiveDataset(
+        qm_molecules=[
+            QCArchiveMolecule.model_validate_json(
+                open(get_data_file_path("_tests/data/qcsubmit/undefined_stereo.json", "yammbs")).read(),
+            ),
+        ],
+    )
+    with temporary_cd():
+        store = MoleculeStore.from_qcarchive_dataset(ds, db)
 
         # Sanity check molecule deduplication
         assert len(store.get_smiles()) == len({*store.get_smiles()})
