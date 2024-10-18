@@ -543,7 +543,7 @@ class MoleculeStore:
         store = cls(database_name)
 
         for qm_molecule in tqdm(dataset.qm_molecules, desc="Storing molecules"):
-            molecule = Molecule.from_mapped_smiles(qm_molecule.mapped_smiles)
+            molecule = Molecule.from_mapped_smiles(qm_molecule.mapped_smiles, allow_undefined_stereo=True)
             molecule.add_conformer(Quantity(qm_molecule.coordinates, "angstrom"))
 
             molecule_record = MoleculeRecord.from_molecule(molecule)
