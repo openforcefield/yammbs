@@ -1,25 +1,27 @@
 import logging
 import pathlib
 from contextlib import contextmanager
-from typing import Generator, TypeVar
+from typing import Generator, Iterable
 
 from openff.qcsubmit.results import TorsionDriveResultCollection
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from typing_extensions import Self
 
 from yammbs._db import (
     DBBase,
 )
-from yammbs._session import DBSessionManager
+from yammbs._molecule import _smiles_to_inchi_key
+from yammbs._session import DBSessionManager  # Might need to make a different manager that's more torsion-specific
 from yammbs._types import Pathlike
+from yammbs.exceptions import DatabaseExistsError
+from yammbs.models import MoleculeRecord, Point
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 
 LOGGER = logging.getLogger(__name__)
 
-MS = TypeVar("MS", bound="MoleculeStore")
 
-
-class MoleculeStore:
+class TorsionStore:
     def __len__(self):
         with self._get_session() as _:
             raise NotImplementedError()
@@ -58,6 +60,62 @@ class MoleculeStore:
             raise e
         finally:
             session.close()
+
+    def store_molecule_record(
+        self,
+        records: MoleculeRecord | Iterable[MoleculeRecord],
+    ):
+        """Store molecules and their computed properties in the data store.
+
+        Parameters
+        ----------
+        records: Iterable[MoleculeRecord]
+            The QCArchive id and record of each molecule to store.
+        """
+        if isinstance(records, MoleculeRecord):
+            records = [records]
+
+        with self._get_session() as db:
+            for record in records:
+                db.store_molecule_record(record)
+
+    def store_point(
+        self,
+        point: Point,
+    ):
+        with self._get_session() as db:
+            db.store_point(point)
+
+    @classmethod
+    def from_torsion_dataset(
+        cls,
+        dataset: QCArchiveTorsionDataset,
+        database_name: str,
+    ) -> Self:
+        if pathlib.Path(database_name).exists():
+            raise DatabaseExistsError(f"Database {database_name} already exists.")
+
+        store = cls(database_name)
+
+        for qm_torsion in dataset.qm_torsions:
+            molecule_record = MoleculeRecord(
+                mapped_smiles=qm_torsion.mapped_smiles,
+                inchi_key=_smiles_to_inchi_key(qm_torsion.mapped_smiles),
+            )
+
+            store.store_molecule_record(molecule_record)
+
+            for angle in qm_torsion.points:
+                point = Point(
+                    grid_id=tuple(
+                        angle,
+                    ),
+                    coordinates=qm_torsion.points[angle].coordinates,
+                )
+
+                store.store_point(point)
+
+        return store
 
     @classmethod
     def from_qcsubmit_collection(

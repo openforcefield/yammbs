@@ -19,6 +19,10 @@ class TorsionProfile(ImmutableModel):
     points: dict[float, Array]
 
 
+class QCArchiveTorsionProfile(TorsionProfile):
+    id: int = Field(..., description="The attribute TorsiondriveRecord.id")
+
+
 class QCArchiveTorsionDataset(TorsionDataset):
     tag: str = Field("QCArchive torsiondrive dataset", description="A tag for the dataset")
 
@@ -36,7 +40,8 @@ class QCArchiveTorsionDataset(TorsionDataset):
     ) -> "QCArchiveTorsionDataset":
         return cls(
             qm_torsions=[
-                TorsionProfile(
+                QCArchiveTorsionProfile(
+                    id=record.id,
                     mapped_smiles=molecule.to_smiles(
                         mapped=True,
                         isomeric=True,
