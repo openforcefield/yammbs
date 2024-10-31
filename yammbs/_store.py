@@ -563,7 +563,7 @@ class MoleculeStore:
 
         return store
 
-    def _map_inchi_keys_to_qm_conformers(self, force_field: str) -> dict[str, list]:
+    def _map_inchi_keys_to_qm_conformers(self, force_field: str) -> dict[str, list[NDArray]]:
         inchi_keys = self.get_inchi_keys()
 
         mapping = defaultdict(list)
@@ -605,7 +605,10 @@ class MoleculeStore:
     ):
         from yammbs._minimize import _minimize_blob
 
-        inchi_key_qm_conformer_mapping = self._map_inchi_keys_to_qm_conformers(
+        inchi_key_qm_conformer_mapping: dict[
+            str,
+            list[NDArray],
+        ] = self._map_inchi_keys_to_qm_conformers(
             force_field=force_field,
         )
 

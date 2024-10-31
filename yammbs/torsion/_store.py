@@ -1,21 +1,24 @@
 import logging
 import pathlib
+import random
 from contextlib import contextmanager
 from typing import Generator, Iterable
 
+from numpy.typing import NDArray
 from openff.qcsubmit.results import TorsionDriveResultCollection
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from typing_extensions import Self
 
 from yammbs._molecule import _smiles_to_inchi_key
-from yammbs._store import MoleculeStore
 from yammbs._types import Pathlike
 from yammbs.exceptions import DatabaseExistsError
 from yammbs.models import MoleculeRecord
 from yammbs.torsion._db import (
     DBBase,
+    DBMMTorsionPointRecord,
     DBMoleculeRecord,
+    DBQMTorsionPointRecord,
 )
 from yammbs.torsion._session import TorsionDBSessionManager
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
@@ -97,12 +100,76 @@ class TorsionStore:
         with self._get_session() as db:
             db.store_mm_torsion_point(point)
 
-    get_molecule_ids = MoleculeStore.get_molecule_ids
+    # get_molecule_ids = MoleculeStore.get_molecule_ids
+
+    def get_molecule_ids(self) -> list[int]:
+        """
+        Get the molecule IDs of all records in the store.
+
+        These are likely to be integers sequentially incrementing from 1, but that
+        is not guaranteed.
+        """
+        with self._get_session() as db:
+            return [molecule_id for (molecule_id,) in db.db.query(DBMoleculeRecord.id).distinct()]
 
     # TODO: Allow by multiple selectors (smiles: list[str])
     def get_molecule_id_by_smiles(self, smiles: str) -> int:
         with self._get_session() as db:
             return next(id for (id,) in db.db.query(DBMoleculeRecord.id).filter_by(mapped_smiles=smiles).all())
+
+    def get_qm_points_by_molecule_id(self, id: int) -> dict[float, NDArray]:
+        with self._get_session() as db:
+            return {
+                grid_id: coordinates
+                for (grid_id, coordinates) in db.db.query(
+                    DBQMTorsionPointRecord.grid_id,
+                    DBQMTorsionPointRecord.coordinates,
+                )
+                .filter_by(parent_id=id)
+                .all()
+            }
+
+    def get_mm_points_by_molecule_id(
+        self,
+        id: int,
+        force_field: str,
+    ) -> dict[float, NDArray]:
+        with self._get_session() as db:
+            return {
+                grid_id: coordinates
+                for (grid_id, coordinates) in db.db.query(
+                    DBMMTorsionPointRecord.grid_id,
+                    DBMMTorsionPointRecord.coordinates,
+                )
+                .filter_by(parent_id=id)
+                .filter_by(force_field=force_field)
+                .all()
+            }
+
+    def get_qm_energies_by_molecule_id(self, id: int) -> dict[float, float]:
+        with self._get_session() as db:
+            return {
+                grid_id: energy
+                for (grid_id, energy) in db.db.query(
+                    DBQMTorsionPointRecord.grid_id,
+                    DBQMTorsionPointRecord.energy,
+                )
+                .filter_by(parent_id=id)
+                .all()
+            }
+
+    def get_mm_energies_by_molecule_id(self, id: int, force_field: str) -> dict[float, float]:
+        with self._get_session() as db:
+            return {
+                grid_id: energy
+                for (grid_id, energy) in db.db.query(
+                    DBMMTorsionPointRecord.grid_id,
+                    DBMMTorsionPointRecord.energy,
+                )
+                .filter_by(parent_id=id)
+                .filter_by(force_field=force_field)
+                .all()
+            }
 
     @classmethod
     def from_torsion_dataset(
@@ -123,14 +190,14 @@ class TorsionStore:
 
             store.store_molecule_record(molecule_record)
 
-            for angle in qm_torsion.points:
+            for angle in qm_torsion.coordinates:
                 qm_point_record = QMTorsionPointRecord(
                     molecule_id=store.get_molecule_id_by_smiles(
                         molecule_record.mapped_smiles,
                     ),
                     grid_id=angle,  # TODO: This needs to be a tuple later
-                    coordinates=qm_torsion.points[angle],
-                    energy=0.0,
+                    coordinates=qm_torsion.coordinates[angle],
+                    energy=qm_torsion.energies[angle],
                 )
 
                 store.store_qm_point(qm_point_record)
@@ -156,4 +223,29 @@ class TorsionStore:
         chunksize: int = 32,
     ):
         # TODO: Pass through options for constrained minimization process?
-        raise NotImplementedError()
+
+        # This is fake noise in place of data, just to test models
+        for molecule_id in self.get_molecule_ids():
+            with self._get_session() as db:
+                qm_data = list(
+                    (grid_id, coordinates, energy)
+                    for (grid_id, coordinates, energy) in db.db.query(
+                        DBQMTorsionPointRecord.grid_id,
+                        DBQMTorsionPointRecord.coordinates,
+                        DBQMTorsionPointRecord.energy,
+                    )
+                    .filter_by(parent_id=molecule_id)
+                    .all()
+                )
+
+            with self._get_session() as db:
+                for grid_id, coordinates, energy in qm_data:
+                    db.store_mm_torsion_point(
+                        MMTorsionPointRecord(
+                            molecule_id=molecule_id,
+                            grid_id=grid_id,
+                            coordinates=coordinates,
+                            force_field=force_field,
+                            energy=energy + 2 * (random.random() - 0.5),
+                        ),
+                    )

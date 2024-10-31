@@ -1,10 +1,14 @@
 from typing import Sequence
 
+import qcelemental
 from openff.qcsubmit.results import TorsionDriveResultCollection
 from pydantic import Field
 
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
+
+hartree2kcalmol = qcelemental.constants.hartree2kcalmol
+bohr2angstroms = qcelemental.constants.bohr2angstroms
 
 
 class TorsionDataset(ImmutableModel):
@@ -16,7 +20,9 @@ class TorsionProfile(ImmutableModel):
 
     # TODO: Should this store more information than just the grid points and
     #       final geometries? i.e. each point is tagged with an ID in QCArchive
-    points: dict[float, Array]
+    coordinates: dict[float, Array]
+
+    energies: dict[float, float]
 
 
 class QCArchiveTorsionProfile(TorsionProfile):
@@ -47,8 +53,12 @@ class QCArchiveTorsionDataset(TorsionDataset):
                         isomeric=True,
                         explicit_hydrogens=True,
                     ),
-                    points={
+                    coordinates={
                         grid_id[0]: optimization.final_molecule.geometry
+                        for grid_id, optimization in record.minimum_optimizations.items()
+                    },
+                    energies={
+                        grid_id[0]: optimization.energies[-1] * hartree2kcalmol
                         for grid_id, optimization in record.minimum_optimizations.items()
                     },
                 )

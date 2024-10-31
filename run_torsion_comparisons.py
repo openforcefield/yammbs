@@ -1,6 +1,8 @@
 import pathlib
 from multiprocessing import freeze_support
 
+from matplotlib import pyplot
+
 from yammbs.torsion import TorsionStore
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 
@@ -8,14 +10,8 @@ from yammbs.torsion.inputs import QCArchiveTorsionDataset
 def main():
     force_fields = [
         "openff-1.0.0",
-        "openff-1.1.0",
-        "openff-1.2.0",
-        "openff-1.3.0",
-        "openff-2.0.0",
-        "openff-2.1.0",
-        "gaff-1.8",
+        "openff-2.2.1",
         "gaff-2.11",
-        "de-force-1.0.1.offxml",
     ]
 
     if not pathlib.Path("torsiondrive-data.json").exists():
@@ -28,13 +24,37 @@ def main():
 
     dataset = QCArchiveTorsionDataset.model_validate_json(open("torsiondrive-data.json").read())
 
-    store = TorsionStore.from_torsion_dataset(
-        dataset,
-        database_name="torsion-example.sqlite",
-    )
+    if pathlib.Path("torsion-example.sqlite").exists():
+        store = TorsionStore("torsion-example.sqlite")
+    else:
+        store = TorsionStore.from_torsion_dataset(
+            dataset,
+            database_name="torsion-example.sqlite",
+        )
 
     for force_field in force_fields:
         store.optimize_mm(force_field=force_field, n_processes=10)
+
+    fig, axes = pyplot.subplots(5, 4, figsize=(20, 20))
+
+    for molecule_id, axis in zip(store.get_molecule_ids(), axes.flatten()):
+        qm = store.get_qm_energies_by_molecule_id(molecule_id)
+        qm_min = min(qm.values())
+
+        for key in qm:
+            qm[key] -= qm_min
+
+        sorted_qm = dict(sorted(qm.items()))
+        axis.plot(sorted_qm.keys(), sorted_qm.values(), "k.-", label=f"QM {molecule_id}")
+
+        for force_field in force_fields:
+            mm = dict(sorted(store.get_mm_energies_by_molecule_id(molecule_id, force_field=force_field).items()))
+
+            axis.plot(mm.keys(), [val - qm_min for val in mm.values()], "o--", label=force_field)
+
+        axis.legend(loc=0)
+
+    fig.savefig("random.png")
 
 
 if __name__ == "__main__":
