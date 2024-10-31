@@ -28,7 +28,13 @@ class TorsionRecord(Record):
 class QMTorsionPointRecord(Record):
     """A record for a specific 'point' in a torsion scan."""
 
-    grid_identifier: tuple[int, ...] = Field(
+    molecule_id: int = Field(
+        ...,
+        description="The ID of the molecule in the database",
+    )
+
+    # TODO: This needs to be a tuple[float] for 2D grids?
+    grid_id: float = Field(
         ...,
         description="The grid identifier of the torsion scan point.",
     )

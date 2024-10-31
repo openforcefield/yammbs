@@ -8,23 +8,26 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from typing_extensions import Self
 
-from yammbs._db import (
-    DBBase,
-)
 from yammbs._molecule import _smiles_to_inchi_key
-from yammbs._session import DBSessionManager  # Might need to make a different manager that's more torsion-specific
+from yammbs._store import MoleculeStore
 from yammbs._types import Pathlike
 from yammbs.exceptions import DatabaseExistsError
-from yammbs.models import MoleculeRecord, Point
+from yammbs.models import MoleculeRecord
+from yammbs.torsion._db import (
+    DBBase,
+    DBMoleculeRecord,
+)
+from yammbs.torsion._session import TorsionDBSessionManager
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
+from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord
 
 LOGGER = logging.getLogger(__name__)
 
 
 class TorsionStore:
     def __len__(self):
-        with self._get_session() as _:
-            raise NotImplementedError()
+        with self._get_session() as db:
+            return db.db.query(DBMoleculeRecord.mapped_smiles).count()
 
     def __init__(self, database_path: Pathlike = "torsion-store.sqlite"):
         database_path = pathlib.Path(database_path)
@@ -45,15 +48,16 @@ class TorsionStore:
         )
 
         with self._get_session() as db:
-            self.db_version = db.check_version()
-            self.general_provenance = db.get_general_provenance()
-            self.software_provenance = db.get_software_provenance()
+            assert db is not None
+            # self.db_version = db.check_version()
+            # self.general_provenance = db.get_general_provenance()
+            # self.software_provenance = db.get_software_provenance()
 
     @contextmanager
-    def _get_session(self) -> Generator[DBSessionManager, None, None]:
+    def _get_session(self) -> Generator[TorsionDBSessionManager, None, None]:
         session = self._sessionmaker()
         try:
-            yield DBSessionManager(session)
+            yield TorsionDBSessionManager(session)
             session.commit()
         except BaseException as e:
             session.rollback()
@@ -79,12 +83,26 @@ class TorsionStore:
             for record in records:
                 db.store_molecule_record(record)
 
-    def store_point(
+    def store_qm_point(
         self,
-        point: Point,
+        point: QMTorsionPointRecord,
     ):
         with self._get_session() as db:
-            db.store_point(point)
+            db.store_qm_torsion_point(point)
+
+    def store_mm_point(
+        self,
+        point: MMTorsionPointRecord,
+    ):
+        with self._get_session() as db:
+            db.store_mm_torsion_point(point)
+
+    get_molecule_ids = MoleculeStore.get_molecule_ids
+
+    # TODO: Allow by multiple selectors (smiles: list[str])
+    def get_molecule_id_by_smiles(self, smiles: str) -> int:
+        with self._get_session() as db:
+            return next(id for (id,) in db.db.query(DBMoleculeRecord.id).filter_by(mapped_smiles=smiles).all())
 
     @classmethod
     def from_torsion_dataset(
@@ -106,14 +124,16 @@ class TorsionStore:
             store.store_molecule_record(molecule_record)
 
             for angle in qm_torsion.points:
-                point = Point(
-                    grid_id=tuple(
-                        angle,
+                qm_point_record = QMTorsionPointRecord(
+                    molecule_id=store.get_molecule_id_by_smiles(
+                        molecule_record.mapped_smiles,
                     ),
-                    coordinates=qm_torsion.points[angle].coordinates,
+                    grid_id=angle,  # TODO: This needs to be a tuple later
+                    coordinates=qm_torsion.points[angle],
+                    energy=0.0,
                 )
 
-                store.store_point(point)
+                store.store_qm_point(qm_point_record)
 
         return store
 
@@ -128,3 +148,12 @@ class TorsionStore:
             dataset=QCArchiveTorsionDataset.from_qcsubmit_collection(collection),
             database_name=database_name,
         )
+
+    def optimize_mm(
+        self,
+        force_field: str,
+        n_processes: int = 2,
+        chunksize: int = 32,
+    ):
+        # TODO: Pass through options for constrained minimization process?
+        raise NotImplementedError()

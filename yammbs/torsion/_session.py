@@ -4,7 +4,7 @@ from yammbs.torsion.models import QMTorsionPointRecord
 
 
 # TODO: Composition over inheritance
-class TorsionDBSessionmanager(DBSessionManager):
+class TorsionDBSessionManager(DBSessionManager):
     pass
 
     def store_qm_torsion_point(self, record: QMTorsionPointRecord):
@@ -13,5 +13,17 @@ class TorsionDBSessionmanager(DBSessionManager):
                 parent_id=record.molecule_id,
                 grid_id=record.grid_id,
                 coordinates=record.coordinates,
+                energy=0.0,
+            ),
+        )
+
+    def store_mm_torsion_point(self, record: QMTorsionPointRecord):
+        self.db.add(
+            DBQMTorsionPointRecord(
+                parent_id=record.molecule_id,
+                grid_id=record.grid_id,
+                coordinates=record.coordinates,
+                force_field=record.force_field,
+                energy=1.0,
             ),
         )
