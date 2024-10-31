@@ -6,6 +6,17 @@ DBBase = declarative_base()
 DB_VERSION = 1
 
 
+class DBTorsionRecord(DBBase):  # type: ignore
+    __tablename__ = "torsion_molecules"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    inchi_key = Column(String, nullable=False, index=True)
+    mapped_smiles = Column(String, nullable=False)
+
+    dihedral_indices = Column(PickleType, nullable=False)
+
+
 class DBTorsionProfileRecord(DBBase):
     __tablename__ = "torsion_points"
 

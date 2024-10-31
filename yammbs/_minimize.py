@@ -30,7 +30,8 @@ def _shorthand_to_full_force_field_name(
     if make_unconstrained:
         # Split on '-' immediately followed by a number;
         # cannot split on '-' because of i.e. 'de-force-1.0.0'
-        prefix, version = re.split(r"-[0-9]", shorthand, maxsplit=1)
+        prefix, version, _ = re.split(r"-([\d.]+)", shorthand, maxsplit=1)
+
         return f"{prefix}_unconstrained-{version}.offxml"
     else:
         return shorthand + ".offxml"
@@ -50,7 +51,7 @@ def _lazy_load_force_field(force_field_name: str) -> ForceField:
     if not force_field_name.endswith(".offxml"):
         force_field_name = _shorthand_to_full_force_field_name(
             force_field_name,
-            make_unconstrained=False,
+            make_unconstrained=True,
         )
 
     return ForceField(

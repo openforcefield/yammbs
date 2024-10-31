@@ -1,11 +1,18 @@
 from yammbs._session import DBSessionManager
-from yammbs.torsion._db import DBMMTorsionPointRecord, DBQMTorsionPointRecord
-from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord
+from yammbs.torsion._db import DBMMTorsionPointRecord, DBQMTorsionPointRecord, DBTorsionRecord
+from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, TorsionRecord
 
 
 # TODO: Composition over inheritance
 class TorsionDBSessionManager(DBSessionManager):
-    pass
+    def store_torsion_record(self, record: TorsionRecord):
+        self.db.add(
+            DBTorsionRecord(
+                mapped_smiles=record.mapped_smiles,
+                inchi_key=record.inchi_key,
+                dihedral_indices=record.dihedral_indices,
+            ),
+        )
 
     def store_qm_torsion_point(self, record: QMTorsionPointRecord):
         self.db.add(

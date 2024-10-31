@@ -2,6 +2,7 @@ from pydantic import ConfigDict, Field
 
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
+from yammbs.models import MoleculeRecord
 
 
 class Record(ImmutableModel):
@@ -13,16 +14,15 @@ class Record(ImmutableModel):
     )
 
 
-class TorsionRecord(Record):
+class TorsionRecord(MoleculeRecord):
     """A record which contains information for a labelled molecule. This may include the
     coordinates of the molecule in different conformers, and partial charges / WBOs
     computed for those conformers."""
 
-    mapped_smiles: str = Field(
+    dihedral_indices: list[int] = Field(
         ...,
-        description="The mapped SMILES string of the initial molecule of this torsion drive.",
+        description="The indices of the atoms which define the driven dihedral angle",
     )
-    inchi_key: str = Field(..., description="The InChI string of the initial molecule of this torsion drive.")
 
 
 class QMTorsionPointRecord(Record):

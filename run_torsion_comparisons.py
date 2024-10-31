@@ -10,8 +10,11 @@ from yammbs.torsion.inputs import QCArchiveTorsionDataset
 def main():
     force_fields = [
         "openff-1.0.0",
+        # "openff-1.1.0",
+        "openff-1.3.0",
+        "openff-2.0.0",
+        # "openff-2.1.0",
         "openff-2.2.1",
-        "gaff-2.11",
     ]
 
     if not pathlib.Path("torsiondrive-data.json").exists():
@@ -33,7 +36,7 @@ def main():
         )
 
     for force_field in force_fields:
-        store.optimize_mm(force_field=force_field, n_processes=10)
+        store.optimize_mm(force_field=force_field, n_processes=8)
 
     fig, axes = pyplot.subplots(5, 4, figsize=(20, 20))
 
@@ -49,8 +52,11 @@ def main():
 
         for force_field in force_fields:
             mm = dict(sorted(store.get_mm_energies_by_molecule_id(molecule_id, force_field=force_field).items()))
+            if len(mm) == 0:
+                continue
+            mm_min = min(mm.values())
 
-            axis.plot(mm.keys(), [val - qm_min for val in mm.values()], "o--", label=force_field)
+            axis.plot(mm.keys(), [val - mm_min for val in mm.values()], "o--", label=force_field)
 
         axis.legend(loc=0)
 

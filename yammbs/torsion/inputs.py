@@ -17,6 +17,7 @@ class TorsionDataset(ImmutableModel):
 
 class TorsionProfile(ImmutableModel):
     mapped_smiles: str
+    dihedral_indices: list[int]
 
     # TODO: Should this store more information than just the grid points and
     #       final geometries? i.e. each point is tagged with an ID in QCArchive
@@ -53,6 +54,7 @@ class QCArchiveTorsionDataset(TorsionDataset):
                         isomeric=True,
                         explicit_hydrogens=True,
                     ),
+                    dihedral_indices=record.specification.keywords.dihedrals[0],  # assuming this is only ever 1-len?
                     coordinates={
                         grid_id[0]: optimization.final_molecule.geometry
                         for grid_id, optimization in record.minimum_optimizations.items()
