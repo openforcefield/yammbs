@@ -36,7 +36,7 @@ def main():
         )
 
     for force_field in force_fields:
-        store.optimize_mm(force_field=force_field, n_processes=8)
+        store.optimize_mm(force_field=force_field, n_processes=24)
 
     fig, axes = pyplot.subplots(5, 4, figsize=(20, 20))
 

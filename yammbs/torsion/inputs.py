@@ -17,13 +17,24 @@ class TorsionDataset(ImmutableModel):
 
 class TorsionProfile(ImmutableModel):
     mapped_smiles: str
-    dihedral_indices: list[int]
+    dihedral_indices: list[int] = Field(
+        ...,
+        description="The indices, 0-indexed, of the atoms which define the driven dihedral angle",
+    )
 
     # TODO: Should this store more information than just the grid points and
     #       final geometries? i.e. each point is tagged with an ID in QCArchive
-    coordinates: dict[float, Array]
+    coordinates: dict[float, Array] = Field(
+        ...,
+        description="A mapping between the grid angle and atomic coordinates, in Angstroms, of the molecule "
+        "at that point in the torsion scan.",
+    )
 
-    energies: dict[float, float]
+    energies: dict[float, float] = Field(
+        ...,
+        description="A mapping between the grid angle and (QM) energies, in kcal/mol, of the molecule "
+        "at that point in the torsion scan.",
+    )
 
 
 class QCArchiveTorsionProfile(TorsionProfile):
@@ -56,7 +67,7 @@ class QCArchiveTorsionDataset(TorsionDataset):
                     ),
                     dihedral_indices=record.specification.keywords.dihedrals[0],  # assuming this is only ever 1-len?
                     coordinates={
-                        grid_id[0]: optimization.final_molecule.geometry
+                        grid_id[0]: optimization.final_molecule.geometry * bohr2angstroms
                         for grid_id, optimization in record.minimum_optimizations.items()
                     },
                     energies={
