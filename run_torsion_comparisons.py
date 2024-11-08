@@ -11,7 +11,7 @@ def main():
     force_fields = [
         "openff-1.0.0",
         # "openff-1.1.0",
-        "openff-1.3.0",
+        # "openff-1.3.0",
         "openff-2.0.0",
         # "openff-2.1.0",
         "openff-2.2.1",
@@ -46,6 +46,8 @@ def main():
 
         for key in qm:
             qm[key] -= qm_min
+            # use this point as where the mm profiles are normalized out from
+            # numpy.argmin
 
         sorted_qm = dict(sorted(qm.items()))
         axis.plot(sorted_qm.keys(), sorted_qm.values(), "k.-", label=f"QM {molecule_id}")
