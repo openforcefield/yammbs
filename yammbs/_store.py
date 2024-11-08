@@ -5,7 +5,6 @@ from contextlib import contextmanager
 from typing import Generator, Iterable, TypeVar
 
 import numpy
-import pandas
 from numpy.typing import NDArray
 from openff.qcsubmit.results import OptimizationResultCollection
 from openff.toolkit import Molecule, Quantity
@@ -895,6 +894,7 @@ class MoleculeStore:
         self,
     ) -> MetricCollection:
         metrics = MetricCollection()
+        import pandas
 
         # TODO: Optimize this for speed
         for force_field in self.get_force_fields():
