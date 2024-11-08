@@ -1,10 +1,14 @@
+from typing import TYPE_CHECKING
+
 import numpy
-import pandas
 from openff.toolkit import Molecule
 from openff.units import Quantity, unit
 
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
+
+if TYPE_CHECKING:
+    from pandas import DataFrame
 
 
 class DDE(ImmutableModel):
@@ -13,7 +17,9 @@ class DDE(ImmutableModel):
 
 
 class DDECollection(list[DDE]):
-    def to_dataframe(self) -> pandas.DataFrame:
+    def to_dataframe(self) -> "DataFrame":
+        import pandas
+
         return pandas.DataFrame(
             [dde.difference for dde in self],
             index=pandas.Index([dde.qcarchive_id for dde in self]),
@@ -30,7 +36,9 @@ class RMSD(ImmutableModel):
 
 
 class RMSDCollection(list[RMSD]):
-    def to_dataframe(self) -> pandas.DataFrame:
+    def to_dataframe(self) -> "DataFrame":
+        import pandas
+
         return pandas.DataFrame(
             [rmsd.rmsd for rmsd in self],
             index=pandas.Index([rmsd.qcarchive_id for rmsd in self]),
@@ -47,7 +55,9 @@ class ICRMSD(ImmutableModel):
 
 
 class ICRMSDCollection(list):
-    def to_dataframe(self) -> pandas.DataFrame:
+    def to_dataframe(self) -> "DataFrame":
+        import pandas
+
         return pandas.DataFrame(
             [
                 (
@@ -72,7 +82,9 @@ class TFD(ImmutableModel):
 
 
 class TFDCollection(list):
-    def to_dataframe(self) -> pandas.DataFrame:
+    def to_dataframe(self) -> "DataFrame":
+        import pandas
+
         return pandas.DataFrame(
             [tfd.tfd for tfd in self],
             index=pandas.Index([tfd.qcarchive_id for tfd in self]),
