@@ -8,7 +8,7 @@ import numpy
 import pandas
 from numpy.typing import NDArray
 from openff.qcsubmit.results import OptimizationResultCollection
-from openff.toolkit import Molecule, Quantity
+from openff.toolkit import Molecule
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from typing_extensions import Self
