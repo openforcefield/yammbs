@@ -566,11 +566,6 @@ class MoleculeStore:
         # QMConformerRecord.from_qcarchive_record, and
         # DBSessionManager.store_qm_conformer_record
         with store._get_session() as db:
-            seen = set(
-                db.db.query(
-                    DBQMConformerRecord.qcarchive_id,
-                ),
-            )
             # reversed so the first record encountered wins out. this matches
             # the behavior of the version that queries the db each time
             smiles_to_id = {
@@ -583,9 +578,6 @@ class MoleculeStore:
                 )
             }
             for record in tqdm(dataset.qm_molecules, desc="Storing Records"):
-                if record.qcarchive_id in seen:
-                    continue
-                seen.add(record.qcarchive_id)
                 mol_id = smiles_to_id[record.mapped_smiles]
                 db.db.add(
                     DBQMConformerRecord(
