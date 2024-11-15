@@ -1,8 +1,10 @@
 import logging
+import math
 import pathlib
 from contextlib import contextmanager
 from typing import Generator, Iterable
 
+import numpy
 from numpy.typing import NDArray
 from openff.qcsubmit.results import TorsionDriveResultCollection
 from sqlalchemy import create_engine
@@ -19,8 +21,10 @@ from yammbs.torsion._db import (
     DBTorsionRecord,
 )
 from yammbs.torsion._session import TorsionDBSessionManager
+from yammbs.torsion.analysis import LogSSE, LogSSECollection
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, TorsionRecord
+from yammbs.torsion.outputs import Metric, MetricCollection, MinimizedTorsionDataset
 
 LOGGER = logging.getLogger(__name__)
 
@@ -111,6 +115,18 @@ class TorsionStore:
     def get_smiles_by_molecule_id(self, id: int) -> str:
         with self._get_session() as db:
             return next(smiles for (smiles,) in db.db.query(DBTorsionRecord.mapped_smiles).filter_by(id=id).all())
+
+    def get_force_fields(
+        self,
+    ) -> list[str]:
+        """Return a list of all force fields with some torsion points stored."""
+        with self._get_session() as db:
+            return [
+                force_field
+                for (force_field,) in db.db.query(
+                    DBMMTorsionPointRecord.force_field,
+                ).distinct()
+            ]
 
     def get_dihedral_indices_by_molecule_id(self, id: int) -> list[int]:
         with self._get_session() as db:
@@ -263,3 +279,102 @@ class TorsionStore:
                             energy=result.energy,
                         ),
                     )
+
+    def get_log_sse(
+        self,
+        force_field: str,
+        molecule_ids: list[int] | None = None,
+        skip_check: bool = False,
+    ) -> LogSSECollection:
+        if not molecule_ids:
+            molecule_ids = self.get_molecule_ids()
+
+        if not skip_check:
+            self.optimize_mm(force_field=force_field)
+
+        log_sses = LogSSECollection()
+
+        for molecule_id in self.get_molecule_ids():
+            if molecule_id not in molecule_ids:
+                continue
+
+            _mm = self.get_mm_energies_by_molecule_id(molecule_id, force_field)
+            _qm = self.get_qm_energies_by_molecule_id(molecule_id)
+
+            if len(_mm) == 0:
+                print(f"no mm data for {molecule_id}")
+                continue
+
+            _qm = dict(sorted(_qm.items()))
+            qm_minimum_index = min(_qm, key=_qm.get)
+            qm = {key: _qm[key] - _qm[qm_minimum_index] for key in _qm}
+            mm = {key: _mm[key] - _mm[qm_minimum_index] for key in _mm}
+
+            log_sses.append(
+                LogSSE(
+                    id=molecule_id,
+                    value=math.log(sum([(mm[key] - qm[key]) ** 2 for key in qm])),
+                ),
+            )
+
+        return log_sses
+
+    def get_outputs(self) -> MinimizedTorsionDataset:
+        from yammbs.torsion.outputs import MinimizedTorsionProfile
+
+        output_dataset = MinimizedTorsionDataset()
+
+        with self._get_session() as db:
+            for force_field in self.get_force_fields():
+                output_dataset.mm_torsions[force_field] = list()
+
+                for molecule_id in self.get_molecule_ids():
+                    mm_data = tuple(
+                        (grid_id, coordinates, energy)
+                        for (grid_id, coordinates, energy) in db.db.query(
+                            DBMMTorsionPointRecord.grid_id,
+                            DBMMTorsionPointRecord.coordinates,
+                            DBMMTorsionPointRecord.energy,
+                        )
+                        .filter_by(parent_id=molecule_id)
+                        .filter_by(force_field=force_field)
+                        .all()
+                    )
+
+                    if len(mm_data) == 0:
+                        continue
+
+                    output_dataset.mm_torsions[force_field].append(
+                        MinimizedTorsionProfile(
+                            mapped_smiles=self.get_smiles_by_molecule_id(molecule_id),
+                            dihedral_indices=self.get_dihedral_indices_by_molecule_id(molecule_id),
+                            coordinates={grid_id: coordinates for grid_id, coordinates, _ in mm_data},
+                            energies={grid_id: energy for grid_id, _, energy in mm_data},
+                        ),
+                    )
+
+        return output_dataset
+
+    def get_metrics(
+        self,
+    ) -> MetricCollection:
+        import pandas
+
+        metrics = MetricCollection()
+
+        # TODO: Optimize this for speed
+        for force_field in self.get_force_fields():
+            log_sses = self.get_log_sse(force_field=force_field).to_dataframe()
+
+            dataframe = log_sses  # here's where you'd join multiple ...
+
+            dataframe = dataframe.replace({pandas.NA: numpy.nan})
+
+            metrics.metrics[force_field] = {
+                id: Metric(  # type: ignore[misc]
+                    log_sse=row["value"],
+                )
+                for id, row in dataframe.iterrows()
+            }
+
+        return metrics

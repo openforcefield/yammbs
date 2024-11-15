@@ -12,7 +12,7 @@ def main():
         "openff-1.0.0",
         # "openff-1.1.0",
         # "openff-1.3.0",
-        "openff-2.0.0",
+        # "openff-2.0.0",
         # "openff-2.1.0",
         "openff-2.2.1",
     ]
@@ -37,6 +37,12 @@ def main():
 
     for force_field in force_fields:
         store.optimize_mm(force_field=force_field, n_processes=24)
+
+    with open("minimized.json", "w") as f:
+        f.write(store.get_outputs().model_dump_json())
+
+    with open("metrics.json", "w") as f:
+        f.write(store.get_metrics().model_dump_json())
 
     fig, axes = pyplot.subplots(5, 4, figsize=(20, 20))
 
