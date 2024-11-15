@@ -30,7 +30,7 @@ def test_from_qcsubmit(small_qcsubmit_collection):
 def test_from_cached_collection(tiny_cache):
     db = "foo.sqlite"
     with temporary_cd():
-        store = MoleculeStore.from_cached_result_collection(tiny_cache, db)
+        store = MoleculeStore.from_qcarchive_dataset(tiny_cache, db)
 
         # Sanity check molecule deduplication
         assert len(store.get_smiles()) == len({*store.get_smiles()})
