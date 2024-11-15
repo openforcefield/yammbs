@@ -226,9 +226,7 @@ class TorsionStore:
         chunksize: int = 32,
     ):
         """Run a constrained minimization of all torsion points."""
-        # TODO: Pass through options for constrained minimization process?
-
-        # This is fake noise in place of data, just to test models
+        # TODO: Pass through more options for constrained minimization process?
 
         from yammbs.torsion._minimize import _minimize_torsions
 

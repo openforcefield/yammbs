@@ -42,25 +42,35 @@ def main():
 
     for molecule_id, axis in zip(store.get_molecule_ids(), axes.flatten()):
         qm = store.get_qm_energies_by_molecule_id(molecule_id)
-        qm_min = min(qm.values())
-
-        for key in qm:
-            qm[key] -= qm_min
-            # use this point as where the mm profiles are normalized out from
-            # numpy.argmin
 
         sorted_qm = dict(sorted(qm.items()))
-        axis.plot(sorted_qm.keys(), sorted_qm.values(), "k.-", label=f"QM {molecule_id}")
+
+        qm_minimum_index = min(sorted_qm, key=sorted_qm.get)
+
+        for key in sorted_qm:
+            sorted_qm[key] -= sorted_qm[qm_minimum_index]
+
+        axis.plot(
+            sorted_qm.keys(),
+            sorted_qm.values(),
+            "k.-",
+            label=f"QM {molecule_id}",
+        )
 
         for force_field in force_fields:
             mm = dict(sorted(store.get_mm_energies_by_molecule_id(molecule_id, force_field=force_field).items()))
             if len(mm) == 0:
                 continue
-            mm_min = min(mm.values())
 
-            axis.plot(mm.keys(), [val - mm_min for val in mm.values()], "o--", label=force_field)
+            axis.plot(
+                mm.keys(),
+                [val - mm[qm_minimum_index] for val in mm.values()],
+                "o--",
+                label=force_field,
+            )
 
         axis.legend(loc=0)
+        axis.grid(axis="both")
 
     fig.savefig("random.png")
 
