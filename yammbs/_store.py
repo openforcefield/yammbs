@@ -34,7 +34,6 @@ from yammbs.analysis import (
     get_rmsd,
     get_tfd,
 )
-from yammbs.cached_result import CachedResultCollection
 from yammbs.checkmol import ChemicalEnvironment
 from yammbs.exceptions import DatabaseExistsError
 from yammbs.inputs import QCArchiveDataset
@@ -453,75 +452,6 @@ class MoleculeStore:
             dataset=QCArchiveDataset.from_qcsubmit_collection(collection),
             database_name=database_name,
         )
-
-    @classmethod
-    def from_cached_result_collection(
-        cls,
-        collection: CachedResultCollection,
-        database_name: str,
-    ) -> Self:
-        from tqdm import tqdm
-
-        if pathlib.Path(database_name).exists():
-            raise DatabaseExistsError(f"Database {database_name} already exists.")
-
-        store = cls(database_name)
-
-        # adapted from MoleculeRecord.from_molecule, MoleculeStore.store, and
-        # DBSessionManager.store_molecule_record
-        with store._get_session() as db:
-            # instead of DBSessionManager._smiles_already_exists
-            seen = set(db.db.query(DBMoleculeRecord.mapped_smiles))
-            for rec in tqdm(collection.inner, desc="Storing molecules"):
-                if rec.mapped_smiles in seen:
-                    continue
-                seen.add(rec.mapped_smiles)
-                db_record = DBMoleculeRecord(
-                    mapped_smiles=rec.mapped_smiles,
-                    inchi_key=rec.inchi_key,
-                )
-                db.db.add(db_record)
-                db.db.commit()
-
-        # close the session here and re-open to make sure all of the molecule
-        # IDs have been flushed to the db
-
-        # adapted from MoleculeStore.store_qcarchive,
-        # QMConformerRecord.from_qcarchive_record, and
-        # DBSessionManager.store_qm_conformer_record
-        with store._get_session() as db:
-            seen = set(
-                db.db.query(
-                    DBQMConformerRecord.qcarchive_id,
-                ),
-            )
-            # reversed so the first record encountered wins out. this matches
-            # the behavior of the version that queries the db each time
-            smiles_to_id = {
-                smi: id
-                for id, smi in reversed(
-                    db.db.query(
-                        DBMoleculeRecord.id,
-                        DBMoleculeRecord.mapped_smiles,
-                    ).all(),
-                )
-            }
-            for record in tqdm(collection.inner, desc="Storing Records"):
-                if record.qc_record_id in seen:
-                    continue
-                seen.add(record.qc_record_id)
-                mol_id = smiles_to_id[record.mapped_smiles]
-                db.db.add(
-                    DBQMConformerRecord(
-                        parent_id=mol_id,
-                        qcarchive_id=record.qc_record_id,
-                        mapped_smiles=record.mapped_smiles,
-                        coordinates=record.coordinates,
-                        energy=record.qc_record_final_energy,
-                    ),
-                )
-
-        return store
 
     @classmethod
     def from_qcarchive_dataset(

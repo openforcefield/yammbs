@@ -7,7 +7,7 @@ from openff.toolkit import __version__ as __toolkit_version__
 
 from yammbs import MoleculeStore
 from yammbs._minimize import MinimizationInput, _run_openmm
-from yammbs.cached_result import CachedResultCollection
+from yammbs.inputs import QCArchiveDataset
 
 
 @pytest.fixture
@@ -201,16 +201,16 @@ def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
         )
 
     # No need to minimize all 200 records twice ...
-    tinier_cache = CachedResultCollection()
+    tinier_cache = QCArchiveDataset()
 
     # ... so slice out some really small molecules (< 9 heavy atoms)
     # which should be 12 molecules for this dataset
-    for result in tiny_cache.inner:
+    for result in tiny_cache.qm_molecules:
         molecule = Molecule.from_mapped_smiles(result.mapped_smiles)
         if len([atom for atom in molecule.atoms if atom.atomic_number > 1]) < 9:
-            tinier_cache.inner.append(result)
+            tinier_cache.qm_molecules.append(result)
 
-    tinier_store = MoleculeStore.from_cached_result_collection(
+    tinier_store = MoleculeStore.from_qcarchive_dataset(
         tinier_cache,
         database_name=(tmp_path / "tiny.sqlite").as_posix(),
     )
