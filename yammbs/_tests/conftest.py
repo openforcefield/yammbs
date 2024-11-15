@@ -89,7 +89,7 @@ def tiny_cache() -> QCArchiveDataset:
         get_data_file_path(
             "_tests/data/tiny-opt.json",
             package_name="yammbs",
-        )
+        ),
     ) as inp:
         return QCArchiveDataset.model_validate_json(inp.read())
 
