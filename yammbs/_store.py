@@ -7,7 +7,7 @@ from typing import Generator, Iterable, TypeVar
 import numpy
 from numpy.typing import NDArray
 from openff.qcsubmit.results import OptimizationResultCollection
-from openff.toolkit import Molecule, Quantity
+from openff.toolkit import Molecule
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from typing_extensions import Self
@@ -532,7 +532,7 @@ class MoleculeStore:
         """
         Create a new MoleculeStore databset from YAMMBS's QCArchiveDataset model.
 
-        Largely adopted from `from_qcsubmit_collection`.
+        Largely adopted from `from_cached_result_collection`.
         """
         from tqdm import tqdm
 
@@ -541,24 +541,51 @@ class MoleculeStore:
 
         store = cls(database_name)
 
-        for qm_molecule in tqdm(dataset.qm_molecules, desc="Storing molecules"):
-            molecule = Molecule.from_mapped_smiles(qm_molecule.mapped_smiles, allow_undefined_stereo=True)
-            molecule.add_conformer(Quantity(qm_molecule.coordinates, "angstrom"))
-
-            molecule_record = MoleculeRecord.from_molecule(molecule)
-            store.store(molecule_record)
-
-            store.store_qcarchive(
-                QMConformerRecord(
-                    molecule_id=store.get_molecule_id_by_smiles(
-                        molecule_record.mapped_smiles,
-                    ),
-                    qcarchive_id=qm_molecule.qcarchive_id,
+        # adapted from MoleculeRecord.from_molecule, MoleculeStore.store, and
+        # DBSessionManager.store_molecule_record
+        with store._get_session() as db:
+            # instead of DBSessionManager._smiles_already_exists
+            seen = set(db.db.query(DBMoleculeRecord.mapped_smiles))
+            for qm_molecule in tqdm(dataset.qm_molecules, desc="Storing molecules"):
+                if qm_molecule.mapped_smiles in seen:
+                    continue
+                seen.add(qm_molecule.mapped_smiles)
+                molecule = Molecule.from_mapped_smiles(qm_molecule.mapped_smiles, allow_undefined_stereo=True)
+                db_record = DBMoleculeRecord(
                     mapped_smiles=qm_molecule.mapped_smiles,
-                    coordinates=qm_molecule.coordinates,
-                    energy=qm_molecule.final_energy,
-                ),
-            )
+                    inchi_key=molecule.to_inchi(fixed_hydrogens=True),
+                )
+                db.db.add(db_record)
+
+        # close the session here and re-open to make sure all of the molecule
+        # IDs have been flushed to the db
+
+        # adapted from MoleculeStore.store_qcarchive,
+        # QMConformerRecord.from_qcarchive_record, and
+        # DBSessionManager.store_qm_conformer_record
+        with store._get_session() as db:
+            # reversed so the first record encountered wins out. this matches
+            # the behavior of the version that queries the db each time
+            smiles_to_id = {
+                smi: id
+                for id, smi in reversed(
+                    db.db.query(
+                        DBMoleculeRecord.id,
+                        DBMoleculeRecord.mapped_smiles,
+                    ).all(),
+                )
+            }
+            for record in tqdm(dataset.qm_molecules, desc="Storing Records"):
+                mol_id = smiles_to_id[record.mapped_smiles]
+                db.db.add(
+                    DBQMConformerRecord(
+                        parent_id=mol_id,
+                        qcarchive_id=record.qcarchive_id,
+                        mapped_smiles=record.mapped_smiles,
+                        coordinates=record.coordinates,
+                        energy=record.final_energy,
+                    ),
+                )
 
         return store
 

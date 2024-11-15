@@ -57,6 +57,8 @@ def test_from_qcarchive_dataset(small_qcsubmit_collection):
         # Ensure a new object can be created from the same database
         assert len(MoleculeStore(db)) == len(store)
 
+        assert len(store.get_smiles()) == small_qcsubmit_collection.n_molecules
+
 
 def test_from_qcarchive_dataset_undefined_stereo():
     """Test loading from YAMMBS's QCArchive model with undefined stereochemistry"""
