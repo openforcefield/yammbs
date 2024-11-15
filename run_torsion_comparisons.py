@@ -41,18 +41,18 @@ def main():
     fig, axes = pyplot.subplots(5, 4, figsize=(20, 20))
 
     for molecule_id, axis in zip(store.get_molecule_ids(), axes.flatten()):
-        qm = store.get_qm_energies_by_molecule_id(molecule_id)
+        _qm = store.get_qm_energies_by_molecule_id(molecule_id)
 
-        sorted_qm = dict(sorted(qm.items()))
+        _qm = dict(sorted(_qm.items()))
 
-        qm_minimum_index = min(sorted_qm, key=sorted_qm.get)
+        qm_minimum_index = min(_qm, key=_qm.get)
 
-        for key in sorted_qm:
-            sorted_qm[key] -= sorted_qm[qm_minimum_index]
+        # Make a new dict to avoid in-place modification while iterating
+        qm = {key: _qm[key] - _qm[qm_minimum_index] for key in _qm}
 
         axis.plot(
-            sorted_qm.keys(),
-            sorted_qm.values(),
+            qm.keys(),
+            qm.values(),
             "k.-",
             label=f"QM {molecule_id}",
         )
