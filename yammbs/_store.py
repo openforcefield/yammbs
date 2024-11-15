@@ -557,7 +557,6 @@ class MoleculeStore:
                     inchi_key=molecule.to_inchi(fixed_hydrogens=True),
                 )
                 db.db.add(db_record)
-                db.db.commit()
 
         # close the session here and re-open to make sure all of the molecule
         # IDs have been flushed to the db
