@@ -17,13 +17,13 @@ class DBTorsionRecord(DBBase):  # type: ignore
     dihedral_indices = Column(PickleType, nullable=False)
 
 
-class DBTorsionProfileRecord(DBBase):
+class DBTorsionProfileRecord(DBBase):  # type: ignore
     __tablename__ = "torsion_points"
 
     id = Column(Integer, primary_key=True, index=True)
 
     # is this like a molecule ID or like a QCArchive ID?
-    parent_id: int = Column(Integer, ForeignKey("molecules.id"), nullable=False, index=True)
+    parent_id = Column(Integer, ForeignKey("molecules.id"), nullable=False, index=True)
 
     # TODO: Store QCArchive ID
 

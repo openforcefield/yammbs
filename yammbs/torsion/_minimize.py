@@ -1,5 +1,6 @@
 import logging
 from multiprocessing import Pool
+from typing import Generator
 
 from numpy.typing import NDArray
 from pydantic import Field
@@ -17,7 +18,7 @@ class ConstrainedMinimizationInput(ImmutableModel):
         ...,
         description="The SMILES of the molecule",
     )
-    dihedral_indices: list[int] = Field(
+    dihedral_indices: tuple[int, int, int, int] = Field(
         ...,
         description="The indices of the atoms which define the driven dihedral angle",
     )
@@ -44,16 +45,13 @@ class ConstrainedMinimizationResult(ConstrainedMinimizationInput):
 
 def _minimize_torsions(
     mapped_smiles: str,
-    dihedral_indices: list[int],
+    dihedral_indices: tuple[int, int, int, int],
     qm_data: tuple[float, NDArray, float],  # (grid_id, coordinates, energy)
     force_field: str,
     n_processes: int = 2,
     chunksize=32,
-):
-    # ) -> Iterator["MinimizationResult"]:
-    inputs = list()
-
-    inputs = [
+) -> Generator[ConstrainedMinimizationResult, None, None]:
+    inputs = [  # type: ignore[misc]
         ConstrainedMinimizationInput(
             mapped_smiles=mapped_smiles,
             dihedral_indices=dihedral_indices,
@@ -167,7 +165,7 @@ def _minimize_constrained(
                 for index in range(simulation.system.getNumParticles())
             },
         )
-        logging(input.dihedral_indices, input.mapped_smiles)
+        logging.error(input.dihedral_indices, input.mapped_smiles)
 
         raise ConstrainedMinimizationError("Minimization failed, see logger") from e
 

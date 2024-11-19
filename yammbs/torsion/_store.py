@@ -128,7 +128,7 @@ class TorsionStore:
                 ).distinct()
             ]
 
-    def get_dihedral_indices_by_molecule_id(self, id: int) -> list[int]:
+    def get_dihedral_indices_by_molecule_id(self, id: int) -> tuple[int, int, int, int]:
         with self._get_session() as db:
             return next(
                 dihedral_indices
@@ -249,7 +249,7 @@ class TorsionStore:
         for molecule_id in self.get_molecule_ids():
             with self._get_session() as db:
                 # TODO: Implement "seen" behavior to short-circuit already-optimized torsions
-                qm_data = tuple(
+                qm_data: tuple[float, NDArray, float] = tuple(  # type: ignore[assignment]
                     (grid_id, coordinates, energy)
                     for (grid_id, coordinates, energy) in db.db.query(
                         DBQMTorsionPointRecord.grid_id,
@@ -306,7 +306,8 @@ class TorsionStore:
                 continue
 
             _qm = dict(sorted(_qm.items()))
-            qm_minimum_index = min(_qm, key=_qm.get)
+            qm_minimum_index = min(_qm, key=_qm.get)  # type: ignore[arg-type]
+
             qm = {key: _qm[key] - _qm[qm_minimum_index] for key in _qm}
             mm = {key: _mm[key] - _mm[qm_minimum_index] for key in _mm}
 

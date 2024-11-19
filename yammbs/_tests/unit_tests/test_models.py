@@ -1,6 +1,5 @@
 import numpy
 import qcelemental
-from openff.units import unit
 
 from yammbs.models import MoleculeRecord, QMConformerRecord
 
@@ -30,5 +29,5 @@ def test_load_from_qcsubmit(small_qcsubmit_collection):
         assert qm_conformer.qcarchive_id == qc_record.id
         assert numpy.allclose(
             qm_conformer.coordinates,
-            molecule.conformers[0].m_as(unit.angstrom),
+            molecule.conformers[0].m_as("angstrom"),
         )
