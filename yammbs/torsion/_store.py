@@ -21,7 +21,7 @@ from yammbs.torsion._db import (
     DBTorsionRecord,
 )
 from yammbs.torsion._session import TorsionDBSessionManager
-from yammbs.torsion.analysis import LogSSE, LogSSECollection
+from yammbs.torsion.analysis import LogSSE, LogSSECollection, _normalize
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, TorsionRecord
 from yammbs.torsion.outputs import Metric, MetricCollection, MinimizedTorsionDataset
@@ -298,18 +298,10 @@ class TorsionStore:
             if molecule_id not in molecule_ids:
                 continue
 
-            _mm = self.get_mm_energies_by_molecule_id(molecule_id, force_field)
-            _qm = self.get_qm_energies_by_molecule_id(molecule_id)
-
-            if len(_mm) == 0:
-                LOGGER.warning(f"no mm data for {molecule_id}")
-                continue
-
-            _qm = dict(sorted(_qm.items()))
-            qm_minimum_index = min(_qm, key=_qm.get)  # type: ignore[arg-type]
-
-            qm = {key: _qm[key] - _qm[qm_minimum_index] for key in _qm}
-            mm = {key: _mm[key] - _mm[qm_minimum_index] for key in _mm}
+            qm, mm = _normalize(
+                qm=self.get_qm_energies_by_molecule_id(molecule_id),
+                mm=self.get_mm_energies_by_molecule_id(molecule_id, force_field),
+            )
 
             log_sses.append(
                 LogSSE(
@@ -345,6 +337,7 @@ class TorsionStore:
                     if len(mm_data) == 0:
                         continue
 
+                    # TODO: Call _normalize here?
                     output_dataset.mm_torsions[force_field].append(
                         MinimizedTorsionProfile(
                             mapped_smiles=self.get_smiles_by_molecule_id(molecule_id),
