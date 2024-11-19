@@ -46,7 +46,7 @@ class QCArchiveTorsionDataset(TorsionDataset):
 
     version: int = Field(1, description="The version of this model")
 
-    qm_torsions: Sequence[TorsionProfile] = Field(
+    qm_torsions: Sequence[QCArchiveTorsionProfile] = Field(
         list(),
         description="A list of QM-drived torsion profiles in the dataset",
     )

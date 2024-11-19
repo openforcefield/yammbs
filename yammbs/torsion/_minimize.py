@@ -1,3 +1,4 @@
+import logging
 from multiprocessing import Pool
 
 from numpy.typing import NDArray
@@ -7,6 +8,8 @@ from tqdm import tqdm
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
 from yammbs._minimize import _lazy_load_force_field
+
+LOGGER = logging.getLogger(__name__)
 
 
 class ConstrainedMinimizationInput(ImmutableModel):
@@ -73,6 +76,12 @@ def _minimize_torsions(
         ):
             if val is not None:
                 yield val
+
+
+class ConstrainedMinimizationError(Exception):
+    """The constrained minimization failed."""
+
+    pass
 
 
 def _minimize_constrained(
@@ -152,14 +161,15 @@ def _minimize_constrained(
             maxIterations=10_000,
         )
     except Exception as e:
-        print(
+        logging.error(
             {
                 index: simulation.system.getParticleMass(index)._value
                 for index in range(simulation.system.getNumParticles())
             },
         )
-        print(input.dihedral_indices, input.mapped_smiles)
-        raise Exception(str(e)) from e
+        logging(input.dihedral_indices, input.mapped_smiles)
+
+        raise ConstrainedMinimizationError("Minimization failed, see logger") from e
 
     return ConstrainedMinimizationResult(
         mapped_smiles=input.mapped_smiles,

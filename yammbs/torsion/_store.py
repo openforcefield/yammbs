@@ -230,7 +230,7 @@ class TorsionStore:
         database_name: str,
     ):
         """Convert a QCSubmit collection to TorsionDataset and use it to create a TorsionStore."""
-        return cls.from_qm_dataset(
+        return cls.from_torsion_dataset(
             dataset=QCArchiveTorsionDataset.from_qcsubmit_collection(collection),
             database_name=database_name,
         )
@@ -302,7 +302,7 @@ class TorsionStore:
             _qm = self.get_qm_energies_by_molecule_id(molecule_id)
 
             if len(_mm) == 0:
-                print(f"no mm data for {molecule_id}")
+                LOGGER.warning(f"no mm data for {molecule_id}")
                 continue
 
             _qm = dict(sorted(_qm.items()))
