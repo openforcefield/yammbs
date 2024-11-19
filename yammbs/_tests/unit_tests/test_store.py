@@ -11,7 +11,7 @@ from openff.utilities import get_data_file_path, has_executable, temporary_cd
 from yammbs import MoleculeStore
 from yammbs.checkmol import ChemicalEnvironment
 from yammbs.exceptions import DatabaseExistsError
-from yammbs.inputs import QCArchiveDataset
+from yammbs.inputs import QCArchiveDataset, QCArchiveMolecule
 from yammbs.models import MMConformerRecord, QMConformerRecord
 
 
@@ -27,10 +27,10 @@ def test_from_qcsubmit(small_qcsubmit_collection):
         assert len(MoleculeStore(db)) == len(store)
 
 
-def test_from_cached_collection(small_cache):
+def test_from_cached_collection(tiny_cache):
     db = "foo.sqlite"
     with temporary_cd():
-        store = MoleculeStore.from_cached_result_collection(small_cache, db)
+        store = MoleculeStore.from_qcarchive_dataset(tiny_cache, db)
 
         # Sanity check molecule deduplication
         assert len(store.get_smiles()) == len({*store.get_smiles()})
@@ -50,6 +50,29 @@ def test_from_qcarchive_dataset(small_qcsubmit_collection):
             QCArchiveDataset.from_qcsubmit_collection(small_qcsubmit_collection),
             db,
         )
+
+        # Sanity check molecule deduplication
+        assert len(store.get_smiles()) == len({*store.get_smiles()})
+
+        # Ensure a new object can be created from the same database
+        assert len(MoleculeStore(db)) == len(store)
+
+        assert len(store.get_smiles()) == small_qcsubmit_collection.n_molecules
+
+
+def test_from_qcarchive_dataset_undefined_stereo():
+    """Test loading from YAMMBS's QCArchive model with undefined stereochemistry"""
+    db = "foo.sqlite"
+
+    ds = QCArchiveDataset(
+        qm_molecules=[
+            QCArchiveMolecule.model_validate_json(
+                open(get_data_file_path("_tests/data/qcsubmit/undefined_stereo.json", "yammbs")).read(),
+            ),
+        ],
+    )
+    with temporary_cd():
+        store = MoleculeStore.from_qcarchive_dataset(ds, db)
 
         # Sanity check molecule deduplication
         assert len(store.get_smiles()) == len({*store.get_smiles()})
