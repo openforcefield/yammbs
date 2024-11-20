@@ -14,6 +14,12 @@ LOGGER = logging.getLogger(__name__)
 
 
 class ConstrainedMinimizationInput(ImmutableModel):
+    # This is more like a "TorsionDrive" ID than a molecule ID,
+    # but it's how the database is currently structured.
+    molecule_id: int = Field(
+        ...,
+        description="The identifier of the molecule",
+    )
     mapped_smiles: str = Field(
         ...,
         description="The SMILES of the molecule",
@@ -44,24 +50,38 @@ class ConstrainedMinimizationResult(ConstrainedMinimizationInput):
 
 
 def _minimize_torsions(
-    mapped_smiles: str,
-    dihedral_indices: tuple[int, int, int, int],
-    qm_data: tuple[float, NDArray, float],  # (grid_id, coordinates, energy)
+    data: Generator[
+        tuple[
+            int,
+            str,
+            tuple[int, int, int, int],
+            float,
+            NDArray,
+            float,
+        ],
+        None,
+        None,
+    ],
     force_field: str,
     n_processes: int = 2,
     chunksize=32,
 ) -> Generator[ConstrainedMinimizationResult, None, None]:
-    inputs = [  # type: ignore[misc]
+    # It'd be smoother to skip this tranformation - just pass this generator
+    # from inside of TorsionStore
+    inputs: Generator[ConstrainedMinimizationInput, None, None] = (
         ConstrainedMinimizationInput(
+            molecule_id=molecule_id,
             mapped_smiles=mapped_smiles,
             dihedral_indices=dihedral_indices,
             force_field=force_field,
             coordinates=coordinates,
             grid_id=grid_id,
         )
-        for (grid_id, coordinates, _) in qm_data
-    ]
+        for (molecule_id, mapped_smiles, dihedral_indices, grid_id, coordinates, _) in data
+    )
 
+    # TODO: It'd be nice to have the `total` argument passed through, but that would require using
+    #       a list-like iterable instead of a generator, which might cause problems at scale
     with Pool(processes=n_processes) as pool:
         for val in tqdm(
             pool.imap(
@@ -70,7 +90,6 @@ def _minimize_torsions(
                 chunksize=chunksize,
             ),
             desc=f"Building and minimizing systems with {force_field}",
-            total=len(inputs),
         ):
             if val is not None:
                 yield val
@@ -170,6 +189,7 @@ def _minimize_constrained(
         raise ConstrainedMinimizationError("Minimization failed, see logger") from e
 
     return ConstrainedMinimizationResult(
+        molecule_id=input.molecule_id,
         mapped_smiles=input.mapped_smiles,
         dihedral_indices=input.dihedral_indices,
         force_field=input.force_field,

@@ -246,39 +246,61 @@ class TorsionStore:
 
         from yammbs.torsion._minimize import _minimize_torsions
 
-        for molecule_id in self.get_molecule_ids():
-            with self._get_session() as db:
-                # TODO: Implement "seen" behavior to short-circuit already-optimized torsions
-                qm_data: tuple[float, NDArray, float] = tuple(  # type: ignore[assignment]
-                    (grid_id, coordinates, energy)
-                    for (grid_id, coordinates, energy) in db.db.query(
-                        DBQMTorsionPointRecord.grid_id,
-                        DBQMTorsionPointRecord.coordinates,
-                        DBQMTorsionPointRecord.energy,
-                    )
-                    .filter_by(parent_id=molecule_id)
-                    .all()
-                )
+        id_to_smiles = {
+            molecule_id: self.get_smiles_by_molecule_id(molecule_id) for molecule_id in self.get_molecule_ids()
+        }
+        id_to_dihedral_indices = {
+            molecule_id: self.get_dihedral_indices_by_molecule_id(molecule_id)
+            for molecule_id in self.get_molecule_ids()
+        }
 
-            minimization_results = _minimize_torsions(
-                mapped_smiles=self.get_smiles_by_molecule_id(molecule_id),
-                dihedral_indices=self.get_dihedral_indices_by_molecule_id(molecule_id),
-                qm_data=qm_data,
-                force_field=force_field,
-                n_processes=n_processes,
+        with self._get_session() as db:
+            # TODO: Implement "seen" behavior to short-circuit already-optimized torsions
+            data: Generator[
+                tuple[
+                    int,
+                    str,
+                    tuple[int, int, int, int],
+                    float,
+                    NDArray,
+                    float,
+                ],
+                None,
+                None,
+            ] = (  # Probably a better way to do this with some proper database query with join
+                (
+                    molecule_id,
+                    id_to_smiles[molecule_id],
+                    id_to_dihedral_indices[molecule_id],
+                    grid_id,
+                    coordinates,
+                    energy,
+                )
+                for (molecule_id, grid_id, coordinates, energy) in db.db.query(
+                    DBQMTorsionPointRecord.parent_id,
+                    DBQMTorsionPointRecord.grid_id,
+                    DBQMTorsionPointRecord.coordinates,
+                    DBQMTorsionPointRecord.energy,
+                ).all()
             )
 
-            with self._get_session() as db:
-                for result in minimization_results:
-                    db.store_mm_torsion_point(
-                        MMTorsionPointRecord(
-                            molecule_id=molecule_id,
-                            grid_id=result.grid_id,
-                            coordinates=result.coordinates,
-                            force_field=result.force_field,
-                            energy=result.energy,
-                        ),
-                    )
+        minimization_results = _minimize_torsions(
+            data=data,
+            force_field=force_field,
+            n_processes=n_processes,
+        )
+
+        with self._get_session() as db:
+            for result in minimization_results:
+                db.store_mm_torsion_point(
+                    MMTorsionPointRecord(
+                        molecule_id=result.molecule_id,
+                        grid_id=result.grid_id,
+                        coordinates=result.coordinates,
+                        force_field=result.force_field,
+                        energy=result.energy,
+                    ),
+                )
 
     def get_log_sse(
         self,
