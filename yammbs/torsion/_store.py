@@ -13,6 +13,7 @@ from typing_extensions import Self
 
 from yammbs._molecule import _smiles_to_inchi_key
 from yammbs._types import Pathlike
+from yammbs.analysis import get_rmsd
 from yammbs.exceptions import DatabaseExistsError
 from yammbs.torsion._db import (
     DBBase,
@@ -21,7 +22,7 @@ from yammbs.torsion._db import (
     DBTorsionRecord,
 )
 from yammbs.torsion._session import TorsionDBSessionManager
-from yammbs.torsion.analysis import LogSSE, LogSSECollection, _normalize
+from yammbs.torsion.analysis import RMSD, LogSSE, LogSSECollection, RMSDCollection, _normalize
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, TorsionRecord
 from yammbs.torsion.outputs import Metric, MetricCollection, MinimizedTorsionDataset
@@ -328,11 +329,51 @@ class TorsionStore:
             log_sses.append(
                 LogSSE(
                     id=molecule_id,
-                    value=math.log(sum([(mm[key] - qm[key]) ** 2 for key in qm])),
+                    log_sse=math.log(sum([(mm[key] - qm[key]) ** 2 for key in qm])),
                 ),
             )
 
         return log_sses
+
+    def get_rmsd(
+        self,
+        force_field: str,
+        molecule_ids: list[int] | None = None,
+        skip_check: bool = False,
+    ) -> RMSDCollection:
+        """Get the RMSD summed over the torsion profile."""
+        from openff.toolkit import Molecule
+
+        if not molecule_ids:
+            molecule_ids = self.get_molecule_ids()
+
+        if not skip_check:
+            self.optimize_mm(force_field=force_field)
+
+        rmsds = RMSDCollection()
+
+        for molecule_id in molecule_ids:
+            if molecule_id not in molecule_ids:
+                continue
+
+            qm_points = self.get_qm_points_by_molecule_id(id=molecule_id)
+            mm_points = self.get_mm_points_by_molecule_id(id=molecule_id, force_field=force_field)
+
+            molecule = Molecule.from_mapped_smiles(
+                self.get_smiles_by_molecule_id(molecule_id),
+                allow_undefined_stereo=True,
+            )
+
+            tmp = [get_rmsd(molecule, qm_points[key], mm_points[key]) for key in qm_points]
+            print(tmp)
+            rmsds.append(
+                RMSD(
+                    id=molecule_id,
+                    rmsd=sum(tmp),
+                ),
+            )
+
+        return rmsds
 
     def get_outputs(self) -> MinimizedTorsionDataset:
         from yammbs.torsion.outputs import MinimizedTorsionProfile
@@ -380,15 +421,17 @@ class TorsionStore:
 
         # TODO: Optimize this for speed
         for force_field in self.get_force_fields():
-            log_sses = self.get_log_sse(force_field=force_field).to_dataframe()
+            log_sses = self.get_log_sse(force_field=force_field, skip_check=True).to_dataframe()
+            rmsds = self.get_rmsd(force_field=force_field, skip_check=True).to_dataframe()
 
-            dataframe = log_sses  # here's where you'd join multiple ...
+            dataframe = log_sses.join(rmsds)
 
             dataframe = dataframe.replace({pandas.NA: numpy.nan})
 
             metrics.metrics[force_field] = {
                 id: Metric(  # type: ignore[misc]
-                    log_sse=row["value"],
+                    log_sse=row["log_sse"],
+                    rmsd=row["rmsd"],
                 )
                 for id, row in dataframe.iterrows()
             }

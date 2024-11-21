@@ -41,6 +41,7 @@ class MinimizedTorsionDataset(ImmutableModel):
 
 class Metric(ImmutableModel):
     log_sse: float  # stand-in quantity for what metrics scientists care about
+    rmsd: float
 
 
 class MetricCollection(ImmutableModel):
