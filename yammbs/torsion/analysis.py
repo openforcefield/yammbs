@@ -58,8 +58,27 @@ class RMSDCollection(list[RMSD]):
 
         return pandas.DataFrame(
             [rmsd.rmsd for rmsd in self],
-            index=pandas.Index([rmsd.qcarchive_id for rmsd in self]),
+            index=pandas.Index([rmsd.id for rmsd in self]),
             columns=["rmsd"],
+        )
+
+    def to_csv(self, path: str):
+        self.to_dataframe().to_csv(path)
+
+
+class RMSE(ImmutableModel):
+    id: int
+    rmse: float
+
+
+class RMSECollection(list[RMSE]):
+    def to_dataframe(self) -> "pandas.DataFrame":
+        import pandas
+
+        return pandas.DataFrame(
+            [rmse.rmse for rmse in self],
+            index=pandas.Index([rmse.id for rmse in self]),
+            columns=["rmse"],
         )
 
     def to_csv(self, path: str):

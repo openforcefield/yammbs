@@ -22,7 +22,7 @@ from yammbs.torsion._db import (
     DBTorsionRecord,
 )
 from yammbs.torsion._session import TorsionDBSessionManager
-from yammbs.torsion.analysis import RMSD, LogSSE, LogSSECollection, RMSDCollection, _normalize
+from yammbs.torsion.analysis import RMSD, RMSE, LogSSE, LogSSECollection, RMSDCollection, RMSECollection, _normalize
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, TorsionRecord
 from yammbs.torsion.outputs import Metric, MetricCollection, MinimizedTorsionDataset
@@ -364,16 +364,46 @@ class TorsionStore:
                 allow_undefined_stereo=True,
             )
 
-            tmp = [get_rmsd(molecule, qm_points[key], mm_points[key]) for key in qm_points]
-            print(tmp)
             rmsds.append(
                 RMSD(
                     id=molecule_id,
-                    rmsd=sum(tmp),
+                    rmsd=sum(get_rmsd(molecule, qm_points[key], mm_points[key]) for key in qm_points),
                 ),
             )
 
         return rmsds
+
+    def get_rmse(
+        self,
+        force_field: str,
+        molecule_ids: list[int] | None = None,
+        skip_check: bool = False,
+    ) -> RMSECollection:
+        """Get the RMSD summed over the torsion profile."""
+
+        if not molecule_ids:
+            molecule_ids = self.get_molecule_ids()
+
+        if not skip_check:
+            self.optimize_mm(force_field=force_field)
+
+        rmses = RMSECollection()
+
+        for molecule_id in molecule_ids:
+            if molecule_id not in molecule_ids:
+                continue
+
+            qm_energies, mm_energies = _normalize(
+                self.get_qm_points_by_molecule_id(id=molecule_id),
+                self.get_mm_points_by_molecule_id(id=molecule_id, force_field=force_field),
+            )
+
+            rmses.append(
+                RMSE(
+                    id=molecule_id,
+                    rmse=numpy.linalg.norm(numpy.array(*qm_energies.values()) - numpy.array(*mm_energies.values())),
+                ),
+            )
 
     def get_outputs(self) -> MinimizedTorsionDataset:
         from yammbs.torsion.outputs import MinimizedTorsionProfile
