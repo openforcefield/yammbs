@@ -1,3 +1,4 @@
+import logging
 from typing import Sequence
 
 import qcelemental
@@ -9,6 +10,9 @@ from yammbs._base.base import ImmutableModel
 
 hartree2kcalmol = qcelemental.constants.hartree2kcalmol
 bohr2angstroms = qcelemental.constants.bohr2angstroms
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class TorsionDataset(ImmutableModel):
@@ -56,6 +60,11 @@ class QCArchiveTorsionDataset(TorsionDataset):
         cls,
         collection: TorsionDriveResultCollection,
     ) -> "QCArchiveTorsionDataset":
+        LOGGER.info(
+            "Converting a TorsionDriveResultCollection (a QCSubmit model) "
+            "to a QCArchiveTorsionDataset (a YAMMBS model)",
+        )
+
         return cls(
             qm_torsions=[
                 QCArchiveTorsionProfile(

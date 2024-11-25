@@ -825,7 +825,7 @@ class MoleculeStore:
                         ),
                     )
                 except Exception as e:
-                    logging.warning(f"Molecule {inchi_key} failed with {e!s}")
+                    LOGGER.warning(f"Molecule {inchi_key} failed with {e!s}")
 
         return tfds
 
