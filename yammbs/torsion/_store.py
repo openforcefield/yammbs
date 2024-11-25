@@ -246,12 +246,18 @@ class TorsionStore:
 
         from yammbs.torsion._minimize import _minimize_torsions
 
-        id_to_smiles = {
-            molecule_id: self.get_smiles_by_molecule_id(molecule_id) for molecule_id in self.get_molecule_ids()
-        }
+        molecule_ids = self.get_molecule_ids()
+
+        # TODO Do this by interacting with the database in one step?
+        ids_to_minimize = [
+            molecule_id
+            for molecule_id in molecule_ids
+            if len(self.get_mm_points_by_molecule_id(molecule_id, force_field)) == 0
+        ]
+
+        id_to_smiles = {molecule_id: self.get_smiles_by_molecule_id(molecule_id) for molecule_id in ids_to_minimize}
         id_to_dihedral_indices = {
-            molecule_id: self.get_dihedral_indices_by_molecule_id(molecule_id)
-            for molecule_id in self.get_molecule_ids()
+            molecule_id: self.get_dihedral_indices_by_molecule_id(molecule_id) for molecule_id in ids_to_minimize
         }
 
         with self._get_session() as db:
@@ -281,7 +287,9 @@ class TorsionStore:
                     DBQMTorsionPointRecord.grid_id,
                     DBQMTorsionPointRecord.coordinates,
                     DBQMTorsionPointRecord.energy,
-                ).all()
+                )
+                .filter(DBQMTorsionPointRecord.parent_id.in_(ids_to_minimize))
+                .all()
             )
 
         minimization_results = _minimize_torsions(
