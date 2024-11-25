@@ -155,7 +155,7 @@ def _minimize_constrained(
     # switch to nm now... just in case
     positions = interchange.positions.to("nanometer")
 
-    LOGGER.debug(f"Adding restraint for to particles not in {input.dihedral_indices=}")
+    LOGGER.debug(f"Adding restraint to particles not in {input.dihedral_indices=}")
     for atom_index in range(molecule.n_atoms):
         if atom_index in input.dihedral_indices:
             continue
