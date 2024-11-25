@@ -21,7 +21,7 @@ from yammbs.torsion._db import (
     DBTorsionRecord,
 )
 from yammbs.torsion._session import TorsionDBSessionManager
-from yammbs.torsion.analysis import RMSD, RMSE, RMSDCollection, RMSECollection, _normalize
+from yammbs.torsion.analysis import EEN, RMSD, EENCollection, RMSDCollection, _normalize
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, TorsionRecord
 from yammbs.torsion.outputs import Metric, MetricCollection, MinimizedTorsionDataset
@@ -328,9 +328,6 @@ class TorsionStore:
         rmsds = RMSDCollection()
 
         for molecule_id in molecule_ids:
-            if molecule_id not in molecule_ids:
-                continue
-
             qm_points = self.get_qm_points_by_molecule_id(id=molecule_id)
             mm_points = self.get_mm_points_by_molecule_id(id=molecule_id, force_field=force_field)
 
@@ -348,13 +345,13 @@ class TorsionStore:
 
         return rmsds
 
-    def get_rmse(
+    def get_een(
         self,
         force_field: str,
         molecule_ids: list[int] | None = None,
         skip_check: bool = False,
-    ) -> RMSECollection:
-        """Get the RMSD summed over the torsion profile."""
+    ) -> EENCollection:
+        """Get the vector norm of the energy errors over the torsion profile."""
 
         if not molecule_ids:
             molecule_ids = self.get_molecule_ids()
@@ -362,27 +359,25 @@ class TorsionStore:
         if not skip_check:
             self.optimize_mm(force_field=force_field)
 
-        rmses = RMSECollection()
+        eens = EENCollection()
 
         for molecule_id in molecule_ids:
-            if molecule_id not in molecule_ids:
-                continue
-
-            qm_energies, mm_energies = _normalize(
-                self.get_qm_energies_by_molecule_id(id=molecule_id),
-                self.get_mm_energies_by_molecule_id(id=molecule_id, force_field=force_field),
+            qm, mm = (
+                numpy.fromiter(dct.values(), dtype=float)
+                for dct in _normalize(
+                    self.get_qm_energies_by_molecule_id(id=molecule_id),
+                    self.get_mm_energies_by_molecule_id(id=molecule_id, force_field=force_field),
+                )
             )
 
-            rmses.append(
-                RMSE(
+            eens.append(
+                EEN(
                     id=molecule_id,
-                    rmse=numpy.linalg.norm(
-                        numpy.asarray([*qm_energies.values()]) - numpy.asarray([*mm_energies.values()]),
-                    ),
+                    een=numpy.linalg.norm(qm - mm),
                 ),
             )
 
-        return rmses
+        return eens
 
     def get_outputs(self) -> MinimizedTorsionDataset:
         from yammbs.torsion.outputs import MinimizedTorsionProfile
@@ -431,16 +426,16 @@ class TorsionStore:
         # TODO: Optimize this for speed
         for force_field in self.get_force_fields():
             rmsds = self.get_rmsd(force_field=force_field, skip_check=True).to_dataframe()
-            rmses = self.get_rmse(force_field=force_field, skip_check=True).to_dataframe()
+            eens = self.get_een(force_field=force_field, skip_check=True).to_dataframe()
 
-            dataframe = rmsds.join(rmses)
+            dataframe = rmsds.join(eens)
 
             dataframe = dataframe.replace({pandas.NA: numpy.nan})
 
             metrics.metrics[force_field] = {
                 id: Metric(  # type: ignore[misc]
                     rmsd=row["rmsd"],
-                    rmse=row["rmse"],
+                    een=row["een"],
                 )
                 for id, row in dataframe.iterrows()
             }

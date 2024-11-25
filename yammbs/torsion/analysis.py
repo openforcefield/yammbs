@@ -47,19 +47,19 @@ class RMSDCollection(list[RMSD]):
         self.to_dataframe().to_csv(path)
 
 
-class RMSE(ImmutableModel):
+class EEN(ImmutableModel):
     id: int
-    rmse: float
+    een: float
 
 
-class RMSECollection(list[RMSE]):
+class EENCollection(list[EEN]):
     def to_dataframe(self) -> "pandas.DataFrame":
         import pandas
 
         return pandas.DataFrame(
-            [rmse.rmse for rmse in self],
-            index=pandas.Index([rmse.id for rmse in self]),
-            columns=["rmse"],
+            [een.een for een in self],
+            index=pandas.Index([een.id for een in self]),
+            columns=["een"],
         )
 
     def to_csv(self, path: str):
