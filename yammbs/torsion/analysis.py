@@ -23,25 +23,6 @@ def _normalize(qm: dict[float, float], mm: dict[float, float]) -> tuple[dict[flo
     }
 
 
-class LogSSE(ImmutableModel):
-    id: int
-    log_sse: float
-
-
-class LogSSECollection(list[LogSSE]):
-    def to_dataframe(self) -> "pandas.DataFrame":
-        import pandas
-
-        return pandas.DataFrame(
-            [log_sse.log_sse for log_sse in self],
-            index=pandas.Index([log_sse.id for log_sse in self]),
-            columns=["log_sse"],
-        )
-
-    def to_csv(self, path: str):
-        self.to_dataframe().to_csv(path)
-
-
 class Minima(ImmutableModel):
     id: int
     minima: list[float]

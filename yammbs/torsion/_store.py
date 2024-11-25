@@ -1,5 +1,4 @@
 import logging
-import math
 import pathlib
 from contextlib import contextmanager
 from typing import Generator, Iterable
@@ -22,7 +21,7 @@ from yammbs.torsion._db import (
     DBTorsionRecord,
 )
 from yammbs.torsion._session import TorsionDBSessionManager
-from yammbs.torsion.analysis import RMSD, RMSE, LogSSE, LogSSECollection, RMSDCollection, RMSECollection, _normalize
+from yammbs.torsion.analysis import RMSD, RMSE, RMSDCollection, RMSECollection, _normalize
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, TorsionRecord
 from yammbs.torsion.outputs import Metric, MetricCollection, MinimizedTorsionDataset
@@ -303,38 +302,6 @@ class TorsionStore:
                     ),
                 )
 
-    def get_log_sse(
-        self,
-        force_field: str,
-        molecule_ids: list[int] | None = None,
-        skip_check: bool = False,
-    ) -> LogSSECollection:
-        if not molecule_ids:
-            molecule_ids = self.get_molecule_ids()
-
-        if not skip_check:
-            self.optimize_mm(force_field=force_field)
-
-        log_sses = LogSSECollection()
-
-        for molecule_id in self.get_molecule_ids():
-            if molecule_id not in molecule_ids:
-                continue
-
-            qm, mm = _normalize(
-                qm=self.get_qm_energies_by_molecule_id(molecule_id),
-                mm=self.get_mm_energies_by_molecule_id(molecule_id, force_field),
-            )
-
-            log_sses.append(
-                LogSSE(
-                    id=molecule_id,
-                    log_sse=math.log(sum([(mm[key] - qm[key]) ** 2 for key in qm])),
-                ),
-            )
-
-        return log_sses
-
     def get_rmsd(
         self,
         force_field: str,
@@ -402,7 +369,7 @@ class TorsionStore:
                 RMSE(
                     id=molecule_id,
                     rmse=numpy.linalg.norm(
-                        numpy.asarray(*qm_energies.values()) - numpy.asarray(*mm_energies.values()),  # type: ignore[call-overload]
+                        numpy.asarray([*qm_energies.values()]) - numpy.asarray([*mm_energies.values()]),  # type: ignore[call-overload]
                     ),
                 ),
             )
@@ -455,17 +422,17 @@ class TorsionStore:
 
         # TODO: Optimize this for speed
         for force_field in self.get_force_fields():
-            log_sses = self.get_log_sse(force_field=force_field, skip_check=True).to_dataframe()
             rmsds = self.get_rmsd(force_field=force_field, skip_check=True).to_dataframe()
+            rmses = self.get_rmse(force_field=force_field, skip_check=True).to_dataframe()
 
-            dataframe = log_sses.join(rmsds)
+            dataframe = rmsds.join(rmses)
 
             dataframe = dataframe.replace({pandas.NA: numpy.nan})
 
             metrics.metrics[force_field] = {
                 id: Metric(  # type: ignore[misc]
-                    log_sse=row["log_sse"],
                     rmsd=row["rmsd"],
+                    rmse=row["rmse"],
                 )
                 for id, row in dataframe.iterrows()
             }
