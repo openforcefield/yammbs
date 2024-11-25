@@ -394,16 +394,20 @@ class TorsionStore:
                 continue
 
             qm_energies, mm_energies = _normalize(
-                self.get_qm_points_by_molecule_id(id=molecule_id),
-                self.get_mm_points_by_molecule_id(id=molecule_id, force_field=force_field),
+                self.get_qm_energies_by_molecule_id(id=molecule_id),
+                self.get_mm_energies_by_molecule_id(id=molecule_id, force_field=force_field),
             )
 
             rmses.append(
                 RMSE(
                     id=molecule_id,
-                    rmse=numpy.linalg.norm(numpy.array(*qm_energies.values()) - numpy.array(*mm_energies.values())),
+                    rmse=numpy.linalg.norm(
+                        numpy.asarray(*qm_energies.values()) - numpy.asarray(*mm_energies.values()),  # type: ignore[call-overload]
+                    ),
                 ),
             )
+
+        return rmses
 
     def get_outputs(self) -> MinimizedTorsionDataset:
         from yammbs.torsion.outputs import MinimizedTorsionProfile
