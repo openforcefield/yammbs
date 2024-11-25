@@ -377,7 +377,7 @@ class TorsionStore:
                 RMSE(
                     id=molecule_id,
                     rmse=numpy.linalg.norm(
-                        numpy.asarray([*qm_energies.values()]) - numpy.asarray([*mm_energies.values()]),  # type: ignore[call-overload]
+                        numpy.asarray([*qm_energies.values()]) - numpy.asarray([*mm_energies.values()]),
                     ),
                 ),
             )
