@@ -1,5 +1,4 @@
 import logging
-import math
 import pathlib
 from contextlib import contextmanager
 from typing import Generator, Iterable
@@ -13,6 +12,7 @@ from typing_extensions import Self
 
 from yammbs._molecule import _smiles_to_inchi_key
 from yammbs._types import Pathlike
+from yammbs.analysis import get_rmsd
 from yammbs.exceptions import DatabaseExistsError
 from yammbs.torsion._db import (
     DBBase,
@@ -21,7 +21,7 @@ from yammbs.torsion._db import (
     DBTorsionRecord,
 )
 from yammbs.torsion._session import TorsionDBSessionManager
-from yammbs.torsion.analysis import LogSSE, LogSSECollection, _normalize
+from yammbs.torsion.analysis import EEN, RMSD, EENCollection, RMSDCollection, _normalize
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, TorsionRecord
 from yammbs.torsion.outputs import Metric, MetricCollection, MinimizedTorsionDataset
@@ -260,12 +260,18 @@ class TorsionStore:
 
         from yammbs.torsion._minimize import _minimize_torsions
 
-        id_to_smiles = {
-            molecule_id: self.get_smiles_by_molecule_id(molecule_id) for molecule_id in self.get_molecule_ids()
-        }
+        molecule_ids = self.get_molecule_ids()
+
+        # TODO Do this by interacting with the database in one step?
+        ids_to_minimize = [
+            molecule_id
+            for molecule_id in molecule_ids
+            if len(self.get_mm_points_by_molecule_id(molecule_id, force_field)) == 0
+        ]
+
+        id_to_smiles = {molecule_id: self.get_smiles_by_molecule_id(molecule_id) for molecule_id in ids_to_minimize}
         id_to_dihedral_indices = {
-            molecule_id: self.get_dihedral_indices_by_molecule_id(molecule_id)
-            for molecule_id in self.get_molecule_ids()
+            molecule_id: self.get_dihedral_indices_by_molecule_id(molecule_id) for molecule_id in ids_to_minimize
         }
 
         LOGGER.info(f"Setting up generator of data for minimization with {force_field=}")
@@ -297,7 +303,9 @@ class TorsionStore:
                     DBQMTorsionPointRecord.grid_id,
                     DBQMTorsionPointRecord.coordinates,
                     DBQMTorsionPointRecord.energy,
-                ).all()
+                )
+                .filter(DBQMTorsionPointRecord.parent_id.in_(ids_to_minimize))
+                .all()
             )
 
         LOGGER.info(f"Passing generator of data to minimization with {force_field=}")
@@ -322,12 +330,15 @@ class TorsionStore:
                     ),
                 )
 
-    def get_log_sse(
+    def get_rmsd(
         self,
         force_field: str,
         molecule_ids: list[int] | None = None,
         skip_check: bool = False,
-    ) -> LogSSECollection:
+    ) -> RMSDCollection:
+        """Get the RMSD summed over the torsion profile."""
+        from openff.toolkit import Molecule
+
         if not molecule_ids:
             molecule_ids = self.get_molecule_ids()
 
@@ -336,25 +347,59 @@ class TorsionStore:
             LOGGER.info("Calling optimize_mm from inside of get_log_sse.")
             self.optimize_mm(force_field=force_field)
 
-        log_sses = LogSSECollection()
+        rmsds = RMSDCollection()
 
-        for molecule_id in self.get_molecule_ids():
-            if molecule_id not in molecule_ids:
-                continue
+        for molecule_id in molecule_ids:
+            qm_points = self.get_qm_points_by_molecule_id(id=molecule_id)
+            mm_points = self.get_mm_points_by_molecule_id(id=molecule_id, force_field=force_field)
 
-            qm, mm = _normalize(
-                qm=self.get_qm_energies_by_molecule_id(molecule_id),
-                mm=self.get_mm_energies_by_molecule_id(molecule_id, force_field),
+            molecule = Molecule.from_mapped_smiles(
+                self.get_smiles_by_molecule_id(molecule_id),
+                allow_undefined_stereo=True,
             )
 
-            log_sses.append(
-                LogSSE(
+            rmsds.append(
+                RMSD(
                     id=molecule_id,
-                    value=math.log(sum([(mm[key] - qm[key]) ** 2 for key in qm])),
+                    rmsd=sum(get_rmsd(molecule, qm_points[key], mm_points[key]) for key in qm_points),
                 ),
             )
 
-        return log_sses
+        return rmsds
+
+    def get_een(
+        self,
+        force_field: str,
+        molecule_ids: list[int] | None = None,
+        skip_check: bool = False,
+    ) -> EENCollection:
+        """Get the vector norm of the energy errors over the torsion profile."""
+
+        if not molecule_ids:
+            molecule_ids = self.get_molecule_ids()
+
+        if not skip_check:
+            self.optimize_mm(force_field=force_field)
+
+        eens = EENCollection()
+
+        for molecule_id in molecule_ids:
+            qm, mm = (
+                numpy.fromiter(dct.values(), dtype=float)
+                for dct in _normalize(
+                    self.get_qm_energies_by_molecule_id(id=molecule_id),
+                    self.get_mm_energies_by_molecule_id(id=molecule_id, force_field=force_field),
+                )
+            )
+
+            eens.append(
+                EEN(
+                    id=molecule_id,
+                    een=numpy.linalg.norm(qm - mm),
+                ),
+            )
+
+        return eens
 
     def get_outputs(self) -> MinimizedTorsionDataset:
         from yammbs.torsion.outputs import MinimizedTorsionProfile
@@ -406,15 +451,17 @@ class TorsionStore:
 
         # TODO: Optimize this for speed
         for force_field in self.get_force_fields():
-            log_sses = self.get_log_sse(force_field=force_field).to_dataframe()
+            rmsds = self.get_rmsd(force_field=force_field, skip_check=True).to_dataframe()
+            eens = self.get_een(force_field=force_field, skip_check=True).to_dataframe()
 
-            dataframe = log_sses  # here's where you'd join multiple ...
+            dataframe = rmsds.join(eens)
 
             dataframe = dataframe.replace({pandas.NA: numpy.nan})
 
             metrics.metrics[force_field] = {
                 id: Metric(  # type: ignore[misc]
-                    log_sse=row["value"],
+                    rmsd=row["rmsd"],
+                    een=row["een"],
                 )
                 for id, row in dataframe.iterrows()
             }
