@@ -1,6 +1,5 @@
 import numpy
 from openff.toolkit import Molecule
-from openff.units import unit
 
 from yammbs._molecule import _to_geometric_molecule
 
@@ -15,6 +14,6 @@ def test_to_geometric_molecule():
     assert molecule.n_bonds == len(geometric_molecule.Data["bonds"])
 
     assert numpy.allclose(
-        molecule.conformers[0].m_as(unit.angstrom),
+        molecule.conformers[0].m_as("angstrom"),
         geometric_molecule.Data["xyzs"][0],
     )

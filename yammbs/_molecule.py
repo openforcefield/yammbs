@@ -1,5 +1,6 @@
 """Molecule conversion utilities"""
 
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from openff.toolkit import Molecule, Quantity
@@ -39,3 +40,12 @@ def _molecule_with_conformer_from_smiles(
     molecule.add_conformer(Quantity(conformer, "angstrom"))
 
     return molecule
+
+
+@lru_cache
+def _smiles_to_inchi_key(smiles: str) -> str:
+    from openff.toolkit import Molecule
+
+    return Molecule.from_mapped_smiles(smiles, allow_undefined_stereo=True).to_inchi(
+        fixed_hydrogens=True,
+    )

@@ -17,6 +17,7 @@ from openff.utilities.utilities import get_data_file_path
 
 from yammbs import MoleculeStore
 from yammbs.inputs import QCArchiveDataset
+from yammbs.torsion.inputs import QCArchiveTorsionDataset, QCArchiveTorsionProfile
 
 
 @pytest.fixture
@@ -116,3 +117,27 @@ def conformers(allicin):
     other_allicin.generate_conformers(n_conformers=10)
 
     return other_allicin.conformers
+
+
+@pytest.fixture
+def torsion_dataset():
+    return QCArchiveTorsionDataset.model_validate_json(
+        open(
+            get_data_file_path(
+                "_tests/data/yammbs/torsiondrive-data.json",
+                "yammbs",
+            ),
+        ).read(),
+    )
+
+
+@pytest.fixture
+def single_torsion_dataset(torsion_dataset):
+    """`torsion_dataset` with only one (QM) torsion profile."""
+
+    # TODO: The dict round-trip should not be necessary
+    return QCArchiveTorsionDataset(
+        tag=torsion_dataset.tag,
+        version=torsion_dataset.version,
+        qm_torsions=[QCArchiveTorsionProfile(**torsion_dataset.qm_torsions[-1].dict())],
+    )

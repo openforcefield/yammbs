@@ -1,8 +1,7 @@
 from typing import TYPE_CHECKING
 
 import numpy
-from openff.toolkit import Molecule
-from openff.units import Quantity, unit
+from openff.toolkit import Molecule, Quantity
 
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
@@ -102,7 +101,6 @@ def get_rmsd(
 ) -> float:
     """Compute the RMSD between two sets of coordinates."""
     from openeye import oechem
-    from openff.units import Quantity, unit
 
     molecule1 = Molecule(molecule)
     molecule2 = Molecule(molecule)
@@ -111,9 +109,9 @@ def get_rmsd(
         if molecule.conformers is not None:
             molecule.conformers.clear()
 
-    molecule1.add_conformer(Quantity(reference, unit.angstrom))  # type: ignore[call-overload]
+    molecule1.add_conformer(Quantity(reference, "angstrom"))
 
-    molecule2.add_conformer(Quantity(target, unit.angstrom))  # type: ignore[call-overload]
+    molecule2.add_conformer(Quantity(target, "angstrom"))
 
     # oechem appears to not support named arguments, but it's hard to tell
     # since the Python API is not documented
@@ -145,10 +143,10 @@ def get_internal_coordinate_rmsds(
     from yammbs._molecule import _to_geometric_molecule
 
     if isinstance(reference, Quantity):
-        reference = reference.m_as(unit.angstrom)
+        reference = reference.m_as("angstrom")
 
     if isinstance(target, Quantity):
-        target = target.m_as(unit.angstrom)
+        target = target.m_as("angstrom")
 
     _generator = PrimitiveInternalCoordinates(
         _to_geometric_molecule(molecule=molecule, coordinates=target),
@@ -211,13 +209,11 @@ def get_tfd(
         molecule: Molecule,
         conformer: Array,
     ):
-        from openff.units import Quantity, unit
-
         molecule = Molecule(molecule)
         if molecule.conformers is not None:
             molecule.conformers.clear()
 
-        molecule.add_conformer(Quantity(conformer, unit.angstrom))  # type: ignore[call-overload]
+        molecule.add_conformer(Quantity(conformer, "angstrom"))
 
         return molecule.to_rdkit()
 
