@@ -42,6 +42,8 @@ class TorsionStore:
                 f"Only paths to SQLite databases ending in .sqlite are supported. Given: {database_path}",
             )
 
+        LOGGER.info("Creating a new TorsionStore at {database_path=}")
+
         self.database_url = f"sqlite:///{database_path.resolve()}"
         self.engine = create_engine(self.database_url)
         DBBase.metadata.create_all(self.engine)
@@ -198,7 +200,14 @@ class TorsionStore:
         if pathlib.Path(database_name).exists():
             raise DatabaseExistsError(f"Database {database_name} already exists.")
 
+        LOGGER.info(
+            f"Creating a new TorsionStore at {database_name=} from a QCArchiveTorsionDataset "
+            "(which is a YAMMBS model).",
+        )
+
         store = cls(database_name)
+
+        LOGGER.info("Iterating through qm_torsions field of QCArchiveTorsionDataset (which is a YAMMBS model).")
 
         for qm_torsion in dataset.qm_torsions:
             torsion_record = TorsionRecord(
@@ -230,6 +239,11 @@ class TorsionStore:
         database_name: str,
     ):
         """Convert a QCSubmit collection to TorsionDataset and use it to create a TorsionStore."""
+        LOGGER.info(
+            f"Creating a new TorsionStore at {database_name=} from a TorsionDriveResultCollection "
+            "(which is a QCSubmit model).",
+        )
+
         return cls.from_torsion_dataset(
             dataset=QCArchiveTorsionDataset.from_qcsubmit_collection(collection),
             database_name=database_name,
@@ -253,6 +267,8 @@ class TorsionStore:
             molecule_id: self.get_dihedral_indices_by_molecule_id(molecule_id)
             for molecule_id in self.get_molecule_ids()
         }
+
+        LOGGER.info(f"Setting up generator of data for minimization with {force_field=}")
 
         with self._get_session() as db:
             # TODO: Implement "seen" behavior to short-circuit already-optimized torsions
@@ -284,11 +300,15 @@ class TorsionStore:
                 ).all()
             )
 
+        LOGGER.info(f"Passing generator of data to minimization with {force_field=}")
+
         minimization_results = _minimize_torsions(
             data=data,
             force_field=force_field,
             n_processes=n_processes,
         )
+
+        LOGGER.info(f"Storing minimization results in database with {force_field=}")
 
         with self._get_session() as db:
             for result in minimization_results:
@@ -312,6 +332,8 @@ class TorsionStore:
             molecule_ids = self.get_molecule_ids()
 
         if not skip_check:
+            # TODO: Copy this into each get_* method?
+            LOGGER.info("Calling optimize_mm from inside of get_log_sse.")
             self.optimize_mm(force_field=force_field)
 
         log_sses = LogSSECollection()
@@ -338,6 +360,8 @@ class TorsionStore:
         from yammbs.torsion.outputs import MinimizedTorsionProfile
 
         output_dataset = MinimizedTorsionDataset()
+
+        LOGGER.info("Getting outputs for all force fields.")
 
         with self._get_session() as db:
             for force_field in self.get_force_fields():
@@ -375,6 +399,8 @@ class TorsionStore:
         self,
     ) -> MetricCollection:
         import pandas
+
+        LOGGER.info("Getting metrics for all force fields.")
 
         metrics = MetricCollection()
 
