@@ -1,13 +1,11 @@
 [build-system]
-requires = ["setuptools", "versioneer[toml]==0.29"]
+requires = [
+    "setuptools",
+    "versioningit",
+]
 build-backend = "setuptools.build_meta"
 
-[tool.versioneer]
-VCS = "git"
-style = "pep440"
-versionfile_source = "yammbs/_version.py"
-versionfile_build = "yammbs/_version.py"
-tag_prefix = "v"
+[tool.versioningit]
 
 [tool.ruff]
 line-length = 119
