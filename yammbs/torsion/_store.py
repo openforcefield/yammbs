@@ -105,6 +105,7 @@ class TorsionStore:
         These are likely to be integers sequentially incrementing from 1, but that
         is not guaranteed.
         """
+        # TODO: This isn't really a "molecule ID", it's more like a torsiondrive ID
         with self._get_session() as db:
             return [molecule_id for (molecule_id,) in db.db.query(DBTorsionRecord.id).distinct()]
 
@@ -391,6 +392,12 @@ class TorsionStore:
                     self.get_mm_energies_by_molecule_id(id=molecule_id, force_field=force_field),
                 )
             )
+
+            if len(mm) * len(qm) == 0:
+                LOGGER.warning(
+                    "Missing QM OR MM data for this no mm data, returning empty dicts; \n\t"
+                    f"{molecule_id=}, {force_field=}, {len(qm)=}, {len(mm)=}",
+                )
 
             eens.append(
                 EEN(
