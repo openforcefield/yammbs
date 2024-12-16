@@ -13,8 +13,7 @@ def _normalize(qm: dict[float, float], mm: dict[float, float]) -> tuple[dict[flo
     """Normalize, after sorting, a pair of QM and MM profiles to the values at the QM minimum."""
     if len(mm) == 0:
         LOGGER.warning(
-            "no mm data, returning empty dicts; "
-            f"length of qm dict is {len(qm)=}",
+            f"no mm data, returning empty dicts; length of qm dict is {len(qm)=}",
         )
         return dict(), dict()
 

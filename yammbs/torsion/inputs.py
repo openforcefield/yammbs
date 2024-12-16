@@ -21,7 +21,7 @@ class TorsionDataset(ImmutableModel):
 
 class TorsionProfile(ImmutableModel):
     mapped_smiles: str
-    dihedral_indices: list[int] = Field(
+    dihedral_indices: tuple[int, int, int, int] = Field(
         ...,
         description="The indices, 0-indexed, of the atoms which define the driven dihedral angle",
     )

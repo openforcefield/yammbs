@@ -109,15 +109,35 @@ class TorsionStore:
         with self._get_session() as db:
             return [molecule_id for (molecule_id,) in db.db.query(DBTorsionRecord.id).distinct()]
 
-    # TODO: Allow by multiple selectors (smiles: list[str])
-    def get_molecule_id_by_smiles(self, smiles: str) -> int:
+    # TODO: Allow by multiple selectors (how to do with multiple args? 1-arg case is smiles: list[str])
+    def get_molecule_id_by_smiles_and_dihedral_indices(
+        self,
+        smiles: str,
+        dihedral_indices: tuple[int, int, int, int],
+    ) -> int:
         with self._get_session() as db:
-            return next(id for (id,) in db.db.query(DBTorsionRecord.id).filter_by(mapped_smiles=smiles).all())
+            return next(
+                id
+                for (id,) in db.db.query(DBTorsionRecord.id)
+                .filter_by(
+                    mapped_smiles=smiles,
+                    dihedral_indices=dihedral_indices,
+                )
+                .all()
+            )
 
     # TODO: Allow by multiple selectors (id: list[int])
     def get_smiles_by_molecule_id(self, id: int) -> str:
         with self._get_session() as db:
             return next(smiles for (smiles,) in db.db.query(DBTorsionRecord.mapped_smiles).filter_by(id=id).all())
+
+    # TODO: Allow by multiple selectors (id: list[int])
+    def get_dihedral_indices_by_molecule_id(self, id: int) -> tuple[int, int, int, int]:
+        with self._get_session() as db:
+            return next(
+                dihedral_indices
+                for (dihedral_indices,) in db.db.query(DBTorsionRecord.dihedral_indices).filter_by(id=id).all()
+            )
 
     def get_force_fields(
         self,
@@ -130,13 +150,6 @@ class TorsionStore:
                     DBMMTorsionPointRecord.force_field,
                 ).distinct()
             ]
-
-    def get_dihedral_indices_by_molecule_id(self, id: int) -> tuple[int, int, int, int]:
-        with self._get_session() as db:
-            return next(
-                dihedral_indices
-                for (dihedral_indices,) in db.db.query(DBTorsionRecord.dihedral_indices).filter_by(id=id).all()
-            )
 
     def get_qm_points_by_molecule_id(self, id: int) -> dict[float, NDArray]:
         with self._get_session() as db:
@@ -221,8 +234,9 @@ class TorsionStore:
 
             for angle in qm_torsion.coordinates:
                 qm_point_record = QMTorsionPointRecord(
-                    molecule_id=store.get_molecule_id_by_smiles(
-                        torsion_record.mapped_smiles,
+                    molecule_id=store.get_molecule_id_by_smiles_and_dihedral_indices(
+                        smiles=torsion_record.mapped_smiles,
+                        dihedral_indices=torsion_record.dihedral_indices,
                     ),
                     grid_id=angle,  # TODO: This needs to be a tuple later
                     coordinates=qm_torsion.coordinates[angle],
