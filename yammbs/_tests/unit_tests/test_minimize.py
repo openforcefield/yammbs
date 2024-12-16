@@ -113,7 +113,7 @@ def test_different_force_fields_different_results():
 
 
 def test_plugin_loadable(ethane):
-    pytest.importorskip("deforcefields")
+    pytest.importorskip("deforcefields.deforcefields")
 
     _run_openmm(
         MinimizationInput(
@@ -150,7 +150,7 @@ def test_finds_local_force_field(ethane, tmp_path):
 
 
 def test_plugin_not_needed_to_use_mainline_force_field(monkeypatch, ethane):
-    pytest.importorskip("deforcefields")
+    pytest.importorskip("deforcefields.deforcefields")
     from deforcefields import deforcefields
 
     assert len(deforcefields.get_forcefield_paths()) > 0
