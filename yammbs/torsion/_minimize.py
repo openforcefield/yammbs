@@ -1,6 +1,6 @@
 import logging
+from collections.abc import Generator
 from multiprocessing import Pool
-from typing import Generator
 
 from numpy.typing import NDArray
 from pydantic import Field

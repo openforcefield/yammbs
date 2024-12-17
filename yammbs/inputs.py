@@ -1,4 +1,5 @@
-from typing import Sequence, TypeVar
+from collections.abc import Sequence
+from typing import TypeVar
 
 import qcelemental
 from openff.qcsubmit.results import OptimizationResultCollection
