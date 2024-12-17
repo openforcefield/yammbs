@@ -4,25 +4,37 @@ channels:
   - conda-forge
 dependencies:
   - python
+  - pip
+  - versioningit
 
   - openff-toolkit
+  - openff-interchange =0.4
   - openff-qcsubmit
   - openmmforcefields
-  - de-forcefields ~=1.0.1
-  - smirnoff-plugins
-  # espaloma =0.3
+  # add back when merged https://github.com/openforcefield/smirnoff-plugins/pull/76
+  # smirnoff-plugins
+  # de-forcefields ~=1.0.3
+
+  - openeye::openeye-toolkits
+
+  # https://github.com/openforcefield/openff-toolkit/blob/6aa989ed54c0bdd9a9a504f008d0719753541246/devtools/conda-envs/test_env.yaml#L27-L31
+  - rdkit !=2024.03.6,!=2024.09.1
+
   - geometric =1
   - pydantic =2
 
+  - qcportal ~=0.55
+
+  # espaloma ~=0.3
   - ipython
   - ipdb
   - pre-commit
-
-  - openeye::openeye-toolkits
-  - rich
 
   - pytest
   - pytest-cov
   - pytest-xdist
   - pytest-randomly
   - pytest-timeout
+
+  - mypy
+  - typing-extensions

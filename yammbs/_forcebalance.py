@@ -1,17 +1,24 @@
 """Code vendored from ForceBalance."""
 
 import numpy
+from numpy.typing import NDArray
 
 
-def periodic_diff(a, b, v_periodic):
-    """convenient function for computing the minimum difference in periodic coordinates
+def periodic_diff(
+    a: NDArray[numpy.float64],
+    b: NDArray[numpy.float64],
+    v_periodic: float,
+) -> NDArray[numpy.float64]:
+    """
+    Convenience function for computing the minimum difference in periodic coordinates
+
     Parameters
     ----------
-    a: np.ndarray or float
+    a
         Reference values in a numpy array
-    b: np.ndarray or float
+    b
         Target values in a numpy arrary
-    v_periodic: float > 0
+    v_periodic
         Value of the periodic boundary
 
     Returns
@@ -36,17 +43,20 @@ def periodic_diff(a, b, v_periodic):
     return (a - b + h) % v_periodic - h
 
 
-def compute_rmsd(ref, tar, v_periodic=None):
+def compute_rmsd(
+    ref: NDArray[numpy.float64],
+    tar: NDArray[numpy.float64],
+    v_periodic: float | None = None,
+) -> float:
     """
     Compute the RMSD between two arrays, supporting periodic difference
     """
+
     assert len(ref) == len(tar), "array length must match"
-    n = len(ref)
-    if n == 0:
+
+    if len(ref) == 0:
         return 0.0
-    if v_periodic is not None:
-        diff = periodic_diff(ref, tar, v_periodic)
-    else:
-        diff = ref - tar
-    rmsd = numpy.sqrt(numpy.sum(diff**2) / n)
-    return rmsd
+
+    diff = ref - tar if v_periodic is None else periodic_diff(ref, tar, v_periodic)
+
+    return numpy.sqrt(numpy.sum(diff**2) / len(ref))

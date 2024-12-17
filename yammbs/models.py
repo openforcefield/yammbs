@@ -2,7 +2,7 @@ from typing import Any, TypeVar
 
 import qcelemental
 from openff.toolkit import Molecule
-from pydantic.v1 import Field
+from pydantic import ConfigDict, Field
 
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
@@ -14,8 +14,12 @@ MR = TypeVar("MR", bound="MoleculeRecord")
 
 
 class Record(ImmutableModel):
-    class Config(ImmutableModel.Config):
-        orm_mode = True
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_default=True,
+        validate_assignment=True,
+        frozen=False,
+    )
 
 
 class QMConformerRecord(Record):
@@ -35,9 +39,7 @@ class QMConformerRecord(Record):
     )
     coordinates: Array = Field(
         ...,
-        description=(
-            "The coordinates [Angstrom] of this conformer with shape=(n_atoms, 3)."
-        ),
+        description="The coordinates [Angstrom] of this conformer with shape=(n_atoms, 3).",
     )
     energy: float = Field(
         ...,
@@ -80,9 +82,7 @@ class MMConformerRecord(Record):
     )
     coordinates: Array = Field(
         ...,
-        description=(
-            "The coordinates [Angstrom] of this conformer with shape=(n_atoms, 3)."
-        ),
+        description="The coordinates [Angstrom] of this conformer with shape=(n_atoms, 3).",
     )
     energy: float = Field(
         ...,
@@ -110,7 +110,7 @@ class MoleculeRecord(Record):
 
     @classmethod
     def from_molecule(
-        cls,
+        cls: type[MR],
         molecule: Molecule,
     ) -> MR:
         assert molecule.n_conformers == 1

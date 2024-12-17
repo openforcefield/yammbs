@@ -1,7 +1,7 @@
+from importlib.metadata import version
+
 from yammbs._store import MoleculeStore
-from yammbs._version import get_versions
 
 __all__ = ("MoleculeStore",)
 
-__version__ = get_versions()["version"]
-del get_versions
+__version__ = version("yammbs")

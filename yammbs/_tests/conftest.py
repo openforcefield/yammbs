@@ -16,7 +16,8 @@ from openff.toolkit import Molecule
 from openff.utilities.utilities import get_data_file_path
 
 from yammbs import MoleculeStore
-from yammbs.cached_result import CachedResultCollection
+from yammbs.inputs import QCArchiveDataset
+from yammbs.torsion.inputs import QCArchiveTorsionDataset, QCArchiveTorsionProfile
 
 
 @pytest.fixture
@@ -52,16 +53,16 @@ def ligand():
 
 
 @pytest.fixture
-def small_collection() -> OptimizationResultCollection:
+def small_qcsubmit_collection() -> OptimizationResultCollection:
     return OptimizationResultCollection.parse_file(
-        get_data_file_path("_tests/data/01-processed-qm-ch.json", "yammbs"),
+        get_data_file_path("_tests/data/qcsubmit/01-processed-qm-ch.json", "yammbs"),
     )
 
 
 @pytest.fixture
-def small_cache() -> CachedResultCollection:
-    return CachedResultCollection.from_json(
-        get_data_file_path("_tests/data/tiny-opt.json", "yammbs"),
+def small_dataset() -> QCArchiveDataset:
+    return QCArchiveDataset.from_json(
+        get_data_file_path("_tests/data/yammbs/01-processed-qm-ch.json", "yammbs"),
     )
 
 
@@ -82,15 +83,16 @@ def small_store(tmp_path) -> MoleculeStore:
 
 
 @pytest.fixture
-def tiny_cache() -> CachedResultCollection:
+def tiny_cache() -> QCArchiveDataset:
     """Return the "tiny" molecule store, copied from a single source and provided as a temporary file."""
 
-    return CachedResultCollection.from_json(
+    with open(
         get_data_file_path(
             "_tests/data/tiny-opt.json",
             package_name="yammbs",
         ),
-    )
+    ) as inp:
+        return QCArchiveDataset.model_validate_json(inp.read())
 
 
 @pytest.fixture
@@ -115,3 +117,27 @@ def conformers(allicin):
     other_allicin.generate_conformers(n_conformers=10)
 
     return other_allicin.conformers
+
+
+@pytest.fixture
+def torsion_dataset():
+    return QCArchiveTorsionDataset.model_validate_json(
+        open(
+            get_data_file_path(
+                "_tests/data/yammbs/torsiondrive-data.json",
+                "yammbs",
+            ),
+        ).read(),
+    )
+
+
+@pytest.fixture
+def single_torsion_dataset(torsion_dataset):
+    """`torsion_dataset` with only one (QM) torsion profile."""
+
+    # TODO: The dict round-trip should not be necessary
+    return QCArchiveTorsionDataset(
+        tag=torsion_dataset.tag,
+        version=torsion_dataset.version,
+        qm_torsions=[QCArchiveTorsionProfile(**torsion_dataset.qm_torsions[-1].dict())],
+    )

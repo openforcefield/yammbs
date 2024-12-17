@@ -1,14 +1,13 @@
 import numpy
 import qcelemental
-from openff.units import unit
 
 from yammbs.models import MoleculeRecord, QMConformerRecord
 
 hartree2kcalmol = qcelemental.constants.hartree2kcalmol
 
 
-def test_load_from_qcsubmit(small_collection):
-    for qc_record, molecule in small_collection.to_records():
+def test_load_from_qcsubmit(small_qcsubmit_collection):
+    for qc_record, molecule in small_qcsubmit_collection.to_records():
         mapped_smiles = molecule.to_smiles(mapped=True, isomeric=True)
         ichi_key = molecule.to_inchi(fixed_hydrogens=True)
 
@@ -30,5 +29,5 @@ def test_load_from_qcsubmit(small_collection):
         assert qm_conformer.qcarchive_id == qc_record.id
         assert numpy.allclose(
             qm_conformer.coordinates,
-            molecule.conformers[0].m_as(unit.angstrom),
+            molecule.conformers[0].m_as("angstrom"),
         )

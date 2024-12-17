@@ -2,12 +2,12 @@ import platform
 
 import numpy
 import pytest
-from openff.toolkit import ForceField, Molecule
-from openff.units import unit
+from openff.toolkit import ForceField, Molecule, unit
+from openff.toolkit import __version__ as __toolkit_version__
 
 from yammbs import MoleculeStore
 from yammbs._minimize import MinimizationInput, _run_openmm
-from yammbs.cached_result import CachedResultCollection
+from yammbs.inputs import QCArchiveDataset
 
 
 @pytest.fixture
@@ -33,7 +33,7 @@ def basic_input(force_field="openff-1.0.0") -> MinimizationInput:
 
     return MinimizationInput(
         inchi_key=ethane.to_inchikey(),
-        qcarchive_id="test",
+        qcarchive_id=123485854848,
         force_field=force_field,
         mapped_smiles=ethane.to_smiles(mapped=True),
         coordinates=ethane.conformers[0].m_as(unit.angstrom),
@@ -44,7 +44,7 @@ def basic_input(force_field="openff-1.0.0") -> MinimizationInput:
 def perturbed_input(perturbed_ethane) -> MinimizationInput:
     return MinimizationInput(
         inchi_key=perturbed_ethane.to_inchikey(),
-        qcarchive_id="test",
+        qcarchive_id=348483483,
         force_field="openff-1.0.0",
         mapped_smiles=perturbed_ethane.to_smiles(mapped=True),
         coordinates=perturbed_ethane.conformers[0].m_as(unit.angstrom),
@@ -70,6 +70,34 @@ def test_minimization_basic(perturbed_input):
     assert 1.5 < numpy.linalg.norm(final) < 1.6
 
 
+def test_minimization_unassigned_torsion(caplog):
+    """Test that ``_run_openmm`` returns None and logs a warning when there are
+    unassigned valence terms."""
+
+    smiles = (
+        "[H:6][C@@:5]([C:16](=[O:17])[O:18][F:19])([C@:4]([H:31])([C:2]"
+        "([H:27])([C:1]([H:24])([H:25])[H:26])[C:3]([H:28])([H:29])[H:30])"
+        "[C:20]([C:21]([H:44])([H:45])[H:46])([C:22]([H:47])([H:48])[H:49])"
+        "[O:23][H:50])[N:7]([C:9](=[O:10])[O:11][C:12]([C:13]([H:35])([H:36])"
+        "[H:37])([C:14]([H:38])([H:39])[H:40])[C:15]([H:41])([H:42])[H:43])"
+        "[C:8]([H:32])([H:33])[H:34]"
+    )
+    mol = Molecule.from_mapped_smiles(smiles)
+    mol.generate_conformers(n_conformers=1)
+    min_input = MinimizationInput(
+        inchi_key=mol.to_inchikey(),
+        qcarchive_id=36955694,
+        force_field="openff-1.0.0",
+        mapped_smiles=mol.to_smiles(mapped=True),
+        coordinates=mol.conformers[0].m_as(unit.angstrom),
+    )
+
+    result = _run_openmm(min_input)
+
+    assert "unassigned valence terms" in caplog.text
+    assert result is None
+
+
 def test_same_force_field_same_results():
     energy1 = _run_openmm(basic_input("openff-1.0.0")).energy
     energy2 = _run_openmm(basic_input("openff-1.0.0")).energy
@@ -85,10 +113,12 @@ def test_different_force_fields_different_results():
 
 
 def test_plugin_loadable(ethane):
+    pytest.importorskip("deforcefields.deforcefields")
+
     _run_openmm(
         MinimizationInput(
             inchi_key=ethane.to_inchikey(),
-            qcarchive_id="test",
+            qcarchive_id=38483483483481384183412831832,
             force_field="de-force-1.0.1",
             mapped_smiles=ethane.to_smiles(mapped=True),
             coordinates=ethane.conformers[0].m_as(unit.angstrom),
@@ -111,7 +141,7 @@ def test_finds_local_force_field(ethane, tmp_path):
     _run_openmm(
         MinimizationInput(
             inchi_key=ethane.to_inchikey(),
-            qcarchive_id="test",
+            qcarchive_id=5,
             force_field=(tmp_path / "fOOOO.offxml").as_posix(),
             mapped_smiles=ethane.to_smiles(mapped=True),
             coordinates=ethane.conformers[0].m_as(unit.angstrom),
@@ -120,6 +150,7 @@ def test_finds_local_force_field(ethane, tmp_path):
 
 
 def test_plugin_not_needed_to_use_mainline_force_field(monkeypatch, ethane):
+    pytest.importorskip("deforcefields.deforcefields")
     from deforcefields import deforcefields
 
     assert len(deforcefields.get_forcefield_paths()) > 0
@@ -134,7 +165,7 @@ def test_plugin_not_needed_to_use_mainline_force_field(monkeypatch, ethane):
     _run_openmm(
         MinimizationInput(
             inchi_key=ethane.to_inchikey(),
-            qcarchive_id="test",
+            qcarchive_id=5,
             force_field="openff-1.0.0",
             mapped_smiles=ethane.to_smiles(mapped=True),
             coordinates=ethane.conformers[0].m_as(unit.angstrom),
@@ -149,6 +180,7 @@ def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
 
     See https://github.com/mattwthompson/ib/pull/21#discussion_r1511804909
     """
+    import yammbs
 
     def get_n_mm_conformers(store, ff):
         molecule_ids = store.get_molecule_ids()
@@ -169,16 +201,16 @@ def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
         )
 
     # No need to minimize all 200 records twice ...
-    tinier_cache = CachedResultCollection()
+    tinier_cache = QCArchiveDataset()
 
     # ... so slice out some really small molecules (< 9 heavy atoms)
     # which should be 12 molecules for this dataset
-    for result in tiny_cache.inner:
+    for result in tiny_cache.qm_molecules:
         molecule = Molecule.from_mapped_smiles(result.mapped_smiles)
         if len([atom for atom in molecule.atoms if atom.atomic_number > 1]) < 9:
-            tinier_cache.inner.append(result)
+            tinier_cache.qm_molecules.append(result)
 
-    tinier_store = MoleculeStore.from_cached_result_collection(
+    tinier_store = MoleculeStore.from_qcarchive_dataset(
         tinier_cache,
         database_name=(tmp_path / "tiny.sqlite").as_posix(),
     )
@@ -192,3 +224,7 @@ def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
     tinier_store.optimize_mm(force_field="openff-2.0.0", n_processes=guess_n_processes)
 
     assert get_n_results(tinier_store) == (12, 12)
+
+    assert tinier_store.software_provenance["yammbs"] == yammbs.__version__
+    assert tinier_store.software_provenance["openff.toolkit"] == __toolkit_version__
+    assert tinier_store.software_provenance["qcfractal"] is None

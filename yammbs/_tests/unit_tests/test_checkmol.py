@@ -1,9 +1,11 @@
 import pytest
 from openff.toolkit import Molecule
+from openff.utilities import has_executable
 
 from yammbs.checkmol import ChemicalEnvironment, analyze_functional_groups
 
 
+@pytest.mark.skipif(not has_executable("checkmol"), reason="checkmol not installed")
 @pytest.mark.parametrize(
     "mapped",
     [True, False],

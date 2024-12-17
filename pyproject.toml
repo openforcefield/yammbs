@@ -1,0 +1,14 @@
+[build-system]
+requires = [
+    "setuptools",
+    "versioningit",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.versioningit]
+
+[tool.ruff]
+line-length = 119
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "NPY", "UP", "I"]
