@@ -2,7 +2,7 @@ import logging
 import pathlib
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import Generator, Iterable, TypeVar
+from typing import Generator, Iterable
 
 import numpy
 from numpy.typing import NDArray
@@ -18,7 +18,7 @@ from yammbs._db import (
     DBMoleculeRecord,
     DBQMConformerRecord,
 )
-from yammbs._molecule import _molecule_with_conformer_from_smiles
+from yammbs._molecule import _molecule_with_conformer_from_smiles, _smiles_to_inchi_key
 from yammbs._session import DBSessionManager
 from yammbs._types import Pathlike
 from yammbs.analysis import (
@@ -41,8 +41,6 @@ from yammbs.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
 from yammbs.outputs import Metric, MetricCollection, MinimizedQMDataset
 
 LOGGER = logging.getLogger(__name__)
-
-MS = TypeVar("MS", bound="MoleculeStore")
 
 
 class MoleculeStore:
@@ -133,7 +131,7 @@ class MoleculeStore:
             self.general_provenance = db.get_general_provenance()
             self.software_provenance = db.get_software_provenance()
 
-    def store(
+    def store_molecule_record(
         self,
         records: MoleculeRecord | Iterable[MoleculeRecord],
     ):
@@ -150,6 +148,8 @@ class MoleculeStore:
         with self._get_session() as db:
             for record in records:
                 db.store_molecule_record(record)
+
+    store = store_molecule_record
 
     def store_qcarchive(
         self,
@@ -422,7 +422,7 @@ class MoleculeStore:
         for qm_molecule in dataset.qm_molecules:
             molecule_record = MoleculeRecord(
                 mapped_smiles=qm_molecule.mapped_smiles,
-                inchi_key=smiles_to_inchi_key(qm_molecule.mapped_smiles),
+                inchi_key=_smiles_to_inchi_key(qm_molecule.mapped_smiles),
             )
 
             store.store(molecule_record)
@@ -561,7 +561,10 @@ class MoleculeStore:
     ):
         from yammbs._minimize import _minimize_blob
 
-        inchi_key_qm_conformer_mapping = self._map_inchi_keys_to_qm_conformers(
+        inchi_key_qm_conformer_mapping: dict[
+            str,
+            list[NDArray],
+        ] = self._map_inchi_keys_to_qm_conformers(
             force_field=force_field,
         )
 
@@ -822,7 +825,7 @@ class MoleculeStore:
                         ),
                     )
                 except Exception as e:
-                    logging.warning(f"Molecule {inchi_key} failed with {e!s}")
+                    LOGGER.warning(f"Molecule {inchi_key} failed with {e!s}")
 
         return tfds
 
@@ -929,11 +932,3 @@ class MoleculeStore:
                 smiles=self.get_smiles_by_molecule_id(id),
             )
         ]
-
-
-def smiles_to_inchi_key(smiles: str) -> str:
-    from openff.toolkit import Molecule
-
-    return Molecule.from_mapped_smiles(smiles, allow_undefined_stereo=True).to_inchi(
-        fixed_hydrogens=True,
-    )
