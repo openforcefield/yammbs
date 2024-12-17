@@ -1,7 +1,7 @@
 """A module for managing the database session."""
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, List, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 from yammbs._db import (
     DB_VERSION,
@@ -65,8 +65,8 @@ class IncompatibleDBVersion(ValueError):
 class DBSessionManager:
     @staticmethod
     def map_records_by_smiles(
-        db_records: List[DBMoleculeRecord],
-    ) -> Dict[str, List[DBMoleculeRecord]]:
+        db_records: list[DBMoleculeRecord],
+    ) -> dict[str, list[DBMoleculeRecord]]:
         """Maps a list of DB records by their SMILES representation.
 
         Parameters
@@ -114,8 +114,8 @@ class DBSessionManager:
 
     def set_provenance(
         self,
-        general_provenance: Dict[str, str],
-        software_provenance: Dict[str, str | None],
+        general_provenance: dict[str, str],
+        software_provenance: dict[str, str | None],
     ):
         self.db_info.general_provenance = [
             DBGeneralProvenance(key=key, value=value) for key, value in general_provenance.items()

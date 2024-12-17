@@ -1,8 +1,8 @@
 import functools
 import logging
 import re
+from collections.abc import Iterator
 from multiprocessing import Pool
-from typing import Iterator
 
 import numpy
 import openmm

@@ -1,8 +1,8 @@
 import logging
 import pathlib
 from collections import defaultdict
+from collections.abc import Generator, Iterable
 from contextlib import contextmanager
-from typing import Generator, Iterable
 
 import numpy
 from numpy.typing import NDArray
