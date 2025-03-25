@@ -21,7 +21,7 @@ from yammbs.torsion._db import (
     DBTorsionRecord,
 )
 from yammbs.torsion._session import TorsionDBSessionManager
-from yammbs.torsion.analysis import EEN, RMSD, EENCollection, RMSDCollection, _normalize
+from yammbs.torsion.analysis import RMSE, RMSD, RMSECollection, RMSDCollection, _normalize
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, TorsionRecord
 from yammbs.torsion.outputs import Metric, MetricCollection, MinimizedTorsionDataset
@@ -372,22 +372,23 @@ class TorsionStore:
                 self.get_smiles_by_molecule_id(molecule_id),
                 allow_undefined_stereo=True,
             )
+            rmsd_vals = numpy.array([get_rmsd(molecule, qm_points[key], mm_points[key]) for key in qm_points])
 
             rmsds.append(
                 RMSD(
                     id=molecule_id,
-                    rmsd=sum(get_rmsd(molecule, qm_points[key], mm_points[key]) for key in qm_points),
+                    rmsd=numpy.sqrt((rmsd_vals**2).mean()),
                 ),
             )
 
         return rmsds
 
-    def get_een(
+    def get_rmse(
         self,
         force_field: str,
         molecule_ids: list[int] | None = None,
         skip_check: bool = False,
-    ) -> EENCollection:
+    ) -> RMSECollection:
         """Get the vector norm of the energy errors over the torsion profile."""
 
         if not molecule_ids:
@@ -396,7 +397,7 @@ class TorsionStore:
         if not skip_check:
             self.optimize_mm(force_field=force_field)
 
-        eens = EENCollection()
+        rmses = RMSECollection()
 
         for molecule_id in molecule_ids:
             qm, mm = (
@@ -413,14 +414,14 @@ class TorsionStore:
                     f"{molecule_id=}, {force_field=}, {len(qm)=}, {len(mm)=}",
                 )
 
-            eens.append(
-                EEN(
+            rmses.append(
+                RMSE(
                     id=molecule_id,
-                    een=numpy.linalg.norm(qm - mm),
+                    rmse=numpy.sqrt(((qm - mm)**2).mean()),
                 ),
             )
 
-        return eens
+        return rmses
 
     def get_outputs(self) -> MinimizedTorsionDataset:
         from yammbs.torsion.outputs import MinimizedTorsionProfile
@@ -473,16 +474,16 @@ class TorsionStore:
         # TODO: Optimize this for speed
         for force_field in self.get_force_fields():
             rmsds = self.get_rmsd(force_field=force_field, skip_check=True).to_dataframe()
-            eens = self.get_een(force_field=force_field, skip_check=True).to_dataframe()
+            rmses = self.get_rmse(force_field=force_field, skip_check=True).to_dataframe()
 
-            dataframe = rmsds.join(eens)
+            dataframe = rmsds.join(rmses)
 
             dataframe = dataframe.replace({pandas.NA: numpy.nan})
 
             metrics.metrics[force_field] = {
                 id: Metric(  # type: ignore[misc]
                     rmsd=row["rmsd"],
-                    een=row["een"],
+                    rmse=row["rmse"],
                 )
                 for id, row in dataframe.iterrows()
             }

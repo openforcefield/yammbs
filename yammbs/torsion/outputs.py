@@ -41,7 +41,7 @@ class MinimizedTorsionDataset(ImmutableModel):
 
 class Metric(ImmutableModel):
     rmsd: float
-    een: float
+    rmse: float
 
 
 class MetricCollection(ImmutableModel):
