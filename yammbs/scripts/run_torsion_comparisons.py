@@ -1,51 +1,83 @@
 import pathlib
 from multiprocessing import freeze_support
 
+import click
+import numpy as np
 from matplotlib import pyplot
 
 from yammbs.torsion import TorsionStore
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 from yammbs.torsion.outputs import MetricCollection
-import numpy as np
 
 
-def main():
-    force_fields = [
-        "openff-1.0.0",
-        # "openff-1.1.0",
-        # "openff-1.3.0",
-        "openff-2.0.0",
-        "openff-2.1.0",
-        "openff-2.2.1",
-    ]
+@click.command()
+@click.option(
+    "--force-fields",
+    "-f",
+    multiple=True,
+    default=["openff-1.0.0", "openff-2.0.0", "openff-2.1.0", "openff-2.2.0", "openff-2.2.1"],
+    help="List of force fields to use for optimization.",
+)
+@click.option(
+    "--qcarchive-torsion-data",
+    "-i",
+    default="qca-torsion-data.json",
+    help="Input file containing torsion drive data in QCArchive json format.",
+)
+@click.option(
+    "--database-file",
+    "-d",
+    default="torsion-data.sqlite",
+    help="SQLite database file to store torsion data.",
+)
+@click.option(
+    "--output-metrics",
+    "-m",
+    default="metrics.json",
+    help="Output file for metrics.",
+)
+@click.option(
+    "--output-minimized",
+    "-o",
+    default="minimized.json",
+    help="Output file for minimized data.",
+)
+@click.option(
+    "--plot-dir",
+    "-p",
+    default=".",
+    help="Directory to save the generated plots.",
+)
+def main(
+    force_fields: list[str],
+    qcarchive_torsion_data: str,
+    database_file: str,
+    output_metrics: str,
+    output_minimized: str,
+    plot_dir: str,
+) -> None:
+    """
+    Run torsion drive comparisons using specified force fields and input data.
+    """
+    dataset = QCArchiveTorsionDataset.model_validate_json(open(qcarchive_torsion_data).read())
 
-    if not pathlib.Path("torsion_drive_data.json").exists():
-        from openff.qcsubmit.results import TorsionDriveResultCollection
-
-        collection = TorsionDriveResultCollection.parse_file("filtered-supp-td.json")
-
-        with open("torsiondrive-data.json", "w") as f:
-            f.write(QCArchiveTorsionDataset.from_qcsubmit_collection(collection).model_dump_json())
-
-    dataset = QCArchiveTorsionDataset.model_validate_json(open("torsion_drive_data.json").read())
-
-    if pathlib.Path("torsion-example.sqlite").exists():
-        store = TorsionStore("torsion-example.sqlite")
+    if pathlib.Path(database_file).exists():
+        store = TorsionStore(database_file)
     else:
         store = TorsionStore.from_torsion_dataset(
             dataset,
-            database_name="torsion-example.sqlite",
+            database_name=database_file,
         )
 
     for force_field in force_fields:
         store.optimize_mm(force_field=force_field, n_processes=24)
 
-    if not pathlib.Path("minimized.json").exists():
-        with open("minimized.json", "w") as f:
+    if not pathlib.Path(output_minimized).exists():
+        with open(output_minimized, "w") as f:
             f.write(store.get_outputs().model_dump_json())
 
-    if not pathlib.Path("metrics.json").exists():
-        with open("metrics.json", "w") as f:
+    if not pathlib.Path(output_metrics).exists():
+        with open(output_metrics, "w") as f:
             f.write(store.get_metrics().model_dump_json())
 
     fig, axes = pyplot.subplots(5, 4, figsize=(20, 20))
@@ -82,12 +114,13 @@ def main():
         axis.legend(loc=0)
         axis.grid(axis="both")
 
-    fig.savefig("random.png")
+    fig.savefig(f"{plot_dir}/random.png")
 
-    plot_cdf(force_fields)
+    plot_cdf(force_fields, output_metrics, plot_dir)
 
-def plot_cdf(force_fields: list[str]):
-    metrics = MetricCollection.parse_file("metrics.json")
+
+def plot_cdf(force_fields: list[str], metrics_file: str, plot_dir: str):
+    metrics = MetricCollection.parse_file(metrics_file)
 
     x_ranges = {
         "rmsd": (0, 0.18),
@@ -145,12 +178,13 @@ def plot_cdf(force_fields: list[str]):
 
         axis.legend(loc=0)
 
-        figure.savefig(f"{key}.png", dpi=300)
+        figure.savefig(f"{plot_dir}/{key}.png", dpi=300)
 
 
 if __name__ == "__main__":
     # This setup is necessary for reasons that confused me - both setting it up in the __main__ block and calling
     # freeze_support(). This is probably not necessary after MoleculeStore.optimize_mm() is called, so you can load up
     # the same database for later analysis once the MM conformers are stored
+    pyplot.style.use("ggplot")
     freeze_support()
     main()
