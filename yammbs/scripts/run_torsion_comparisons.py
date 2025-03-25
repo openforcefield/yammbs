@@ -5,6 +5,8 @@ from matplotlib import pyplot
 
 from yammbs.torsion import TorsionStore
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
+from yammbs.torsion.outputs import MetricCollection
+import numpy as np
 
 
 def main():
@@ -12,12 +14,12 @@ def main():
         "openff-1.0.0",
         # "openff-1.1.0",
         # "openff-1.3.0",
-        # "openff-2.0.0",
-        # "openff-2.1.0",
+        "openff-2.0.0",
+        "openff-2.1.0",
         "openff-2.2.1",
     ]
 
-    if not pathlib.Path("torsiondrive-data.json").exists():
+    if not pathlib.Path("torsion_drive_data.json").exists():
         from openff.qcsubmit.results import TorsionDriveResultCollection
 
         collection = TorsionDriveResultCollection.parse_file("filtered-supp-td.json")
@@ -25,7 +27,7 @@ def main():
         with open("torsiondrive-data.json", "w") as f:
             f.write(QCArchiveTorsionDataset.from_qcsubmit_collection(collection).model_dump_json())
 
-    dataset = QCArchiveTorsionDataset.model_validate_json(open("torsiondrive-data.json").read())
+    dataset = QCArchiveTorsionDataset.model_validate_json(open("torsion_drive_data.json").read())
 
     if pathlib.Path("torsion-example.sqlite").exists():
         store = TorsionStore("torsion-example.sqlite")
@@ -38,11 +40,13 @@ def main():
     for force_field in force_fields:
         store.optimize_mm(force_field=force_field, n_processes=24)
 
-    with open("minimized.json", "w") as f:
-        f.write(store.get_outputs().model_dump_json())
+    if not pathlib.Path("minimized.json").exists():
+        with open("minimized.json", "w") as f:
+            f.write(store.get_outputs().model_dump_json())
 
-    with open("metrics.json", "w") as f:
-        f.write(store.get_metrics().model_dump_json())
+    if not pathlib.Path("metrics.json").exists():
+        with open("metrics.json", "w") as f:
+            f.write(store.get_metrics().model_dump_json())
 
     fig, axes = pyplot.subplots(5, 4, figsize=(20, 20))
 
@@ -79,6 +83,69 @@ def main():
         axis.grid(axis="both")
 
     fig.savefig("random.png")
+
+    plot_cdf(force_fields)
+
+def plot_cdf(force_fields: list[str]):
+    metrics = MetricCollection.parse_file("metrics.json")
+
+    x_ranges = {
+        "rmsd": (0, 0.18),
+        "rmse": (-0.3, 5),
+    }
+
+    rmsds = {
+        force_field: {key: val.rmsd for key, val in metrics.metrics[force_field].items()}
+        for force_field in metrics.metrics.keys()
+    }
+
+    rmses = {
+        force_field: {key: val.rmse for key, val in metrics.metrics[force_field].items()}
+        for force_field in metrics.metrics.keys()
+    }
+
+    data = {
+        "rmsd": rmsds,
+        "rmse": rmses,
+    }
+    for key in ["rmsd", "rmse"]:
+        figure, axis = pyplot.subplots()
+
+        for force_field in force_fields:
+            if key == "dde":
+                _data = np.array(
+                    [*data[key][force_field].values()],
+                    dtype=float,
+                )
+
+                counts, bins = np.histogram(
+                    _data[np.isfinite(_data)],
+                    bins=np.linspace(-15, 15, 31),
+                )
+
+                axis.stairs(counts, bins, label=force_field)
+
+                axis.set_ylabel("Count")
+
+            else:
+                sorted_data = np.sort([*data[key][force_field].values()])
+
+                axis.plot(
+                    sorted_data,
+                    np.arange(1, len(sorted_data) + 1) / len(sorted_data),
+                    "-",
+                    label=force_field,
+                )
+
+                axis.set_xlabel(key)
+                axis.set_ylabel("CDF")
+
+                axis.set_xlim(x_ranges[key])
+                axis.set_ylim((-0.05, 1.05))
+
+        axis.legend(loc=0)
+
+        figure.savefig(f"{key}.png", dpi=300)
 
 
 if __name__ == "__main__":

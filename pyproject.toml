@@ -5,6 +5,11 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "yammbs"
+version = "0.1.0"
+readme = "README.md"
+
 [tool.versioningit]
 
 [tool.ruff]
@@ -12,3 +17,6 @@ line-length = 119
 
 [tool.ruff.lint]
 select = ["F", "E", "W", "NPY", "UP", "I"]
+
+[project.scripts]
+run_torsion_comparisons = "yammbs.scripts.run_torsion_comparisons:main"
