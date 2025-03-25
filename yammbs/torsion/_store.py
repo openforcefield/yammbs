@@ -21,7 +21,7 @@ from yammbs.torsion._db import (
     DBTorsionRecord,
 )
 from yammbs.torsion._session import TorsionDBSessionManager
-from yammbs.torsion.analysis import RMSE, RMSD, RMSECollection, RMSDCollection, _normalize
+from yammbs.torsion.analysis import RMSD, RMSE, RMSDCollection, RMSECollection, _normalize
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, TorsionRecord
 from yammbs.torsion.outputs import Metric, MetricCollection, MinimizedTorsionDataset
@@ -417,7 +417,7 @@ class TorsionStore:
             rmses.append(
                 RMSE(
                     id=molecule_id,
-                    rmse=numpy.sqrt(((qm - mm)**2).mean()),
+                    rmse=numpy.sqrt(((qm - mm) ** 2).mean()),
                 ),
             )
 
