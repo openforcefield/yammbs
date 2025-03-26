@@ -21,7 +21,15 @@ from yammbs.torsion._db import (
     DBTorsionRecord,
 )
 from yammbs.torsion._session import TorsionDBSessionManager
-from yammbs.torsion.analysis import RMSD, RMSE, RMSDCollection, RMSECollection, _normalize
+from yammbs.torsion.analysis import (
+    RMSD,
+    RMSE,
+    MeanError,
+    MeanErrorCollection,
+    RMSDCollection,
+    RMSECollection,
+    _normalize,
+)
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, TorsionRecord
 from yammbs.torsion.outputs import Metric, MetricCollection, MinimizedTorsionDataset
@@ -423,6 +431,46 @@ class TorsionStore:
 
         return rmses
 
+    def get_mean_error(
+        self,
+        force_field: str,
+        molecule_ids: list[int] | None = None,
+        skip_check: bool = False,
+    ) -> MeanErrorCollection:
+        """Get the vector norm of the energy errors over the torsion profile."""
+
+        if not molecule_ids:
+            molecule_ids = self.get_molecule_ids()
+
+        if not skip_check:
+            self.optimize_mm(force_field=force_field)
+
+        mean_errors = MeanErrorCollection()
+
+        for molecule_id in molecule_ids:
+            qm, mm = (
+                numpy.fromiter(dct.values(), dtype=float)
+                for dct in _normalize(
+                    self.get_qm_energies_by_molecule_id(id=molecule_id),
+                    self.get_mm_energies_by_molecule_id(id=molecule_id, force_field=force_field),
+                )
+            )
+
+            if len(mm) * len(qm) == 0:
+                LOGGER.warning(
+                    "Missing QM OR MM data for this no mm data, returning empty dicts; \n\t"
+                    f"{molecule_id=}, {force_field=}, {len(qm)=}, {len(mm)=}",
+                )
+
+            mean_errors.append(
+                MeanError(
+                    id=molecule_id,
+                    mean_error=numpy.mean(mm - qm),
+                ),
+            )
+
+        return mean_errors
+
     def get_outputs(self) -> MinimizedTorsionDataset:
         from yammbs.torsion.outputs import MinimizedTorsionProfile
 
@@ -473,10 +521,11 @@ class TorsionStore:
 
         # TODO: Optimize this for speed
         for force_field in self.get_force_fields():
-            rmsds = self.get_rmsd(force_field=force_field, skip_check=True).to_dataframe()
             rmses = self.get_rmse(force_field=force_field, skip_check=True).to_dataframe()
+            rmsds = self.get_rmsd(force_field=force_field, skip_check=True).to_dataframe()
+            mean_errors = self.get_mean_error(force_field=force_field, skip_check=True).to_dataframe()
 
-            dataframe = rmsds.join(rmses)
+            dataframe = rmses.join(rmsds).join(mean_errors)
 
             dataframe = dataframe.replace({pandas.NA: numpy.nan})
 
@@ -484,6 +533,7 @@ class TorsionStore:
                 id: Metric(  # type: ignore[misc]
                     rmsd=row["rmsd"],
                     rmse=row["rmse"],
+                    mean_error=row["mean_error"],
                 )
                 for id, row in dataframe.iterrows()
             }

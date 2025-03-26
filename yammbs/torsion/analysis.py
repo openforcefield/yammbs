@@ -66,3 +66,22 @@ class RMSECollection(list[RMSE]):
 
     def to_csv(self, path: str):
         self.to_dataframe().to_csv(path)
+
+
+class MeanError(ImmutableModel):
+    id: int
+    mean_error: float
+
+
+class MeanErrorCollection(list[MeanError]):
+    def to_dataframe(self) -> "pandas.DataFrame":
+        import pandas
+
+        return pandas.DataFrame(
+            [mean_error.mean_error for mean_error in self],
+            index=pandas.Index([mean_error.id for mean_error in self]),
+            columns=["mean_error"],
+        )
+
+    def to_csv(self, path: str):
+        self.to_dataframe().to_csv(path)

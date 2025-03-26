@@ -96,6 +96,7 @@ def main(
     plot_torsions(plot_dir, force_fields, store)
     plot_cdfs(force_fields, output_metrics, plot_dir)
     plot_rms_stats(output_metrics, plot_dir)
+    plot_mean_error_distribution(output_metrics, plot_dir)
 
 
 def plot_torsions(plot_dir: str, force_fields: list[str], store: TorsionStore) -> None:
@@ -252,6 +253,39 @@ def plot_rms_stats(
         # Save the figure
         figure.tight_layout()
         figure.savefig(f"{plot_dir}/{key}_rms.png", dpi=300, bbox_inches="tight")
+
+
+def plot_mean_error_distribution(
+    metrics_file: str,
+    plot_dir: str,
+) -> None:
+    metrics = MetricCollection.parse_file(metrics_file)
+
+    units = {
+        "mean_error": r"kcal mol$^{-1}$",
+    }
+
+    mean_errors = {
+        force_field: np.array([val.mean_error for val in metrics.metrics[force_field].values()])
+        for force_field in metrics.metrics.keys()
+    }
+    # Plot mean error distribution using kernel density estimation
+    figure, axis = pyplot.subplots()
+    import seaborn as sns
+
+    for force_field in mean_errors.keys():
+        sns.kdeplot(
+            data=mean_errors[force_field],
+            label=force_field,
+            ax=axis,
+        )
+    axis.set_xlabel("Mean Error / " + units["mean_error"])
+    axis.set_ylabel("Density")
+    axis.legend(loc=0)
+
+    # Save the figure
+    figure.tight_layout()
+    figure.savefig(f"{plot_dir}/mean_error_distribution.png", dpi=300, bbox_inches="tight")
 
 
 if __name__ == "__main__":
