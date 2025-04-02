@@ -150,17 +150,15 @@ def get_internal_coordinates(
         _to_geometric_molecule(molecule=molecule, coordinates=target),
     )
 
-    types: dict[str, type | None] = {
-        _type: {
-            "Bond": Distance,
-            "Angle": Angle,
-            "Dihedral": Dihedral,
-            "Improper": OutOfPlane,
-        }.get(_type)
-        for _type in _types
+    _mapping = {
+        "Bond": Distance,
+        "Angle": Angle,
+        "Dihedral": Dihedral,
+        "Improper": OutOfPlane,
     }
+    types: dict[str, type] = {_type: _mapping[_type] for _type in _types}
 
-    internal_coordinates = dict()
+    internal_coordinates: dict[str, dict[tuple[int, ...], tuple[int, int]]] = dict()
 
     for label, internal_coordinate_class in types.items():
         internal_coordinates[label] = dict()
@@ -214,7 +212,7 @@ def get_internal_coordinate_differences(
     target: Array,
     _types: tuple[str, ...] = ("Bond", "Angle", "Dihedral", "Improper"),
 ) -> dict[str, dict[tuple[int, ...], float]]:
-    differences = dict()
+    differences: dict[str, dict[tuple[int, ...], float]] = dict()
 
     internal_coordinates = get_internal_coordinates(
         molecule=molecule,
