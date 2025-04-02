@@ -2,7 +2,7 @@ import pandas
 import pytest
 from openff.toolkit import Molecule
 
-from yammbs.analysis import get_internal_coordinate_rmsds, get_rmsd, get_tfd
+from yammbs.analysis import get_internal_coordinate_differences, get_internal_coordinate_rmsds, get_rmsd, get_tfd
 
 
 class TestAnalysis:
@@ -163,3 +163,29 @@ class TestInternalCoordinateRMSD:
             assert isinstance(data["Angle"], float)
             assert data["Dihedral"] is pandas.NA
             assert data["Improper"] is pandas.NA
+
+    def test_internal_coordinate_differences(self, small_store, guess_n_processes):
+        small_store.optimize_mm(
+            force_field="openff-2.0.0",
+            n_processes=guess_n_processes,
+        )
+
+        molecule = Molecule.from_mapped_smiles(small_store.get_smiles_by_molecule_id(1))
+
+        differences = get_internal_coordinate_differences(
+            molecule=molecule,
+            reference=small_store.get_qm_conformer_records_by_molecule_id(1)[-1].coordinates,
+            target=small_store.get_mm_conformer_records_by_molecule_id(1, force_field="openff-2.0.0")[-1].coordinates,
+        )
+
+        assert len(differences) == 4
+
+        assert len(differences["Bond"]) == molecule.n_bonds
+        assert len(differences["Angle"]) <= molecule.n_angles  # can be different - not all angles are parameterized
+        assert len(differences["Dihedral"]) == molecule.n_propers
+        assert len(differences["Improper"]) <= molecule.n_impropers
+
+        assert max(differences["Bond"].values()) < 0.1
+        assert max(differences["Angle"].values()) < 1
+        assert max(differences["Dihedral"].values()) < 10
+        assert max(differences["Improper"].values()) < 1
