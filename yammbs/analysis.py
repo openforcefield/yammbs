@@ -124,13 +124,12 @@ def get_rmsd(
     )
 
 
-def get_internal_coordinate_rmsds(
+def get_internal_coordinates(
     molecule: Molecule,
     reference: Array,
     target: Array,
     _types: tuple[str, ...] = ("Bond", "Angle", "Dihedral", "Improper"),
-) -> dict[str, float]:
-    """Get internal coordinate RMSDs for one conformer of one molecule."""
+) -> dict[str, dict[tuple[int, ...], tuple[int, int]]]:
     from geometric.internal import (
         Angle,
         Dihedral,
@@ -139,7 +138,6 @@ def get_internal_coordinate_rmsds(
         PrimitiveInternalCoordinates,
     )
 
-    from yammbs._forcebalance import compute_rmsd as forcebalance_rmsd
     from yammbs._molecule import _to_geometric_molecule
 
     if isinstance(reference, Quantity):
@@ -162,25 +160,102 @@ def get_internal_coordinate_rmsds(
         for _type in _types
     }
 
-    internal_coordinates = {
-        label: [
-            (
-                internal_coordinate.value(reference),
-                internal_coordinate.value(target),
+    internal_coordinates = dict()
+
+    for label, internal_coordinate_class in types.items():
+        internal_coordinates[label] = dict()
+
+        for internal_coordinate in _generator.Internals:
+            if not isinstance(internal_coordinate, internal_coordinate_class):
+                continue
+
+            if isinstance(internal_coordinate, Distance):
+                key = tuple(
+                    (
+                        internal_coordinate.a,
+                        internal_coordinate.b,
+                    ),
+                )
+
+            if isinstance(internal_coordinate, Angle):
+                key = tuple(
+                    (
+                        internal_coordinate.a,
+                        internal_coordinate.b,
+                        internal_coordinate.c,
+                    ),
+                )
+
+            if isinstance(internal_coordinate, (Dihedral, OutOfPlane)):
+                key = tuple(
+                    (
+                        internal_coordinate.a,
+                        internal_coordinate.b,
+                        internal_coordinate.c,
+                        internal_coordinate.d,
+                    ),
+                )
+
+            internal_coordinates[label].update(
+                {
+                    key: (
+                        internal_coordinate.value(reference),
+                        internal_coordinate.value(target),
+                    ),
+                },
             )
-            for internal_coordinate in _generator.Internals
-            if isinstance(internal_coordinate, internal_coordinate_class)  # type: ignore[arg-type]
-        ]
-        for label, internal_coordinate_class in types.items()
-    }
+
+    return internal_coordinates
+
+
+def get_internal_coordinate_differences(
+    molecule: Molecule,
+    reference: Array,
+    target: Array,
+    _types: tuple[str, ...] = ("Bond", "Angle", "Dihedral", "Improper"),
+) -> dict[str, dict[tuple[int, ...], float]]:
+    differences = dict()
+
+    internal_coordinates = get_internal_coordinates(
+        molecule=molecule,
+        reference=reference,
+        target=target,
+        _types=_types,
+    )
+
+    for label, values_with_indices in internal_coordinates.items():
+        differences[label] = dict()
+
+        for indices, values in values_with_indices.items():
+            differences[label][indices] = values[1] - values[0]
+
+    return differences
+
+
+def get_internal_coordinate_rmsds(
+    molecule: Molecule,
+    reference: Array,
+    target: Array,
+    _types: tuple[str, ...] = ("Bond", "Angle", "Dihedral", "Improper"),
+) -> dict[str, float]:
+    """Get internal coordinate RMSDs for one conformer of one molecule."""
+    from yammbs._forcebalance import compute_rmsd as forcebalance_rmsd
+
+    internal_coordinates = get_internal_coordinates(
+        molecule=molecule,
+        reference=reference,
+        target=target,
+        _types=_types,
+    )
 
     internal_coordinate_rmsd = dict()
 
-    for _type, _values in internal_coordinates.items():
-        if len(_values) == 0:
+    for _type, values_with_indices in internal_coordinates.items():
+        if len(values_with_indices) == 0:
             continue
 
-        _qm_values, _mm_values = zip(*_values)
+        _qm_values = [value[0] for value in values_with_indices.values()]
+        _mm_values = [value[1] for value in values_with_indices.values()]
 
         qm_values = numpy.array(_qm_values)
         mm_values = numpy.array(_mm_values)
