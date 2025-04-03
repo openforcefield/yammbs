@@ -1,6 +1,6 @@
 import pandas
 import pytest
-from openff.toolkit import Molecule
+from openff.toolkit import ForceField, Molecule
 
 from yammbs.analysis import get_internal_coordinate_differences, get_internal_coordinate_rmsds, get_rmsd, get_tfd
 
@@ -189,3 +189,23 @@ class TestInternalCoordinateRMSD:
         assert max(differences["Angle"].values()) < 1
         assert max(differences["Dihedral"].values()) < 10
         assert max(differences["Improper"].values()) < 1
+
+    def test_internal_coordinate_impropers(self):
+        triazine = Molecule.from_mapped_smiles("[H:7][c:1]1[n:2][c:3]([n:4][c:5]([n:6]1)[H:9])[H:8]")
+
+        triazine.generate_conformers(n_conformers=1)
+
+        # these should have central atom (each carbon, atoms 0, 2, 4 in this mapped SMILES) listed SECOND
+        sage_impropers: list[tuple[int, int, int, int]] = sorted(
+            [*ForceField("openff-2.2.1.offxml").label_molecules(triazine.to_topology())][0]["ImproperTorsions"],
+        )
+
+        # these should also, by design, list the central atoms SECOND
+        differences = get_internal_coordinate_differences(
+            molecule=triazine,
+            reference=triazine.conformers[0],
+            target=triazine.conformers[0],
+        )
+
+        # should be [(1, 0, 5, 6), (1, 2, 3, 7), (3, 4, 5, 8)]
+        assert sorted(differences["Improper"].keys()) == sage_impropers

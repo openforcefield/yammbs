@@ -185,10 +185,14 @@ def get_internal_coordinates(
                 )
 
             if isinstance(internal_coordinate, (Dihedral, OutOfPlane)):
+                # geomeTRIC lists the central atom FIRST, but SMIRNOFF force fields list
+                # the central atom SECOND. Re-ordering here to be consistent with SMIRNOFF
+                # see PR #109 for more
+
                 key = tuple(
                     (
-                        internal_coordinate.a,
-                        internal_coordinate.b,
+                        internal_coordinate.b,  # NOTE!
+                        internal_coordinate.a,  # NOTE!
                         internal_coordinate.c,
                         internal_coordinate.d,
                     ),
