@@ -1,8 +1,8 @@
 import pandas
 import pytest
-from openff.toolkit import Molecule
+from openff.toolkit import ForceField, Molecule
 
-from yammbs.analysis import get_internal_coordinate_rmsds, get_rmsd, get_tfd
+from yammbs.analysis import get_internal_coordinate_differences, get_internal_coordinate_rmsds, get_rmsd, get_tfd
 
 
 class TestAnalysis:
@@ -163,3 +163,49 @@ class TestInternalCoordinateRMSD:
             assert isinstance(data["Angle"], float)
             assert data["Dihedral"] is pandas.NA
             assert data["Improper"] is pandas.NA
+
+    def test_internal_coordinate_differences(self, small_store, guess_n_processes):
+        small_store.optimize_mm(
+            force_field="openff-2.0.0",
+            n_processes=guess_n_processes,
+        )
+
+        molecule = Molecule.from_mapped_smiles(small_store.get_smiles_by_molecule_id(1))
+
+        differences = get_internal_coordinate_differences(
+            molecule=molecule,
+            reference=small_store.get_qm_conformer_records_by_molecule_id(1)[-1].coordinates,
+            target=small_store.get_mm_conformer_records_by_molecule_id(1, force_field="openff-2.0.0")[-1].coordinates,
+        )
+
+        assert len(differences) == 4
+
+        assert len(differences["Bond"]) == molecule.n_bonds
+        assert len(differences["Angle"]) <= molecule.n_angles  # can be different - not all angles are parameterized
+        assert len(differences["Dihedral"]) == molecule.n_propers
+        assert len(differences["Improper"]) <= molecule.n_impropers
+
+        assert max(differences["Bond"].values()) < 0.1
+        assert max(differences["Angle"].values()) < 1
+        assert max(differences["Dihedral"].values()) < 10
+        assert max(differences["Improper"].values()) < 1
+
+    def test_internal_coordinate_impropers(self):
+        triazine = Molecule.from_mapped_smiles("[H:7][c:1]1[n:2][c:3]([n:4][c:5]([n:6]1)[H:9])[H:8]")
+
+        triazine.generate_conformers(n_conformers=1)
+
+        # these should have central atom (each carbon, atoms 0, 2, 4 in this mapped SMILES) listed SECOND
+        sage_impropers: list[tuple[int, int, int, int]] = sorted(
+            [*ForceField("openff-2.2.1.offxml").label_molecules(triazine.to_topology())][0]["ImproperTorsions"],
+        )
+
+        # these should also, by design, list the central atoms SECOND
+        differences = get_internal_coordinate_differences(
+            molecule=triazine,
+            reference=triazine.conformers[0],
+            target=triazine.conformers[0],
+        )
+
+        # should be [(1, 0, 5, 6), (1, 2, 3, 7), (3, 4, 5, 8)]
+        assert sorted(differences["Improper"].keys()) == sage_impropers
