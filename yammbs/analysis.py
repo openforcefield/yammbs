@@ -208,6 +208,8 @@ def get_internal_coordinates(
                     ),
                 )
 
+            key = tuple(int(index) for index in key)
+
             internal_coordinates[label].update(
                 {
                     key: (
