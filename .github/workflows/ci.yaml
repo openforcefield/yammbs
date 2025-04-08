@@ -44,7 +44,6 @@ jobs:
         environment-file: devtools/conda-envs/dev.yaml
         create-args: >-
           python=${{ matrix.python-version }}
-          numpy=1
 
     - name: Install PASCAL Compiler (MacOS)
       if: startsWith(matrix.os, 'mac')
