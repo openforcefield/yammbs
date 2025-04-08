@@ -130,6 +130,39 @@ def get_internal_coordinates(
     target: Array,
     _types: tuple[str, ...] = ("Bond", "Angle", "Dihedral", "Improper"),
 ) -> dict[str, dict[tuple[int, ...], tuple[int, int]]]:
+    """Get internal coordinates of two conformers of the same molecule using geomeTRIC.
+
+    The return value is keyed by valence type (Bond, Angle, Dihedral, Improper). Each
+    value is itself a dictionary containing key-val pairs of relevant atom indices and a
+    2-length tuple of the internal coordinates. The first tuple is the internal coordinate
+    of the reference conformer, the second is the internal coordinate of the target.
+
+    The conformers attached to the `molecule` argument are ignored, only the values in
+    the `reference` and `target` arguments are used. The `molecule` argument is only used
+    to determine the atom indices of the internal coordinates.
+
+    Parameters
+    ----------
+    molecule : openff.toolkit.Molecule
+        The molecule to get the internal coordinates for.
+    reference : numpy.ndarray or openff.toolkit.Quantity
+        The "reference" conformer to get the internal coordinates for. If unitless,
+        assumed to be in Angstroms.
+    target : numpy.ndarray or openff.toolkit.Quantity
+        The "target" conformer to get the internal coordinates for. If unitless, assumed
+        to be in Angstroms.
+
+    Returns
+    -------
+    dict[str, dict[tuple[int, ...], tuple[int, int]]]
+        A dictionary of dictionaries containing the internal coordinates of the two
+        conformers. The keys of the outer dictionary are the valence types (Bond, Angle,
+        Dihedral, Improper). The keys of the inner dictionaries are tuples of atom
+        indices. The values of the inner dictionaries are tuples of the internal
+        coordinates, the first value corresponding to the "reference" conformer and the
+        second to the "target" conformer.
+
+    """
     from geometric.internal import (
         Angle,
         Dihedral,
@@ -228,6 +261,37 @@ def get_internal_coordinate_differences(
     target: Array,
     _types: tuple[str, ...] = ("Bond", "Angle", "Dihedral", "Improper"),
 ) -> dict[str, dict[tuple[int, ...], float]]:
+    """Get internal coordinate differences between two conformers of one molecule.
+
+    The behavior is identical to get_internal_coordinates, except that the return value
+    is the difference in the relevant internal coordinate of each conformers, not the
+    two values themselves.
+
+    The conformers attached to the `molecule` argument are ignored, only the values in
+    the `reference` and `target` arguments are used. The `molecule` argument is only used
+    to determine the atom indices of the internal coordinates.
+
+    Parameters
+    ----------
+    molecule : openff.toolkit.Molecule
+        The molecule to get the internal coordinates for.
+    reference : numpy.ndarray or openff.toolkit.Quantity
+        The "reference" conformer to get the internal coordinates for. If unitless,
+        assumed to be in Angstroms.
+    target : numpy.ndarray or openff.toolkit.Quantity
+        The "target" conformer to get the internal coordinates for. If unitless, assumed
+        to be in Angstroms.
+
+    Returns
+    -------
+    dict[str, dict[tuple[int, ...], float]]
+        A dictionary of dictionaries containing the internal coordinates of the two
+        conformers. The keys of the outer dictionary are the valence types (Bond, Angle,
+        Dihedral, Improper). The keys of the inner dictionaries are tuples of atom
+        indices. The values of the inner dictionaries are differences of the internal
+        coordinates between the "target" and "reference" conformer.
+
+    """
     differences: dict[str, dict[tuple[int, ...], float]] = dict()
 
     internal_coordinates = get_internal_coordinates(
@@ -252,7 +316,34 @@ def get_internal_coordinate_rmsds(
     target: Array,
     _types: tuple[str, ...] = ("Bond", "Angle", "Dihedral", "Improper"),
 ) -> dict[str, float]:
-    """Get internal coordinate RMSDs for one conformer of one molecule."""
+    """Get internal coordinate RMSDs between two conformers of one molecule.
+
+    The behavior is identical to get_internal_coordinates, except that the return value
+    is the RMSD of all internal coordinate differences of a particular type.
+
+    The conformers attached to the `molecule` argument are ignored, only the values in
+    the `reference` and `target` arguments are used. The `molecule` argument is only
+    used to determine the atom indices of the internal coordinates.
+
+    Parameters
+    ----------
+    molecule : openff.toolkit.Molecule
+        The molecule to get the internal coordinates for.
+    reference : numpy.ndarray or openff.toolkit.Quantity
+        The "reference" conformer to get the internal coordinates for. If unitless,
+        assumed to be in Angstroms.
+    target : numpy.ndarray or openff.toolkit.Quantity
+        The "target" conformer to get the internal coordinates for. If unitless, assumed
+        to be in Angstroms.
+
+    Returns
+    -------
+    dict[str, float]
+        A dictionary containing the internal coordinate RMSDs between the two
+        conformers, averaged over all internal coordinates of a given type, keyed by
+        the name of that type.
+
+    """
     from yammbs._forcebalance import compute_rmsd as forcebalance_rmsd
 
     internal_coordinates = get_internal_coordinates(
