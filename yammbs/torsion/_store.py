@@ -471,6 +471,72 @@ class TorsionStore:
 
         return mean_errors
 
+    def _get_js_divergence(
+            self,
+            qm: numpy.ndarray,
+            mm: numpy.ndarray,
+            temperature: float = 500.0,
+    ) -> float:
+        """Return the Jensen-Shannon divergence between two distributions."""
+        from scipy.spatial.distance import jensenshannon
+
+        beta = 1.0 / (temperature * 0.0019872041)  # kcal/mol to K
+        
+        # Get normalised probabilities by Boltzmann inversion
+        p_qm, p_mm = numpy.exp(-beta * qm), numpy.exp(-beta * mm)
+        p_qm /= p_qm.sum()
+        p_mm /= p_mm.sum()
+
+        # Return square as scipy gives us the sqrt of the divergence
+        return jensenshannon(p_qm, p_mm) ** 2
+
+
+    def get_js_divergence(
+        self,
+        force_field: str,
+        temperature: float = 500.0,
+        molecule_ids: list[int] | None = None,
+        skip_check: bool = False,
+    ) -> JSDivergenceCollection:
+        """
+        Compute the Jensen-Shannon divergence between the QM and MM profiles"
+        by treating the potentials as potentials of mean force and performing"
+        Boltzmann inversion.
+        """
+        if not molecule_ids:
+            molecule_ids = self.get_molecule_ids()
+
+        if not skip_check:
+            self.optimize_mm(force_field=force_field)
+
+        divergences = JSDivergenceCollection()
+
+        for molecule_id in molecule_ids:
+            qm, mm = (
+                numpy.fromiter(dct.values(), dtype=float)
+                for dct in _normalize(
+                    self.get_qm_energies_by_molecule_id(id=molecule_id),
+                    self.get_mm_energies_by_molecule_id(id=molecule_id, force_field=force_field),
+                )
+            )
+
+            if len(mm) * len(qm) == 0:
+                LOGGER.warning(
+                    "Missing QM OR MM data for this no mm data, returning empty dicts; \n\t"
+                    f"{molecule_id=}, {force_field=}, {len(qm)=}, {len(mm)=}",
+                )
+
+            divergences.append(
+                JSDivergence(
+                    id=molecule_id,
+                    js_divergence=self._get_js_divergence(qm=qm, mm=mm, temperature=temperature),
+                    temperature=temperature,
+                ),
+            )
+
+        return divergences
+
+
     def get_outputs(self) -> MinimizedTorsionDataset:
         from yammbs.torsion.outputs import MinimizedTorsionProfile
 
@@ -524,8 +590,9 @@ class TorsionStore:
             rmses = self.get_rmse(force_field=force_field, skip_check=True).to_dataframe()
             rmsds = self.get_rmsd(force_field=force_field, skip_check=True).to_dataframe()
             mean_errors = self.get_mean_error(force_field=force_field, skip_check=True).to_dataframe()
+            js_divergences = self.get_js_divergence(force_field=force_field, skip_check=True).to_dataframe()
 
-            dataframe = rmses.join(rmsds).join(mean_errors)
+            dataframe = rmses.join(rmsds).join(mean_errors).join(js_divergences)
 
             dataframe = dataframe.replace({pandas.NA: numpy.nan})
 
@@ -534,6 +601,7 @@ class TorsionStore:
                     rmsd=row["rmsd"],
                     rmse=row["rmse"],
                     mean_error=row["mean_error"],
+                    js_divergence=(row["js_divergence"], row["temperature"]),
                 )
                 for id, row in dataframe.iterrows()
             }

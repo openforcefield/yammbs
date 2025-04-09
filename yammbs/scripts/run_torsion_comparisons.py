@@ -100,6 +100,7 @@ def main(
     plot_cdfs(force_fields, output_metrics, plot_dir)
     plot_rms_stats(force_fields, output_metrics, plot_dir)
     plot_mean_error_distribution(force_fields, output_metrics, plot_dir)
+    plot_mean_js_divergence(force_fields, output_metrics, plot_dir)
 
 
 def get_torsion_image(molecule_id: int, store: TorsionStore) -> pyplot.Figure:
@@ -112,8 +113,6 @@ def get_torsion_image(molecule_id: int, store: TorsionStore) -> pyplot.Figure:
         raise ValueError(f"Could not convert SMILES to molecule: {smiles}")
 
     rdmol = mol.to_rdkit()
-    # Remove hydrogens
-    rdmol = Chem.RemoveHs(rdmol)
 
     # Draw in 2D - compute 2D coordinates
     AllChem.Compute2DCoords(rdmol)
@@ -234,11 +233,13 @@ def plot_cdfs(force_fields: list[str], metrics_file: str, plot_dir: str):
     x_ranges = {
         "rmsd": (0, 0.14),
         "rmse": (-0.3, 5),
+        "js_divergence": (None, None)
     }
 
     units = {
         "rmsd": r"$\mathrm{\AA}$",
         "rmse": r"kcal mol$^{-1}$",
+        "js_divergence": "",
     }
 
     rmsds = {
@@ -251,11 +252,19 @@ def plot_cdfs(force_fields: list[str], metrics_file: str, plot_dir: str):
         for force_field in metrics.metrics.keys()
     }
 
+    js_divs = {
+        force_field: {key: val.js_divergence[0] for key, val in metrics.metrics[force_field].items()}
+        for force_field in metrics.metrics.keys()
+    }
+
+    js_div_temp = list(list(metrics.metrics.values())[0].values())[0].js_divergence[1]
+
     data = {
         "rmsd": rmsds,
         "rmse": rmses,
+        "js_divergence": js_divs,
     }
-    for key in ["rmsd", "rmse"]:
+    for key in ["rmsd", "rmse", "js_divergence"]:
         figure, axis = pyplot.subplots()
 
         for force_field in force_fields:
@@ -284,7 +293,8 @@ def plot_cdfs(force_fields: list[str], metrics_file: str, plot_dir: str):
                     label=force_field,
                 )
 
-                axis.set_xlabel(key.upper() + " / " + units[key])
+                x_label = key.upper() + " / " + units[key] if key != "js_divergence" else f"Jensen-Shannon Divergence at {js_div_temp} K"
+                axis.set_xlabel(x_label)
                 axis.set_ylabel("CDF")
 
                 axis.set_xlim(x_ranges[key])
@@ -338,6 +348,37 @@ def plot_rms_stats(
         # Save the figure
         figure.tight_layout()
         figure.savefig(f"{plot_dir}/{key}_rms.png", dpi=300, bbox_inches="tight")
+
+def plot_mean_js_divergence(
+    force_fields: list[str],
+    metrics_file: str,
+    plot_dir: str,
+) -> None:
+    metrics = MetricCollection.parse_file(metrics_file)
+
+    units = {
+        "mean_js_divergence": "",
+    }
+
+    mean_js_divergences = {
+        force_field: np.mean([val.js_divergence[0] for val in metrics.metrics[force_field].values()])
+        for force_field in force_fields
+    }
+
+    js_div_temp = list(list(metrics.metrics.values())[0].values())[0].js_divergence[1]
+
+    # Plot mean JS divergence
+    figure, axis = pyplot.subplots()
+
+    axis.bar(mean_js_divergences.keys(), mean_js_divergences.values(), color=pyplot.cm.tab10.colors)
+    axis.set_ylabel(f"Mean Jensen-Shannon Divergence at {js_div_temp} K")
+
+    # Set x-ticks to be vertical
+    pyplot.xticks(rotation=90)
+
+    # Save the figure
+    figure.tight_layout()
+    figure.savefig(f"{plot_dir}/mean_js_divergence.png", dpi=300, bbox_inches="tight")
 
 
 def plot_mean_error_distribution(
