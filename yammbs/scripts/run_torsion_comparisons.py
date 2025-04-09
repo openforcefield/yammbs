@@ -356,6 +356,10 @@ def plot_mean_js_divergence(
 ) -> None:
     metrics = MetricCollection.parse_file(metrics_file)
 
+    units = {
+        "mean_js_divergence": "",
+    }
+
     mean_js_divergences = {
         force_field: np.mean([val.js_divergence[0] for val in metrics.metrics[force_field].values()])
         for force_field in force_fields
