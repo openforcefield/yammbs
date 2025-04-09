@@ -45,6 +45,7 @@ class Metric(ImmutableModel):
     mean_error: float
     js_divergence: tuple[float, float]
 
+
 class MetricCollection(ImmutableModel):
     metrics: dict[str, dict[int, Metric]] = Field(
         dict(),

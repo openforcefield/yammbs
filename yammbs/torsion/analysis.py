@@ -86,10 +86,12 @@ class MeanErrorCollection(list[MeanError]):
     def to_csv(self, path: str):
         self.to_dataframe().to_csv(path)
 
+
 class JSDivergence(ImmutableModel):
     id: int
     js_divergence: float
     temperature: float
+
 
 class JSDivergenceCollection(list[JSDivergence]):
     def to_dataframe(self) -> "pandas.DataFrame":

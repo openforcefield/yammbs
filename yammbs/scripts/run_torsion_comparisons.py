@@ -5,7 +5,6 @@ import click
 import numpy as np
 from matplotlib import pyplot
 from openff.toolkit import Molecule
-from rdkit import Chem
 from rdkit.Chem import AllChem, Draw
 
 from yammbs.torsion import TorsionStore
@@ -230,11 +229,7 @@ def plot_torsions(plot_dir: str, force_fields: list[str], store: TorsionStore) -
 def plot_cdfs(force_fields: list[str], metrics_file: str, plot_dir: str):
     metrics = MetricCollection.parse_file(metrics_file)
 
-    x_ranges = {
-        "rmsd": (0, 0.14),
-        "rmse": (-0.3, 5),
-        "js_divergence": (None, None)
-    }
+    x_ranges = {"rmsd": (0, 0.14), "rmse": (-0.3, 5), "js_divergence": (None, None)}
 
     units = {
         "rmsd": r"$\mathrm{\AA}$",
@@ -293,7 +288,11 @@ def plot_cdfs(force_fields: list[str], metrics_file: str, plot_dir: str):
                     label=force_field,
                 )
 
-                x_label = key.upper() + " / " + units[key] if key != "js_divergence" else f"Jensen-Shannon Divergence at {js_div_temp} K"
+                x_label = (
+                    key.upper() + " / " + units[key]
+                    if key != "js_divergence"
+                    else f"Jensen-Shannon Divergence at {js_div_temp} K"
+                )
                 axis.set_xlabel(x_label)
                 axis.set_ylabel("CDF")
 
@@ -349,16 +348,13 @@ def plot_rms_stats(
         figure.tight_layout()
         figure.savefig(f"{plot_dir}/{key}_rms.png", dpi=300, bbox_inches="tight")
 
+
 def plot_mean_js_divergence(
     force_fields: list[str],
     metrics_file: str,
     plot_dir: str,
 ) -> None:
     metrics = MetricCollection.parse_file(metrics_file)
-
-    units = {
-        "mean_js_divergence": "",
-    }
 
     mean_js_divergences = {
         force_field: np.mean([val.js_divergence[0] for val in metrics.metrics[force_field].values()])

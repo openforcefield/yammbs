@@ -24,6 +24,8 @@ from yammbs.torsion._session import TorsionDBSessionManager
 from yammbs.torsion.analysis import (
     RMSD,
     RMSE,
+    JSDivergence,
+    JSDivergenceCollection,
     MeanError,
     MeanErrorCollection,
     RMSDCollection,
@@ -472,16 +474,16 @@ class TorsionStore:
         return mean_errors
 
     def _get_js_divergence(
-            self,
-            qm: numpy.ndarray,
-            mm: numpy.ndarray,
-            temperature: float = 500.0,
+        self,
+        qm: numpy.ndarray,
+        mm: numpy.ndarray,
+        temperature: float = 500.0,
     ) -> float:
         """Return the Jensen-Shannon divergence between two distributions."""
         from scipy.spatial.distance import jensenshannon
 
         beta = 1.0 / (temperature * 0.0019872041)  # kcal/mol to K
-        
+
         # Get normalised probabilities by Boltzmann inversion
         p_qm, p_mm = numpy.exp(-beta * qm), numpy.exp(-beta * mm)
         p_qm /= p_qm.sum()
@@ -489,7 +491,6 @@ class TorsionStore:
 
         # Return square as scipy gives us the sqrt of the divergence
         return jensenshannon(p_qm, p_mm) ** 2
-
 
     def get_js_divergence(
         self,
@@ -535,7 +536,6 @@ class TorsionStore:
             )
 
         return divergences
-
 
     def get_outputs(self) -> MinimizedTorsionDataset:
         from yammbs.torsion.outputs import MinimizedTorsionProfile
