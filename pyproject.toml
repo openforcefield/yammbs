@@ -9,6 +9,8 @@ build-backend = "setuptools.build_meta"
 
 [tool.ruff]
 line-length = 119
+exclude = ["yammbs/_tests/**/*.py"]
 
 [tool.ruff.lint]
-select = ["F", "E", "W", "NPY", "UP", "I"]
+ignore = ["D105", "D107"]
+select = ["D", "F", "E", "W", "NPY", "UP", "I"]

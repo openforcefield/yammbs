@@ -85,7 +85,6 @@ def small_store(tmp_path) -> MoleculeStore:
 @pytest.fixture
 def tiny_cache() -> QCArchiveDataset:
     """Return the "tiny" molecule store, copied from a single source and provided as a temporary file."""
-
     with open(
         get_data_file_path(
             "_tests/data/tiny-opt.json",
@@ -97,13 +96,13 @@ def tiny_cache() -> QCArchiveDataset:
 
 @pytest.fixture
 def diphenylvinylbenzene():
-    """Return 1,2-diphenylvinylbenzene"""
+    """Return 1,2-diphenylvinylbenzene."""
     return Molecule.from_smiles("c1ccc(cc1)C=C(c2ccccc2)c3ccccc3")
 
 
 @pytest.fixture
 def allicin():
-    """Return allicin, inspired by PQR"""
+    """Return allicin, inspired by PQR."""
     return Molecule.from_smiles(
         "C=CCSS(=O)CC=C",
         allow_undefined_stereo=True,
@@ -134,7 +133,6 @@ def torsion_dataset():
 @pytest.fixture
 def single_torsion_dataset(torsion_dataset):
     """`torsion_dataset` with only one (QM) torsion profile."""
-
     # TODO: The dict round-trip should not be necessary
     return QCArchiveTorsionDataset(
         tag=torsion_dataset.tag,

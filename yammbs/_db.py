@@ -13,6 +13,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 class DBQMConformerRecord(DBBase):  # type: ignore
+    """A database-specific record for storing QM conformers."""
+
     __tablename__ = "qm_conformers"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -26,6 +28,8 @@ class DBQMConformerRecord(DBBase):  # type: ignore
 
 
 class DBMMConformerRecord(DBBase):  # type: ignore
+    """A database-specific record for storing MM conformers."""
+
     __tablename__ = "mm_conformers"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -40,6 +44,8 @@ class DBMMConformerRecord(DBBase):  # type: ignore
 
 
 class DBMoleculeRecord(DBBase):  # type: ignore
+    """A database-specific record for storing molecules."""
+
     __tablename__ = "molecules"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -48,6 +54,7 @@ class DBMoleculeRecord(DBBase):  # type: ignore
     mapped_smiles = Column(String, nullable=False)
 
     def store_qm_conformer_records(self, records: list[QMConformerRecord]):
+        """Store QM conformers in the database."""
         if not isinstance(records, list):
             raise ValueError("records must be a list")
         # TODO: match conformers?
@@ -61,6 +68,7 @@ class DBMoleculeRecord(DBBase):  # type: ignore
             self.qm_conformers.append(db_record)
 
     def store_mm_conformer_records(self, records: list[MMConformerRecord]):
+        """Store MM conformer records in the database."""
         if not isinstance(records, list):
             raise ValueError("records must be a list")
         # TODO: match conformers?
@@ -75,6 +83,8 @@ class DBMoleculeRecord(DBBase):  # type: ignore
 
 
 class DBGeneralProvenance(DBBase):  # type: ignore
+    """A database-specific record for storing general provenance."""
+
     __tablename__ = "general_provenance"
 
     key = Column(String, primary_key=True, index=True, unique=True)
@@ -84,6 +94,8 @@ class DBGeneralProvenance(DBBase):  # type: ignore
 
 
 class DBSoftwareProvenance(DBBase):  # type: ignore
+    """A database-specific record for storing software provenance."""
+
     __tablename__ = "software_provenance"
 
     key = Column(String, primary_key=True, index=True, unique=True)
@@ -93,9 +105,7 @@ class DBSoftwareProvenance(DBBase):  # type: ignore
 
 
 class DBInformation(DBBase):  # type: ignore
-    """A class which keeps track of the current database
-    settings.
-    """
+    """A database-specific record for storing general database information."""
 
     __tablename__ = "db_info"
 
@@ -116,21 +126,26 @@ def _match_conformers(
     db_conformers: list,
     query_conformers: list,
 ) -> dict[int, int]:
-    """A method which attempts to match a set of new conformers to store with
-    conformers already present in the database by comparing the RMS of the
-    two sets.
+    """Attempt to match a set of new conformers to store with conformers already present in the database.
 
-    Args:
-        indexed_mapped_smiles: The indexed mapped_smiles pattern associated with the conformers.
-        db_conformers: The database conformers.
-        conformers: The conformers to store.
+    This works by comparing the RMS of the two sets.
 
-    Returns:
+    Parameters
+    ----------
+    indexed_mapped_smiles : str
+        The indexed mapped_smiles pattern associated with the conformers.
+    db_conformers : list
+        The database conformers.
+    query_conformers : list
+        The conformers to store.
+
+    Returns
+    -------
         A dictionary which maps the index of a conformer to the index of a database
         conformer. The indices of conformers which do not match an existing database
         conformer are not included.
-    """
 
+    """
     from openff.nagl.toolkits.openff import is_conformer_identical
     from openff.toolkit.topology import Molecule
 

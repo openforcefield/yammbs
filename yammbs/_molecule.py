@@ -1,4 +1,4 @@
-"""Molecule conversion utilities"""
+"""Molecule conversion utilities."""
 
 from functools import lru_cache
 from typing import TYPE_CHECKING

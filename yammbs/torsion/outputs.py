@@ -1,3 +1,5 @@
+"""Torsion-specific outputs."""
+
 from __future__ import annotations
 
 from pydantic import Field
@@ -7,6 +9,8 @@ from yammbs._base.base import ImmutableModel
 
 
 class MinimizedTorsionProfile(ImmutableModel):
+    """The profile of a single torsion scan, including the coordinates and energies at each point."""
+
     mapped_smiles: str
     dihedral_indices: tuple[int, int, int, int] = Field(
         ...,
@@ -29,6 +33,8 @@ class MinimizedTorsionProfile(ImmutableModel):
 
 
 class MinimizedTorsionDataset(ImmutableModel):
+    """Dataset containing many torsion profiles, minimized with a given force field(s)."""
+
     tag: str = Field("QCArchive dataset", description="A tag for the dataset")
 
     version: int = Field(1, description="The version of this model")
@@ -40,11 +46,15 @@ class MinimizedTorsionDataset(ImmutableModel):
 
 
 class Metric(ImmutableModel):
+    """Summary metrics for a given force field and QM reference."""
+
     rmsd: float
     een: float
 
 
 class MetricCollection(ImmutableModel):
+    """Class storing metrics of potentially multiple force fields."""
+
     metrics: dict[str, dict[int, Metric]] = Field(
         dict(),
         description="The metrics, keyed by the QM reference ID, then keyed by force field.",

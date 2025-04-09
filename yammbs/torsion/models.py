@@ -1,23 +1,13 @@
-from pydantic import ConfigDict, Field
+"""Torsion-specific models."""
+
+from pydantic import Field
 
 from yammbs._base.array import Array
-from yammbs._base.base import ImmutableModel
-from yammbs.models import MoleculeRecord
-
-
-class Record(ImmutableModel):
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        validate_default=True,
-        validate_assignment=True,
-        frozen=False,
-    )
+from yammbs.models import MoleculeRecord, Record
 
 
 class TorsionRecord(MoleculeRecord):
-    """A record which contains information for a labelled molecule. This may include the
-    coordinates of the molecule in different conformers, and partial charges / WBOs
-    computed for those conformers."""
+    """Base class for torsion records."""
 
     dihedral_indices: tuple[int, int, int, int] = Field(
         ...,
@@ -50,7 +40,7 @@ class QMTorsionPointRecord(Record):
 
 
 class MMTorsionPointRecord(QMTorsionPointRecord):
-    """A record for a specific 'point' in a torsion scan after MM 'minimization.'"""
+    """A record for a specific 'point' in a torsion scan after MM minimization."""
 
     force_field: str = Field(
         ...,

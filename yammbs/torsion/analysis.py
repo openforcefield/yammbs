@@ -1,3 +1,5 @@
+"""Analysis methods for torsion profiles."""
+
 import logging
 from typing import TYPE_CHECKING
 
@@ -26,17 +28,24 @@ def _normalize(qm: dict[float, float], mm: dict[float, float]) -> tuple[dict[flo
 
 
 class Minima(ImmutableModel):
+    """A model storing the minima of a torsion profile."""
+
     id: int
     minima: list[float]
 
 
 class RMSD(ImmutableModel):
+    """A model storing RMSD values over a torsion profile."""
+
     id: int
     rmsd: float
 
 
 class RMSDCollection(list[RMSD]):
+    """A collection of RMSD models."""
+
     def to_dataframe(self) -> "pandas.DataFrame":
+        """Convert this collection to a pandas DataFrame."""
         import pandas
 
         return pandas.DataFrame(
@@ -46,16 +55,22 @@ class RMSDCollection(list[RMSD]):
         )
 
     def to_csv(self, path: str):
+        """Write this collection to a CSV file."""
         self.to_dataframe().to_csv(path)
 
 
 class EEN(ImmutableModel):
+    """A model storing energy error vector norms over a torsion profile."""
+
     id: int
     een: float
 
 
 class EENCollection(list[EEN]):
+    """A collection of EEN models."""
+
     def to_dataframe(self) -> "pandas.DataFrame":
+        """Convert this collection to a pandas DataFrame."""
         import pandas
 
         return pandas.DataFrame(
@@ -65,4 +80,5 @@ class EENCollection(list[EEN]):
         )
 
     def to_csv(self, path: str):
+        """Write this collection to a CSV file."""
         self.to_dataframe().to_csv(path)
