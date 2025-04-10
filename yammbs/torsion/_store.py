@@ -42,7 +42,7 @@ class TorsionStore:
                 f"Only paths to SQLite databases ending in .sqlite are supported. Given: {database_path}",
             )
 
-        LOGGER.info("Creating a new TorsionStore at {database_path=}")
+        LOGGER.info(f"Creating a new TorsionStore at {database_path=}")
 
         self.database_url = f"sqlite:///{database_path.resolve()}"
         self.engine = create_engine(self.database_url)

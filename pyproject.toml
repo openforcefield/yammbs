@@ -11,4 +11,5 @@ build-backend = "setuptools.build_meta"
 line-length = 119
 
 [tool.ruff.lint]
-select = ["F", "E", "W", "NPY", "UP", "I"]
+preview = true
+select = ["F", "E", "W", "NPY", "UP", "I", "RUF027"]
