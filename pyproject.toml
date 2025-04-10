@@ -12,5 +12,6 @@ line-length = 119
 exclude = ["yammbs/_tests/**/*.py"]
 
 [tool.ruff.lint]
+preview = true
 ignore = ["D105", "D107"]
-select = ["D", "F", "E", "W", "NPY", "UP", "I"]
+select = ["D", "F", "E", "W", "NPY", "UP", "I", "RUF027"]
