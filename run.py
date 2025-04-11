@@ -1,3 +1,5 @@
+"""Example using YAMMBS to compare optimizations of several force fields."""
+
 import pathlib
 from multiprocessing import freeze_support
 
@@ -10,6 +12,7 @@ from yammbs.outputs import MetricCollection
 
 
 def main():
+    """Run the example."""
     force_fields = [
         "openff-1.0.0",
         "openff-1.1.0",
@@ -54,6 +57,7 @@ def main():
 
 
 def plot(force_fields: list[str]):
+    """Plot metrics of a list of force fields."""
     metrics = MetricCollection.parse_file("metrics.json")
 
     x_ranges = {

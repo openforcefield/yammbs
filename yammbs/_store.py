@@ -121,8 +121,8 @@ class MoleculeStore:
         software_provenance
             A dictionary storing the provenance of the software and packages used
             to generate the data in the store.
-        """
 
+        """
         with self._get_session() as db:
             db.set_provenance(
                 general_provenance=general_provenance,
@@ -141,6 +141,7 @@ class MoleculeStore:
         ----------
         records: Iterable[MoleculeRecord]
             The QCArchive id and record of each molecule to store.
+
         """
         if isinstance(records, MoleculeRecord):
             records = [records]
@@ -183,8 +184,7 @@ class MoleculeStore:
                     db.store_mm_conformer_record(record)
 
     def get_molecule_ids(self) -> list[int]:
-        """
-        Get the molecule IDs of all records in the store.
+        """Get the molecule IDs of all records in the store.
 
         These are likely to be integers sequentially incrementing from 1, but that
         is not guaranteed.
@@ -231,9 +231,10 @@ class MoleculeStore:
             ]
 
     def _get_molecule_by_inchi_key(self, inchi_key: str) -> Molecule:
-        """
-        Create a new `Molecule` object from the given inchi key, using atom mapping from the
-        **mapped** SMILES associated with the molecule id associated with the inchi key.
+        """Create a new `Molecule` object from the given inchi key.
+
+        The atom mapping from the **mapped** SMILES associated with the molecule id
+        associated with the inchi key is used.
         """
         return Molecule.from_mapped_smiles(
             mapped_smiles=self.get_smiles_by_molecule_id(
@@ -459,8 +460,7 @@ class MoleculeStore:
         dataset: QCArchiveDataset,
         database_name: str,
     ) -> Self:
-        """
-        Create a new MoleculeStore databset from YAMMBS's QCArchiveDataset model.
+        """Create a new MoleculeStore databset from YAMMBS's QCArchiveDataset model.
 
         Largely adopted from `from_cached_result_collection`.
         """
@@ -890,8 +890,7 @@ class MoleculeStore:
         self,
         functional_group: ChemicalEnvironment,
     ) -> list[int]:
-        """
-        Use Checkmol to filter the store by the presence of certain chemical functional groups.
+        """Use Checkmol to filter the store by the presence of certain chemical functional groups.
 
         Parameters
         ----------
@@ -902,6 +901,7 @@ class MoleculeStore:
         -------
         ids
             A list of ids of molecules that contain the functional group.
+
         """
         from yammbs.checkmol import analyze_functional_groups
 

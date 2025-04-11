@@ -1,3 +1,5 @@
+"""Interface with checkmol."""
+
 import functools
 import warnings
 from enum import Enum
@@ -7,6 +9,8 @@ from openff.utilities import MissingOptionalDependencyError
 
 
 class MissingCheckmolError(MissingOptionalDependencyError):
+    """Checkmol is not installed."""
+
     def __init__(self, library_name: str = "checkmol", license_issue: bool = False):
         super().__init__(library_name, license_issue)
 
@@ -26,6 +30,8 @@ def _check_checkmol() -> None:
 
 
 class ChemicalEnvironment(Enum):
+    """Enum representing some chemical environments."""
+
     Alkane = "Alkane"
     Cation = "Cation"
     Anion = "Anion"
@@ -235,6 +241,7 @@ class ChemicalEnvironment(Enum):
 
 
 def checkmol_code_to_environment(checkmol_code: str) -> ChemicalEnvironment:
+    """Map checkmol codes to the ChemicalEnvironment enum."""
     checkmol_code_map = {
         "000": ChemicalEnvironment.Alkane,
         "001": ChemicalEnvironment.Cation,
@@ -447,8 +454,7 @@ def checkmol_code_to_environment(checkmol_code: str) -> ChemicalEnvironment:
 
 @functools.lru_cache(1000)
 def analyze_functional_groups(smiles: str) -> dict[ChemicalEnvironment, int] | None:
-    """Employs checkmol to determine which chemical moieties
-    are encoded by a given smiles pattern.
+    """Employs checkmol to determine which chemical moieties are encoded by a given smiles pattern.
 
     Notes
     -----
@@ -466,6 +472,7 @@ def analyze_functional_groups(smiles: str) -> dict[ChemicalEnvironment, int] | N
         A dictionary where each key corresponds to the `checkmol` defined group
         number, and each value if the number of instances of that moiety. If
         `checkmol` did not execute correctly, returns None.
+
     """
     import subprocess
     import tempfile

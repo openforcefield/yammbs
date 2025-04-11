@@ -1,3 +1,5 @@
+"""Models used within YAMMBS."""
+
 from typing import Any, TypeVar
 
 import qcelemental
@@ -14,6 +16,8 @@ MR = TypeVar("MR", bound="MoleculeRecord")
 
 
 class Record(ImmutableModel):
+    """Base model class for a generic record."""
+
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         validate_default=True,
@@ -23,7 +27,7 @@ class Record(ImmutableModel):
 
 
 class QMConformerRecord(Record):
-    """A record for storing coordinates computed from QC. Assumes use with QCArchive"""
+    """A record for storing coordinates computed from QC. Assumes use with QCArchive."""
 
     molecule_id: int = Field(
         ...,
@@ -54,6 +58,7 @@ class QMConformerRecord(Record):
         qc_record: Any,  # qcportal.optimization.OptimizationRecord ?
         coordinates,
     ):
+        """Create a QMConformerRecord from a QCArchive record."""
         return cls(
             molecule_id=molecule_id,
             qcarchive_id=qc_record.id,
@@ -64,6 +69,8 @@ class QMConformerRecord(Record):
 
 
 class MMConformerRecord(Record):
+    """A record for storing conformers originally from QM but optimized with MM."""
+
     molecule_id: int = Field(
         ...,
         description="The ID of the molecule in the database",
@@ -91,9 +98,7 @@ class MMConformerRecord(Record):
 
 
 class MoleculeRecord(Record):
-    """A record which contains information for a labelled molecule. This may include the
-    coordinates of the molecule in different conformers, and partial charges / WBOs
-    computed for those conformers."""
+    """A record which contains information for a labelled molecule."""
 
     mapped_smiles: str = Field(
         ...,
@@ -106,6 +111,7 @@ class MoleculeRecord(Record):
 
     @property
     def smiles(self):
+        """Return the (mapped) SMILES string of this molecule."""
         return self.mapped_smiles
 
     @classmethod
@@ -113,6 +119,7 @@ class MoleculeRecord(Record):
         cls: type[MR],
         molecule: Molecule,
     ) -> MR:
+        """Create a MoleculeRecord from an OpenFF Molecule."""
         assert molecule.n_conformers == 1
 
         return cls(

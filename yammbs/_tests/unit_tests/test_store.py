@@ -43,7 +43,7 @@ def test_from_cached_collection(tiny_cache):
 
 
 def test_from_qcarchive_dataset(small_qcsubmit_collection):
-    """Test loading from YAMMBS's QCArchive model"""
+    """Test loading from YAMMBS's QCArchive model."""
     db = "foo.sqlite"
     with temporary_cd():
         store = MoleculeStore.from_qcarchive_dataset(
@@ -61,7 +61,7 @@ def test_from_qcarchive_dataset(small_qcsubmit_collection):
 
 
 def test_from_qcarchive_dataset_undefined_stereo():
-    """Test loading from YAMMBS's QCArchive model with undefined stereochemistry"""
+    """Test loading from YAMMBS's QCArchive model with undefined stereochemistry."""
     db = "foo.sqlite"
 
     ds = QCArchiveDataset(

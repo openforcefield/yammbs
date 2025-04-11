@@ -1,3 +1,5 @@
+"""Input models for minimizations."""
+
 from collections.abc import Sequence
 from typing import TypeVar
 
@@ -14,6 +16,8 @@ QMD = TypeVar("QMD", bound="QMDataset")
 
 
 class QMMolecule(ImmutableModel):
+    """A base model for a QM molecule."""
+
     id: int
     mapped_smiles: str
     coordinates: Array = Field(
@@ -22,11 +26,15 @@ class QMMolecule(ImmutableModel):
 
 
 class QCArchiveMolecule(QMMolecule):
+    """A model for a QM molecule from QCArchive."""
+
     qcarchive_id: int
     final_energy: float
 
 
 class QMDataset(ImmutableModel):
+    """Base model for a dataset of QM molecules."""
+
     tag: str
 
     qm_molecules: Sequence[QMMolecule] = Field(
@@ -36,6 +44,8 @@ class QMDataset(ImmutableModel):
 
 
 class QCArchiveDataset(QMDataset):
+    """A dataset of QCArchive molecules."""
+
     tag: str = Field("QCArchive dataset", description="A tag for the dataset")
 
     version: int = Field(1, description="The version of this model")
@@ -50,6 +60,7 @@ class QCArchiveDataset(QMDataset):
         cls,
         collection: OptimizationResultCollection,
     ) -> "QCArchiveDataset":
+        """Create a QCArchiveDataset from a QCSubmit collection."""
         return cls(
             qm_molecules=[
                 QCArchiveMolecule(

@@ -99,8 +99,7 @@ class TorsionStore:
             db.store_mm_torsion_point(point)
 
     def get_molecule_ids(self) -> list[int]:
-        """
-        Get the molecule IDs of all records in the store.
+        """Get the molecule IDs of all records in the store.
 
         These are likely to be integers sequentially incrementing from 1, but that
         is not guaranteed.
@@ -389,7 +388,6 @@ class TorsionStore:
         skip_check: bool = False,
     ) -> EENCollection:
         """Get the vector norm of the energy errors over the torsion profile."""
-
         if not molecule_ids:
             molecule_ids = self.get_molecule_ids()
 

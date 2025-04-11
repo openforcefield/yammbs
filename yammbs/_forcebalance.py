@@ -9,8 +9,7 @@ def periodic_diff(
     b: NDArray[numpy.float64],
     v_periodic: float,
 ) -> NDArray[numpy.float64]:
-    """
-    Convenience function for computing the minimum difference in periodic coordinates
+    """Compute the minimum difference in periodic coordinates.
 
     Parameters
     ----------
@@ -29,7 +28,7 @@ def periodic_diff(
         "( )" means exclusive, "[ ]" means inclusive
 
     Examples
-    -------
+    --------
     periodic_diff(0.0, 2.1, 2.0) => -0.1
     periodic_diff(0.0, 1.9, 2.0) => 0.1
     periodic_diff(0.0, 1.0, 2.0) => -1.0
@@ -37,6 +36,7 @@ def periodic_diff(
     periodic_diff(1.0, 0.1, 2.0) => -0.9
     periodic_diff(1.0, 10.1, 2.0) => 0.9
     periodic_diff(1.0, 9.9, 2.0) => -0.9
+
     """
     assert v_periodic > 0
     h = 0.5 * v_periodic
@@ -48,10 +48,7 @@ def compute_rmsd(
     tar: NDArray[numpy.float64],
     v_periodic: float | None = None,
 ) -> float:
-    """
-    Compute the RMSD between two arrays, supporting periodic difference
-    """
-
+    """Compute the RMSD between two arrays, supporting periodic difference."""
     assert len(ref) == len(tar), "array length must match"
 
     if len(ref) == 0:

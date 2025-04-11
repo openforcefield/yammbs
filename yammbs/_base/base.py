@@ -1,5 +1,4 @@
-"""
-Helpers for dealing with Pydantic.
+"""Helpers for dealing with Pydantic.
 
 Originally copied from openff-nagl.
 """
@@ -19,6 +18,7 @@ def round_floats(
     obj: FloatArrayLike,
     decimals: int = 8,
 ) -> FloatArrayLike:
+    """Consistently round floats to a given number of decimals."""
     rounded = numpy.around(obj, decimals)
     threshold = 5 ** (1 - decimals)
     if isinstance(rounded, numpy.ndarray):
@@ -29,9 +29,7 @@ def round_floats(
 
 
 class MutableModel(BaseModel):
-    """
-    Base class that all classes should subclass.
-    """
+    """Base class that all classes should subclass."""
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -74,7 +72,7 @@ class MutableModel(BaseModel):
         return hash(self) == hash(other)
 
     def get_hash(self) -> str:
-        """Returns string hash of the object"""
+        """Return string hash of the object."""
         if self._hash_str is None:
             dumped = self.dump_hashable(decimals=self._float_decimals)
             mash = hashlib.sha1()
@@ -84,7 +82,7 @@ class MutableModel(BaseModel):
         return self._hash_str
 
     def hash_dict(self) -> dict[str, Any]:
-        """Create dictionary from hash fields and sort alphabetically"""
+        """Create dictionary from hash fields and sort alphabetically."""
         if self._hash_fields:
             hashdct = self.model_dump(include=set(self._hash_fields))
         else:
@@ -93,8 +91,7 @@ class MutableModel(BaseModel):
         return {key: hashdct[key] for key in sorted(hashdct)}
 
     def dump_hashable(self, decimals: int | None = None):
-        """
-        Serialize object to a JSON formatted string
+        """Serialize object to a JSON formatted string.
 
         Unlike model_dump_json(), this method only includes hashable fields,
         sorts them alphabetically, and optionally rounds floats.

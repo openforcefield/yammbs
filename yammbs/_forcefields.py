@@ -39,12 +39,13 @@ def _gaff(molecule: Molecule, force_field_name: str) -> openmm.System:
 
 
 def _espaloma(molecule: Molecule, force_field_name: str) -> openmm.System:
-    """Generate an OpenMM System for a molecule and force field name. The force
-    field name should be of the form espaloma-force-field-name, such as
-    espaloma-openff_unconstrained-2.1.0. Everything after the first dash is
-    passed as the forcefield argument to
-    espaloma.graphs.deploy.openmm_system_from_graph, where it will be appended
-    with .offxml. Raises a ValueError if there is no dash in force_field_name.
+    """Generate an OpenMM System for a molecule and force field name.
+
+    The force field name should be of the form espaloma-force-field-name, such as
+    espaloma-openff_unconstrained-2.1.0. Everything after the first dash is passed as
+    the forcefield argument to espaloma.graphs.deploy.openmm_system_from_graph, where
+    it will be appended with .offxml. Raises a ValueError if there is no dash in
+    force_field_name.
     """
     import espaloma
 
