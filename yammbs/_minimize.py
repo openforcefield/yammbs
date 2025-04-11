@@ -181,6 +181,9 @@ def _run_openmm(
         except UnassignedValenceError:
             logger.warning(f"Skipping record {qcarchive_id} with unassigned valence terms")
             return None
+        except ValueError as e:  # charging error
+            logger.warning(f"Skipping record {qcarchive_id} with a value error (probably a charge failure): {e}")
+            return None
 
     context = openmm.Context(
         system,
