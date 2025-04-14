@@ -141,7 +141,7 @@ def _get_bond_length(
     conformers: tuple[Chem.Conformer, Chem.Conformer],
     atom1_index: int,
     atom2_index: int,
-) -> tuple[float, float]:
+) -> tuple[float, ...]:
     """Get the bond length between two atoms in a conformer."""
     return tuple(
         GetBondLength(
@@ -158,7 +158,7 @@ def _get_angle_angle(
     atom1_index: int,
     atom2_index: int,
     atom3_index: int,
-) -> tuple[float, float]:
+) -> tuple[float, ...]:
     """Get the angle, in degrees, between three atoms in a conformer."""
     return tuple(
         _shift_angle(
@@ -179,7 +179,7 @@ def _get_dihedral_angle(
     atom2_index: int,
     atom3_index: int,
     atom4_index: int,
-) -> tuple[float, float]:
+) -> tuple[float, ...]:
     """Get the dihedral angle, in degrees, between four atoms in a conformer."""
     return tuple(
         _shift_angle(
@@ -200,7 +200,7 @@ def get_internal_coordinates(
     reference: Array,
     target: Array,
     _types: tuple[str, ...] = ("Bond", "Angle", "Dihedral", "Improper"),
-) -> dict[str, dict[tuple[int, ...], tuple[float, float]]]:
+) -> dict[str, dict[tuple[int, ...], tuple[float, ...]]]:
     """Get internal coordinates of two conformers using The RDKit.
 
     The return value is keyed by valence type (Bond, Angle, Dihedral, Improper). Each
@@ -216,12 +216,10 @@ def get_internal_coordinates(
     ----------
     molecule : openff.toolkit.Molecule
         The molecule to get the internal coordinates for.
-    reference : numpy.ndarray or openff.toolkit.Quantity
-        The "reference" conformer to get the internal coordinates for. If unitless,
-        assumed to be in Angstroms.
-    target : numpy.ndarray or openff.toolkit.Quantity
-        The "target" conformer to get the internal coordinates for. If unitless, assumed
-        to be in Angstroms.
+    reference : numpy.ndarray
+        The "reference" conformer to get the internal coordinates for.
+    target : numpy.ndarray
+        The "target" conformer to get the internal coordinates for.
 
     Returns
     -------
@@ -234,12 +232,6 @@ def get_internal_coordinates(
         second to the "target" conformer.
 
     """
-    if isinstance(reference, Quantity):
-        reference = reference.m_as("angstrom")
-
-    if isinstance(target, Quantity):
-        target = target.m_as("angstrom")
-
     molecule = Molecule(molecule)
     molecule.clear_conformers()
     molecule.add_conformer(Quantity(reference, "angstrom"))
@@ -247,10 +239,7 @@ def get_internal_coordinates(
 
     rdmol = molecule.to_rdkit()
 
-    if isinstance(reference, Quantity):
-        reference = target.m_as("angstrom")
-
-    internal_coordinates: dict[str, dict[tuple[int, ...], tuple[float, float]]] = dict()
+    internal_coordinates: dict[str, dict[tuple[int, ...], tuple[float, ...]]] = dict()
 
     if "Bond" in _types:
         internal_coordinates["Bond"] = {
@@ -343,12 +332,10 @@ def get_internal_coordinate_differences(
     ----------
     molecule : openff.toolkit.Molecule
         The molecule to get the internal coordinates for.
-    reference : numpy.ndarray or openff.toolkit.Quantity
-        The "reference" conformer to get the internal coordinates for. If unitless,
-        assumed to be in Angstroms.
-    target : numpy.ndarray or openff.toolkit.Quantity
-        The "target" conformer to get the internal coordinates for. If unitless, assumed
-        to be in Angstroms.
+    reference : numpy.ndarray
+        The "reference" conformer to get the internal coordinates for.
+    target : numpy.ndarray
+        The "target" conformer to get the internal coordinates for.
 
     Returns
     -------
@@ -397,12 +384,10 @@ def get_internal_coordinate_rmsds(
     ----------
     molecule : openff.toolkit.Molecule
         The molecule to get the internal coordinates for.
-    reference : numpy.ndarray or openff.toolkit.Quantity
-        The "reference" conformer to get the internal coordinates for. If unitless,
-        assumed to be in Angstroms.
-    target : numpy.ndarray or openff.toolkit.Quantity
-        The "target" conformer to get the internal coordinates for. If unitless, assumed
-        to be in Angstroms.
+    reference : numpy.ndarray
+        The "reference" conformer to get the internal coordinates for.
+    target : numpy.ndarray
+        The "target" conformer to get the internal coordinates for.
 
     Returns
     -------
