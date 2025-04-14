@@ -138,7 +138,7 @@ def _shift_angle(angle: float) -> float:
 
 
 def _get_bond_length(
-    conformers: tuple[Chem.Conformer],
+    conformers: tuple[Chem.Conformer, Chem.Conformer],
     atom1_index: int,
     atom2_index: int,
 ) -> tuple[float, float]:
@@ -154,7 +154,7 @@ def _get_bond_length(
 
 
 def _get_angle_angle(
-    conformers: tuple[Chem.Conformer],
+    conformers: tuple[Chem.Conformer, Chem.Conformer],
     atom1_index: int,
     atom2_index: int,
     atom3_index: int,
@@ -174,7 +174,7 @@ def _get_angle_angle(
 
 
 def _get_dihedral_angle(
-    conformers: tuple[Chem.Conformer],
+    conformers: tuple[Chem.Conformer, Chem.Conformer],
     atom1_index: int,
     atom2_index: int,
     atom3_index: int,
@@ -250,7 +250,7 @@ def get_internal_coordinates(
     if isinstance(reference, Quantity):
         reference = target.m_as("angstrom")
 
-    internal_coordinates: dict[str, dict[tuple[int, ...], tuple[int, int]]] = dict()
+    internal_coordinates: dict[str, dict[tuple[int, ...], tuple[float, float]]] = dict()
 
     if "Bond" in _types:
         internal_coordinates["Bond"] = {
