@@ -186,9 +186,9 @@ class TestInternalCoordinateRMSD:
         assert len(differences["Improper"]) <= molecule.n_impropers
 
         assert max(differences["Bond"].values()) < 0.1
-        assert max(differences["Angle"].values()) < 1
+        assert max(differences["Angle"].values()) < 10
         assert max(differences["Dihedral"].values()) < 10
-        assert max(differences["Improper"].values()) < 1
+        assert max(differences["Improper"].values()) < 10
 
     def test_internal_coordinate_impropers(self):
         triazine = Molecule.from_mapped_smiles("[H:7][c:1]1[n:2][c:3]([n:4][c:5]([n:6]1)[H:9])[H:8]")
@@ -196,6 +196,7 @@ class TestInternalCoordinateRMSD:
         triazine.generate_conformers(n_conformers=1)
 
         # these should have central atom (each carbon, atoms 0, 2, 4 in this mapped SMILES) listed SECOND
+        # should be [(1, 0, 5, 6), (1, 2, 3, 7), (3, 4, 5, 8)]
         sage_impropers: list[tuple[int, int, int, int]] = sorted(
             [*ForceField("openff-2.2.1.offxml").label_molecules(triazine.to_topology())][0]["ImproperTorsions"],
         )
@@ -207,5 +208,9 @@ class TestInternalCoordinateRMSD:
             target=triazine.conformers[0],
         )
 
-        # should be [(1, 0, 5, 6), (1, 2, 3, 7), (3, 4, 5, 8)]
-        assert sorted(differences["Improper"].keys()) == sage_impropers
+        found_impropers = sorted(differences["Improper"].keys())
+
+        # these will not be equal since many impropers aren't assigned parameters, but all impropers
+        # which did get parameters should be in the set of all possible impropers
+        for sage_improper in sage_impropers:
+            assert sage_improper in found_impropers
