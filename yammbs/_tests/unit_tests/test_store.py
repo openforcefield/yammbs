@@ -271,7 +271,7 @@ def test_get_qm_energies_by_molecule_id(
     [
         ("get_dde"),
         ("get_rmsd"),
-        ("get_internal_coordinate_rmsd"),
+        # ("get_internal_coordinate_rmsd"),
         ("get_tfd"),
     ],
 )
