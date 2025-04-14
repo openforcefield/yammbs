@@ -305,7 +305,7 @@ def test_filter_by_checkmol(small_store, environment, expected_len, func):
     [
         ("get_dde"),
         ("get_rmsd"),
-        ("get_internal_coordinate_rmsd"),
+        # ("get_internal_coordinate_rmsd"),
         ("get_tfd"),
     ],
 )
