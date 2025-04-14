@@ -2,6 +2,8 @@ from typing import TYPE_CHECKING
 
 import numpy
 from openff.toolkit import Molecule, Quantity
+from rdkit import Chem
+from rdkit.Chem.rdMolTransforms import GetAngleDeg, GetBondLength, GetDihedralDeg
 
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
@@ -124,13 +126,82 @@ def get_rmsd(
     )
 
 
+def _shift_angle(angle: float) -> float:
+    """Shift angles by +/- 180 degrees if they're close to +/- 180."""
+    # handle being close to both 180 and -180
+    if abs(abs(angle) - 180) < 3:
+        # subtract 180 if ~180, subtract -180 if ~-180
+        return float(angle - numpy.sign(angle) * 180)
+    else:
+        # otherwise, return the angle as is
+        return float(angle)
+
+
+def _get_bond_length(
+    conformers: tuple[Chem.Conformer],
+    atom1_index: int,
+    atom2_index: int,
+) -> tuple[float, float]:
+    """Get the bond length between two atoms in a conformer."""
+    return tuple(
+        GetBondLength(
+            conformer,
+            atom1_index,
+            atom2_index,
+        )
+        for conformer in conformers
+    )
+
+
+def _get_angle_angle(
+    conformers: tuple[Chem.Conformer],
+    atom1_index: int,
+    atom2_index: int,
+    atom3_index: int,
+) -> tuple[float, float]:
+    """Get the angle, in degrees, between three atoms in a conformer."""
+    return tuple(
+        _shift_angle(
+            GetAngleDeg(
+                conformer,
+                atom1_index,
+                atom2_index,
+                atom3_index,
+            ),
+        )
+        for conformer in conformers
+    )
+
+
+def _get_dihedral_angle(
+    conformers: tuple[Chem.Conformer],
+    atom1_index: int,
+    atom2_index: int,
+    atom3_index: int,
+    atom4_index: int,
+) -> tuple[float, float]:
+    """Get the dihedral angle, in degrees, between four atoms in a conformer."""
+    return tuple(
+        _shift_angle(
+            GetDihedralDeg(
+                conformer,
+                atom1_index,
+                atom2_index,
+                atom3_index,
+                atom4_index,
+            ),
+        )
+        for conformer in conformers
+    )
+
+
 def get_internal_coordinates(
     molecule: Molecule,
     reference: Array,
     target: Array,
     _types: tuple[str, ...] = ("Bond", "Angle", "Dihedral", "Improper"),
-) -> dict[str, dict[tuple[int, ...], tuple[int, int]]]:
-    """Get internal coordinates of two conformers of the same molecule using geomeTRIC.
+) -> dict[str, dict[tuple[int, ...], tuple[float, float]]]:
+    """Get internal coordinates of two conformers using The RDKit.
 
     The return value is keyed by valence type (Bond, Angle, Dihedral, Improper). Each
     value is itself a dictionary containing key-val pairs of relevant atom indices and a
@@ -163,94 +234,91 @@ def get_internal_coordinates(
         second to the "target" conformer.
 
     """
-    from geometric.internal import (
-        Angle,
-        Dihedral,
-        Distance,
-        OutOfPlane,
-        PrimitiveInternalCoordinates,
-    )
-
-    from yammbs._molecule import _to_geometric_molecule
-
     if isinstance(reference, Quantity):
         reference = reference.m_as("angstrom")
 
     if isinstance(target, Quantity):
         target = target.m_as("angstrom")
 
-    _generator = PrimitiveInternalCoordinates(
-        _to_geometric_molecule(molecule=molecule, coordinates=target),
-    )
+    molecule = Molecule(molecule)
+    molecule.clear_conformers()
+    molecule.add_conformer(Quantity(reference, "angstrom"))
+    molecule.add_conformer(Quantity(target, "angstrom"))
 
-    _mapping = {
-        "Bond": Distance,
-        "Angle": Angle,
-        "Dihedral": Dihedral,
-        "Improper": OutOfPlane,
-    }
-    types: dict[str, type] = {_type: _mapping[_type] for _type in _types}
+    rdmol = molecule.to_rdkit()
+
+    if isinstance(reference, Quantity):
+        reference = target.m_as("angstrom")
 
     internal_coordinates: dict[str, dict[tuple[int, ...], tuple[int, int]]] = dict()
 
-    for label, internal_coordinate_class in types.items():
-        internal_coordinates[label] = dict()
-
-        for internal_coordinate in _generator.Internals:
-            if not isinstance(internal_coordinate, internal_coordinate_class):
-                continue
-
-            if isinstance(internal_coordinate, Distance):
-                key = tuple(
-                    (
-                        internal_coordinate.a,
-                        internal_coordinate.b,
-                    ),
-                )
-
-            if isinstance(internal_coordinate, Angle):
-                key = tuple(
-                    (
-                        internal_coordinate.a,
-                        internal_coordinate.b,
-                        internal_coordinate.c,
-                    ),
-                )
-
-            if isinstance(internal_coordinate, Dihedral):
-                key = tuple(
-                    (
-                        internal_coordinate.a,
-                        internal_coordinate.b,
-                        internal_coordinate.c,
-                        internal_coordinate.d,
-                    ),
-                )
-
-            if isinstance(internal_coordinate, OutOfPlane):
-                # geomeTRIC lists the central atom FIRST, but SMIRNOFF force fields list
-                # the central atom SECOND. Re-ordering here to be consistent with SMIRNOFF
-                # see PR #109 for more
-
-                key = tuple(
-                    (
-                        internal_coordinate.b,  # NOTE!
-                        internal_coordinate.a,  # NOTE!
-                        internal_coordinate.c,
-                        internal_coordinate.d,
-                    ),
-                )
-
-            key = tuple(int(index) for index in key)
-
-            internal_coordinates[label].update(
-                {
-                    key: (
-                        internal_coordinate.value(reference),
-                        internal_coordinate.value(target),
-                    ),
-                },
+    if "Bond" in _types:
+        internal_coordinates["Bond"] = {
+            tuple((bond.atom1_index, bond.atom2_index)): _get_bond_length(
+                (rdmol.GetConformer(0), rdmol.GetConformer(1)),
+                bond.atom1_index,
+                bond.atom2_index,
             )
+            for bond in molecule.bonds
+        }
+
+    if "Angle" in _types:
+        internal_coordinates["Angle"] = {
+            tuple(
+                (
+                    angle[0].molecule_atom_index,
+                    angle[1].molecule_atom_index,
+                    angle[2].molecule_atom_index,
+                ),
+            ): _get_angle_angle(
+                (rdmol.GetConformer(0), rdmol.GetConformer(1)),
+                angle[0].molecule_atom_index,
+                angle[1].molecule_atom_index,
+                angle[2].molecule_atom_index,
+            )
+            for angle in molecule.angles
+        }
+
+    if "Dihedral" in _types:
+        internal_coordinates["Dihedral"] = {
+            # angle between i-j-k and j-k-l planes,
+            tuple(
+                (
+                    dihedral[0].molecule_atom_index,
+                    dihedral[1].molecule_atom_index,
+                    dihedral[2].molecule_atom_index,
+                    dihedral[3].molecule_atom_index,
+                ),
+            ): _get_dihedral_angle(
+                (rdmol.GetConformer(0), rdmol.GetConformer(1)),
+                dihedral[0].molecule_atom_index,
+                dihedral[1].molecule_atom_index,
+                dihedral[2].molecule_atom_index,
+                dihedral[3].molecule_atom_index,
+            )
+            for dihedral in molecule.propers
+        }
+
+    if "Improper" in _types:
+        internal_coordinates["Improper"] = {
+            # angle between i-j-k and j-k-l planes, except the bonding is i-j, j-k, j-l
+            # TODO: is trefoil averaging baked into the Molecule.smirnoff_impropers generator?
+            tuple(
+                (
+                    improper[0].molecule_atom_index,
+                    improper[1].molecule_atom_index,
+                    improper[2].molecule_atom_index,
+                    improper[3].molecule_atom_index,
+                ),
+            ): _get_dihedral_angle(
+                (rdmol.GetConformer(0), rdmol.GetConformer(1)),
+                improper[0].molecule_atom_index,
+                improper[1].molecule_atom_index,  # central atom
+                improper[2].molecule_atom_index,
+                improper[3].molecule_atom_index,
+            )
+            for improper in molecule.smirnoff_impropers
+        }
 
     return internal_coordinates
 
@@ -365,15 +433,7 @@ def get_internal_coordinate_rmsds(
         qm_values = numpy.array(_qm_values)
         mm_values = numpy.array(_mm_values)
 
-        # Converting from radians to degrees
-        if _type in ["Angle", "Dihedral", "Improper"]:
-            rmsd = forcebalance_rmsd(
-                qm_values * 180 / numpy.pi,
-                mm_values * 180 / numpy.pi,
-                360,
-            )
-        else:
-            rmsd = forcebalance_rmsd(qm_values, mm_values)
+        rmsd = forcebalance_rmsd(qm_values, mm_values)
 
         internal_coordinate_rmsd[_type] = rmsd
 

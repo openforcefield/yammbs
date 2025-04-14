@@ -357,4 +357,4 @@ def test_get_metrics(small_store):
     assert this_metric.icrmsd["Bond"] < 0.1
     assert this_metric.icrmsd["Angle"] < 2
     assert this_metric.icrmsd["Dihedral"] < 15
-    assert this_metric.icrmsd["Improper"] < 1
+    assert this_metric.icrmsd["Improper"] < 2
