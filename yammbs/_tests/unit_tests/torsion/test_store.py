@@ -1,5 +1,6 @@
 import os
 
+import pytest
 from openff.qcsubmit.results import TorsionDriveResultCollection
 from openff.utilities import get_data_file_path
 
@@ -56,3 +57,19 @@ def test_minimize_basic(single_torsion_dataset, tmp_path):
 
     assert len(metrics["metrics"]) == 1
     assert len(metrics["metrics"]["openff-2.2.0"]) == 1
+
+    expected_metrics = {
+        "rmsd": 0.07475493617511018,
+        "rmse": 0.8193199571663233,
+        "mean_error": -0.35170719027937586,
+        "js_distance": (0.3168201337322116, 500.0),
+    }
+
+    assert len(expected_metrics) == len(metrics["metrics"]["openff-2.2.0"][1])
+
+    for metric in metrics["metrics"]["openff-2.2.0"][1]:
+        assert metric in expected_metrics
+        assert metrics["metrics"]["openff-2.2.0"][1][metric] == pytest.approx(
+            expected_metrics[metric],
+            rel=1e-5,
+        )

@@ -43,7 +43,7 @@ class Metric(ImmutableModel):
     rmsd: float
     rmse: float
     mean_error: float
-    js_divergence: tuple[float, float]
+    js_distance: tuple[float, float]
 
 
 class MetricCollection(ImmutableModel):
