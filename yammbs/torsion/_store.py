@@ -2,7 +2,6 @@ import logging
 import pathlib
 from collections.abc import Generator, Iterable
 from contextlib import contextmanager
-from typing import TypeVar
 
 import numpy
 from numpy.typing import NDArray
@@ -23,7 +22,7 @@ from yammbs.torsion._db import (
 from yammbs.torsion._session import TorsionDBSessionManager
 from yammbs.torsion.analysis import (
     RMSD,
-    AnalysisMetricCollection,
+    AnalysisMetricCollectionTypeVar,
     JSDistanceCollection,
     MeanErrorCollection,
     RMSDCollection,
@@ -35,8 +34,6 @@ from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, To
 from yammbs.torsion.outputs import Metric, MetricCollection, MinimizedTorsionDataset
 
 LOGGER = logging.getLogger(__name__)
-
-_AnalysisMerticCollectionTypeVar = TypeVar("_AnalysisMerticCollectionTypeVar", bound=AnalysisMetricCollection)
 
 
 class TorsionStore:
@@ -389,12 +386,12 @@ class TorsionStore:
     def _get_energy_based_metric(
         self,
         force_field: str,
-        analysis_metric_collection: type[_AnalysisMerticCollectionTypeVar],
+        analysis_metric_collection: type[AnalysisMetricCollectionTypeVar],
         molecule_ids: list[int] | None = None,
         skip_check: bool = False,
         kwargs: dict | None = None,
-    ) -> _AnalysisMerticCollectionTypeVar:
-        """Calculate the metrics for the supplied analysis metric collection."""
+    ) -> AnalysisMetricCollectionTypeVar:
+        """Calculate energy-based metrics for the supplied analysis metric collection."""
         kwargs = kwargs if kwargs else dict()
 
         if not molecule_ids:

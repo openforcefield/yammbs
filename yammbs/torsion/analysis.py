@@ -33,17 +33,23 @@ def _normalize(qm: dict[float, float], mm: dict[float, float]) -> tuple[dict[flo
     }
 
 
-_ImmutableModelTypeVar = TypeVar("_ImmutableModelTypeVar", bound=ImmutableModel)
+class AnalysisMetric(ABC, ImmutableModel):
+    """A model storing a single analysis metric."""
+
+    id: int
 
 
-class AnalysisMetricCollection(ABC, Generic[_ImmutableModelTypeVar], list[_ImmutableModelTypeVar]):
+AnalysisMetricTypeVar = TypeVar("AnalysisMetricTypeVar", bound=AnalysisMetric)
+
+
+class AnalysisMetricCollection(ABC, Generic[AnalysisMetricTypeVar], list[AnalysisMetricTypeVar]):
     """A generic collection class for typed lists of analysis metrics."""
 
-    item_type: type[_ImmutableModelTypeVar]  # This must be set in subclasses
+    item_type: type[AnalysisMetricTypeVar]  # This must be set in subclasses
 
     @classmethod
-    def get_item_type(cls) -> type[_ImmutableModelTypeVar]:
-        """Retrieve the type of items in the collection (_ImmutableModelTypeVar)."""
+    def get_item_type(cls) -> type[AnalysisMetricTypeVar]:
+        """Retrieve the type of items in the collection (AnalysisMetricTypeVar)."""
         if not hasattr(cls, "item_type") or cls.item_type is None:
             raise NotImplementedError(f"{cls.__name__} must define the 'item_type' class variable.")
         return cls.item_type
@@ -64,21 +70,30 @@ class AnalysisMetricCollection(ABC, Generic[_ImmutableModelTypeVar], list[_Immut
         self.to_dataframe().to_csv(path)
 
 
-class Minima(ImmutableModel):
+AnalysisMetricCollectionTypeVar = TypeVar("AnalysisMetricCollectionTypeVar", bound=AnalysisMetricCollection)
+
+
+class Minima(AnalysisMetric):
     """A model storing the minima of a torsion profile."""
 
     id: int
     minima: list[float]
 
 
-class RMSD(ImmutableModel):
+class RMSD(AnalysisMetric):
     """A model storing the RMS RMSD over a torsion profile."""
 
     id: int
     rmsd: float
 
     @classmethod
-    def from_data(cls, molecule_id: int, molecule: "Molecule", qm_points: Array, mm_points: Array) -> Self:
+    def from_data(
+        cls,
+        molecule_id: int,
+        molecule: "Molecule",
+        qm_points: dict[float, Array],
+        mm_points: dict[float, Array],
+    ) -> Self:
         """Create an RMSD object by calculating the RMSD between QM and MM points."""
         rmsd_vals = numpy.array([get_rmsd(molecule, qm_points[key], mm_points[key]) for key in qm_points])
         return cls(
@@ -93,7 +108,7 @@ class RMSDCollection(AnalysisMetricCollection[RMSD]):
     item_type = RMSD
 
 
-class RMSE(ImmutableModel):
+class RMSE(AnalysisMetric):
     """A model storing the RMSE error over a torsion profile."""
 
     id: int
@@ -114,7 +129,7 @@ class RMSECollection(AnalysisMetricCollection[RMSE]):
     item_type = RMSE
 
 
-class MeanError(ImmutableModel):
+class MeanError(AnalysisMetric):
     """A model storing the mean error over a torsion profile."""
 
     id: int
@@ -135,7 +150,7 @@ class MeanErrorCollection(AnalysisMetricCollection[MeanError]):
     item_type = MeanError
 
 
-class JSDistance(ImmutableModel):
+class JSDistance(AnalysisMetric):
     """A model storing the Jensen-Shannon distances."""
 
     id: int

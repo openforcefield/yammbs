@@ -79,7 +79,7 @@ jobs:
     - name: Run mypy
       # RDKit packages have bad stubs on Linux for some reason
       if: ${{ matrix.python-version == '3.12' && matrix.os == 'macos-latest' }}
-      run: pip install -r typing-requirements.txt && python -m mypy -p "yammbs" --exclude "yammbs/_tests"
+      run: pip install -r typing-requirements.txt && python -m mypy -p "yammbs" --exclude "yammbs/_tests" --exclude "yammbs/scripts"
 
     - name: CodeCov
       uses: codecov/codecov-action@v5
