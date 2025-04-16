@@ -19,7 +19,7 @@ pyplot.style.use("ggplot")
     "--base-force-fields",
     "-bf",
     multiple=True,
-    default=["openff-1.0.0", "openff-2.0.0", "openff-2.1.0", "openff-2.2.1"],
+    default=["openff-1.0.0", "openff-2.0.0", "openff-2.1.0", "openff-2.2.0", "openff-2.2.1"],
     help="List of force fields to use for optimization.",
 )
 @click.option(
@@ -356,10 +356,6 @@ def plot_mean_js_divergence(
 ) -> None:
     metrics = MetricCollection.parse_file(metrics_file)
 
-    units = {
-        "mean_js_divergence": "",
-    }
-
     mean_js_divergences = {
         force_field: np.mean([val.js_divergence[0] for val in metrics.metrics[force_field].values()])
         for force_field in force_fields
@@ -397,7 +393,7 @@ def plot_mean_error_distribution(
         for force_field in force_fields
     }
     # Plot mean error distribution using kernel density estimation
-    figure, axis = pyplot.subplots()
+    figure, axis = pyplot.subplots(figsize=(10, 4))
     import seaborn as sns
 
     for force_field in mean_errors.keys():
@@ -408,7 +404,7 @@ def plot_mean_error_distribution(
         )
     axis.set_xlabel("Mean Error / " + units["mean_error"])
     axis.set_ylabel("Density")
-    axis.legend(loc=0)
+    axis.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
 
     # Save the figure
     figure.tight_layout()
