@@ -1,3 +1,5 @@
+"""Input models for torsion datasets."""
+
 import logging
 from collections.abc import Sequence
 
@@ -16,10 +18,14 @@ LOGGER = logging.getLogger(__name__)
 
 
 class TorsionDataset(ImmutableModel):
+    """Base class for a torsion dataset."""
+
     tag: str
 
 
 class TorsionProfile(ImmutableModel):
+    """Base class for a torsion profile."""
+
     mapped_smiles: str
     dihedral_indices: tuple[int, int, int, int] = Field(
         ...,
@@ -42,10 +48,14 @@ class TorsionProfile(ImmutableModel):
 
 
 class QCArchiveTorsionProfile(TorsionProfile):
+    """A single QCArchive torsion profile."""
+
     id: int = Field(..., description="The attribute TorsiondriveRecord.id")
 
 
 class QCArchiveTorsionDataset(TorsionDataset):
+    """Store a collection of torsion profiles from QCArchive."""
+
     tag: str = Field("QCArchive torsiondrive dataset", description="A tag for the dataset")
 
     version: int = Field(1, description="The version of this model")
@@ -60,6 +70,7 @@ class QCArchiveTorsionDataset(TorsionDataset):
         cls,
         collection: TorsionDriveResultCollection,
     ) -> "QCArchiveTorsionDataset":
+        """Create a QCArchiveTorsionDataset from a TorsionDriveResultCollection."""
         LOGGER.info(
             "Converting a TorsionDriveResultCollection (a QCSubmit model) "
             "to a QCArchiveTorsionDataset (a YAMMBS model)",

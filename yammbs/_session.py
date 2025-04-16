@@ -27,6 +27,7 @@ class DBQueryResult(NamedTuple):
     molecule_inchi: str
 
     def to_nested_dict(self) -> dict[int, dict[str, str]]:
+        """Convert the query result to a nested dictionary."""
         return {
             self.molecule_id: {
                 "mapped_smiles": self.molecule_smiles,
@@ -36,21 +37,9 @@ class DBQueryResult(NamedTuple):
 
 
 class IncompatibleDBVersion(ValueError):
-    """An exception raised when attempting to load a store whose
-    version does not match the version expected by the framework.
-    """
+    """Attempting to load a store whose version does not match the version expected by the framework."""
 
     def __init__(self, found_version: int, expected_version: int):
-        """
-
-        Parameters
-        ----------
-        found_version
-            The version of the database being loaded.
-        expected_version
-            The expected version of the database.
-        """
-
         super().__init__(
             f"The database being loaded is currently at version {found_version} "
             f"while the framework expects a version of {expected_version}. There "
@@ -67,18 +56,18 @@ class DBSessionManager:
     def map_records_by_smiles(
         db_records: list[DBMoleculeRecord],
     ) -> dict[str, list[DBMoleculeRecord]]:
-        """Maps a list of DB records by their SMILES representation.
+        """Map a list of DB records by their SMILES representation.
 
         Parameters
         ----------
-        records
+        db_records
             The records to map.
 
         Returns
         -------
         A dictionary mapping the SMILES representation of a record to the record.
-        """
 
+        """
         from openff.toolkit.topology import Molecule
 
         records = defaultdict(list)
@@ -96,7 +85,7 @@ class DBSessionManager:
         self._db_info = None
 
     def check_version(self, version=DB_VERSION):
-        """Checks that the database is at the expected version."""
+        """Check that the database is at the expected version."""
         if not self.db_info:
             db_info = DBInformation(version=version)
             self.db.add(db_info)

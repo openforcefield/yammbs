@@ -1,3 +1,5 @@
+"""Analysis routines for optimizations."""
+
 from typing import TYPE_CHECKING
 
 import numpy
@@ -11,12 +13,17 @@ if TYPE_CHECKING:
 
 
 class DDE(ImmutableModel):
+    """A model containing relative energy differences (DDEs) of a molecule."""
+
     qcarchive_id: int
     difference: float | None
 
 
 class DDECollection(list[DDE]):
+    """A model containing DDEs of a dataset of molecules."""
+
     def to_dataframe(self) -> "DataFrame":
+        """Convert the collection to a pandas DataFrame."""
         import pandas
 
         return pandas.DataFrame(
@@ -26,16 +33,22 @@ class DDECollection(list[DDE]):
         )
 
     def to_csv(self, path: str):
+        """Write the collection to a CSV file."""
         self.to_dataframe().to_csv(path)
 
 
 class RMSD(ImmutableModel):
+    """A model containing the root-mean-square deviations of conformers a molecule."""
+
     qcarchive_id: int
     rmsd: float
 
 
 class RMSDCollection(list[RMSD]):
+    """A model containing RMSDs of a dataset of molecules."""
+
     def to_dataframe(self) -> "DataFrame":
+        """Convert the collection to a pandas DataFrame."""
         import pandas
 
         return pandas.DataFrame(
@@ -45,16 +58,22 @@ class RMSDCollection(list[RMSD]):
         )
 
     def to_csv(self, path: str):
+        """Write the collection to a CSV file."""
         self.to_dataframe().to_csv(path)
 
 
 class ICRMSD(ImmutableModel):
+    """A model containing the internal coordinate RMSDs of a molecule."""
+
     qcarchive_id: int
     icrmsd: dict[str, float]
 
 
 class ICRMSDCollection(list):
+    """A model containing internal coordinate RMSDs of a dataset of molecules."""
+
     def to_dataframe(self) -> "DataFrame":
+        """Convert the collection to a pandas DataFrame."""
         import pandas
 
         return pandas.DataFrame(
@@ -72,16 +91,22 @@ class ICRMSDCollection(list):
         )
 
     def to_csv(self, path: str):
+        """Write the collection to a CSV file."""
         self.to_dataframe().to_csv(path)
 
 
 class TFD(ImmutableModel):
+    """A model containing the TFD of a molecule."""
+
     qcarchive_id: int
     tfd: float
 
 
 class TFDCollection(list):
+    """A model containing TFDs of a collection of molecules."""
+
     def to_dataframe(self) -> "DataFrame":
+        """Convert the collection to a pandas DataFrame."""
         import pandas
 
         return pandas.DataFrame(
@@ -91,6 +116,7 @@ class TFDCollection(list):
         )
 
     def to_csv(self, path: str):
+        """Write the collection to a CSV file."""
         self.to_dataframe().to_csv(path)
 
 
@@ -385,6 +411,8 @@ def get_tfd(
     reference: Array,
     target: Array,
 ) -> float:
+    """Get the torsion fingerprint deviation between two conformers of one molecule."""
+
     def _rdmol(
         molecule: Molecule,
         conformer: Array,

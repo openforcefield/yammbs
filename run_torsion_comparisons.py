@@ -1,3 +1,5 @@
+"""Example using YAMMBS to compare torsion profiles of several force fields."""
+
 import pathlib
 from multiprocessing import freeze_support
 
@@ -8,6 +10,7 @@ from yammbs.torsion.inputs import QCArchiveTorsionDataset
 
 
 def main():
+    """Run the example."""
     force_fields = [
         "openff-1.0.0",
         # "openff-1.1.0",
