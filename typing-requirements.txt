@@ -1,4 +1,5 @@
 types-cffi
+types-click
 types-colorama
 types-docutils
 types-Pygments
@@ -9,3 +10,4 @@ types-setuptools
 types-tqdm
 sqlalchemy-stubs
 pandas-stubs
+scipy-stubs
