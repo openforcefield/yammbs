@@ -460,7 +460,7 @@ class MoleculeStore:
         dataset: QCArchiveDataset,
         database_name: str,
     ) -> Self:
-        """Create a new MoleculeStore databset from YAMMBS's QCArchiveDataset model.
+        """Create a new MoleculeStore dataset from YAMMBS's QCArchiveDataset model.
 
         Largely adopted from `from_cached_result_collection`.
         """
