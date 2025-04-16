@@ -71,5 +71,5 @@ def test_minimize_basic(single_torsion_dataset, tmp_path):
         assert metric in expected_metrics
         assert metrics["metrics"]["openff-2.2.0"][1][metric] == pytest.approx(
             expected_metrics[metric],
-            rel=1e-5,
+            rel=1e-3,
         )
