@@ -1,3 +1,5 @@
+"""Analysis methods for torsion profiles."""
+
 import logging
 from abc import ABC
 from typing import TYPE_CHECKING, Generic, Self, TypeVar
@@ -63,11 +65,15 @@ class AnalysisMetricCollection(ABC, Generic[_ImmutableModelTypeVar], list[_Immut
 
 
 class Minima(ImmutableModel):
+    """A model storing the minima of a torsion profile."""
+
     id: int
     minima: list[float]
 
 
 class RMSD(ImmutableModel):
+    """A model storing the RMS RMSD over a torsion profile."""
+
     id: int
     rmsd: float
 
@@ -82,10 +88,14 @@ class RMSD(ImmutableModel):
 
 
 class RMSDCollection(AnalysisMetricCollection[RMSD]):
+    """A collection of RMSD models."""
+
     item_type = RMSD
 
 
 class RMSE(ImmutableModel):
+    """A model storing the RMSE error over a torsion profile."""
+
     id: int
     rmse: float
 
@@ -99,10 +109,14 @@ class RMSE(ImmutableModel):
 
 
 class RMSECollection(AnalysisMetricCollection[RMSE]):
+    """A collection of RMSE models."""
+
     item_type = RMSE
 
 
 class MeanError(ImmutableModel):
+    """A model storing the mean error over a torsion profile."""
+
     id: int
     mean_error: float
 
@@ -116,10 +130,14 @@ class MeanError(ImmutableModel):
 
 
 class MeanErrorCollection(AnalysisMetricCollection[MeanError]):
+    """A collection of MeanError models."""
+
     item_type = MeanError
 
 
 class JSDistance(ImmutableModel):
+    """A model storing the Jensen-Shannon distances."""
+
     id: int
     js_distance: float
     js_temperature: float
@@ -132,10 +150,11 @@ class JSDistance(ImmutableModel):
         mm_energies: Array,
         temperature: float,
     ) -> Self:
-        """
-        Create a JSDistance object by calculating the Jensen-Shannon distance
+        """Create a JSDistance object from supplied data.
+
+        Do this by calculating the Jensen-Shannon distance
         between the two distributions generated with Boltzmann inversion at the
-        specified temperature, using base 2 logs.  A distance of 0 indicates
+        specified temperature, using base 2 logs. A distance of 0 indicates
         identical distributions, while a distance of 1 indicates completely
         non-overlapping distributions.
         """
@@ -157,4 +176,6 @@ class JSDistance(ImmutableModel):
 
 
 class JSDistanceCollection(AnalysisMetricCollection[JSDistance]):
+    """A collection of JSDistance models."""
+
     item_type = JSDistance

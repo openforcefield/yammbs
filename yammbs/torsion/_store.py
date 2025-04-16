@@ -52,7 +52,7 @@ class TorsionStore:
                 f"Only paths to SQLite databases ending in .sqlite are supported. Given: {database_path}",
             )
 
-        LOGGER.info("Creating a new TorsionStore at {database_path=}")
+        LOGGER.info(f"Creating a new TorsionStore at {database_path=}")
 
         self.database_url = f"sqlite:///{database_path.resolve()}"
         self.engine = create_engine(self.database_url)
@@ -109,8 +109,7 @@ class TorsionStore:
             db.store_mm_torsion_point(point)
 
     def get_molecule_ids(self) -> list[int]:
-        """
-        Get the molecule IDs of all records in the store.
+        """Get the molecule IDs of all records in the store.
 
         These are likely to be integers sequentially incrementing from 1, but that
         is not guaranteed.
@@ -396,7 +395,6 @@ class TorsionStore:
         kwargs: dict | None = None,
     ) -> _AnalysisMerticCollectionTypeVar:
         """Calculate the metrics for the supplied analysis metric collection."""
-
         kwargs = kwargs if kwargs else dict()
 
         if not molecule_ids:

@@ -1,3 +1,5 @@
+"""Analyse torsion drive data using different force fields."""
+
 import pathlib
 from multiprocessing import freeze_support
 
@@ -68,9 +70,7 @@ def main(
     output_minimized: str,
     plot_dir: str,
 ) -> None:
-    """
-    Run torsion drive comparisons using specified force fields and input data.
-    """
+    """Run torsion drive comparisons using specified force fields and input data."""
     force_fields = base_force_fields + extra_force_fields
 
     dataset = QCArchiveTorsionDataset.model_validate_json(open(qcarchive_torsion_data).read())
@@ -103,6 +103,7 @@ def main(
 
 
 def get_torsion_image(molecule_id: int, store: TorsionStore) -> pyplot.Figure:
+    """Plot the torsion image for a given molecule ID."""
     smiles = store.get_smiles_by_molecule_id(molecule_id)
     dihedral_indices = store.get_dihedral_indices_by_molecule_id(molecule_id)
 
@@ -137,6 +138,7 @@ def get_torsion_image(molecule_id: int, store: TorsionStore) -> pyplot.Figure:
 
 
 def plot_torsions(plot_dir: str, force_fields: list[str], store: TorsionStore) -> None:
+    """Plot the torsional energies for each molecule in the dataset."""
     n_rows = 8
     n_cols = 5
 
@@ -227,6 +229,7 @@ def plot_torsions(plot_dir: str, force_fields: list[str], store: TorsionStore) -
 
 
 def plot_cdfs(force_fields: list[str], metrics_file: str, plot_dir: str):
+    """Plot the cumulative distribution functions for the RMSD, RMSE, and Jensen-Shannon distance."""
     metrics = MetricCollection.parse_file(metrics_file)
 
     x_ranges = {"rmsd": (0, 0.14), "rmse": (-0.3, 5), "js_distance": (None, None)}
@@ -305,9 +308,7 @@ def plot_cdfs(force_fields: list[str], metrics_file: str, plot_dir: str):
 
 
 def get_rms(array: np.ndarray) -> float:
-    """
-    Calculate the root mean square of an array.
-    """
+    """Calculate the root mean square of an array."""
     return np.sqrt(np.mean(array**2))
 
 
@@ -316,6 +317,7 @@ def plot_rms_stats(
     metrics_file: str,
     plot_dir: str,
 ) -> None:
+    """Plot the RMS values for the RMSD and RMSE."""
     metrics = MetricCollection.parse_file(metrics_file)
 
     units = {
@@ -354,6 +356,7 @@ def plot_rms_js_distance(
     metrics_file: str,
     plot_dir: str,
 ) -> None:
+    """Plot the RMS JS distance for each force field."""
     metrics = MetricCollection.parse_file(metrics_file)
 
     rms_js_distance = {
@@ -382,6 +385,7 @@ def plot_mean_error_distribution(
     metrics_file: str,
     plot_dir: str,
 ) -> None:
+    """Plot the distribution of mean errors for each force field."""
     metrics = MetricCollection.parse_file(metrics_file)
 
     units = {

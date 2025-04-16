@@ -8,11 +8,11 @@ repos:
     exclude: '\.(pdb|gro|top|sdf)$'
   - id: debug-statements
 - repo: https://github.com/asottile/setup-cfg-fmt
-  rev: v2.7.0
+  rev: v2.8.0
   hooks:
   - id: setup-cfg-fmt
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.9.10
+  rev: v0.11.5
   hooks:
     - id: ruff
       args: ['--fix']

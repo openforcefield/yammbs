@@ -26,7 +26,7 @@ def _shorthand_to_full_force_field_name(
     shorthand: str,
     make_unconstrained: bool = True,
 ) -> str:
-    """Make i.e. `openff-2.1.0` into `openff_unconstrained-2.1.0.offxml`"""
+    """Make i.e. `openff-2.1.0` into `openff_unconstrained-2.1.0.offxml`."""
     if make_unconstrained:
         # Split on '-' immediately followed by a number;
         # cannot split on '-' because of i.e. 'de-force-1.0.0'
@@ -39,8 +39,7 @@ def _shorthand_to_full_force_field_name(
 
 @functools.lru_cache(maxsize=1)
 def _lazy_load_force_field(force_field_name: str) -> ForceField:
-    """
-    Attempt to load a force field from a shorthand string or a file path.
+    """Attempt to load a force field from a shorthand string or a file path.
 
     Caching is used to speed up loading; a single force field takes O(100 ms) to
     load, but the cache takes O(10 ns) to access. The cache key is simply the
@@ -180,6 +179,9 @@ def _run_openmm(
             )
         except UnassignedValenceError:
             logger.warning(f"Skipping record {qcarchive_id} with unassigned valence terms")
+            return None
+        except ValueError as e:  # charging error
+            logger.warning(f"Skipping record {qcarchive_id} with a value error (probably a charge failure): {e}")
             return None
 
     context = openmm.Context(

@@ -20,13 +20,11 @@ jobs:
     name: Test
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
         os:
           - macos-latest
           - ubuntu-latest
         python-version:
-          - "3.10"
           - "3.11"
           - "3.12"
 
@@ -72,6 +70,8 @@ jobs:
 
     - name: Run tests
       run: |
+        python -m "from openff.toolkit import *"
+
         pytest -r fEx -n logical --durations=10 \
           --cov=yammbs/ --cov-report=xml --cov-config=setup.cfg \
           yammbs/

@@ -1,5 +1,4 @@
-"""
-Helpers for dealing with NumPy arrays.
+"""Helpers for dealing with NumPy arrays.
 
 Originally copied from openff-nagl.
 """
@@ -21,7 +20,7 @@ def _strip_units(val: list[float] | Quantity | NDArray) -> NDArray:
     return numpy.asarray(unitless_val).reshape((-3, 3))
 
 
-def _array_serializer(val: NDArray, nxt) -> list[float]:
+def _array_serializer(val: NDArray[numpy.float64], nxt) -> list[float]:
     return val.flatten().tolist()
 
 
