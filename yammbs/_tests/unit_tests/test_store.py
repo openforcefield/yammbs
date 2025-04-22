@@ -358,3 +358,13 @@ def test_get_metrics(small_store):
     assert this_metric.icrmsd["Angle"] < 2
     assert this_metric.icrmsd["Dihedral"] < 15
     assert this_metric.icrmsd["Improper"] < 1
+
+
+@pytest.mark.parametrize("forcefield", ["openff-2.1.0", "gaff-2.11"])
+def test_map_inchi_keys_to_qm_conformers_full(small_store, forcefield):
+    """Small regression test for mapping inchi keys to QM conformers"""
+
+    mapping = small_store._map_inchi_keys_to_qm_conformers(forcefield)
+    assert len(mapping) == 0
+
+
