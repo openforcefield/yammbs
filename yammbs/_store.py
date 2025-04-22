@@ -532,8 +532,7 @@ class MoleculeStore:
                 }
                 for record in db.db.query(
                     DBQMConformerRecord,
-                )
-                .all()
+                ).all()
             ]
             existing_mm_qcarchive_ids = [
                 record.qcarchive_id
@@ -555,7 +554,6 @@ class MoleculeStore:
             for molecule_id, conformers in mapping_by_molecule_id.items()
         }
         return mapping
-
 
     def optimize_mm(
         self,
