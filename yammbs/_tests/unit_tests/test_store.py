@@ -366,5 +366,3 @@ def test_map_inchi_keys_to_qm_conformers_full(small_store, forcefield):
 
     mapping = small_store._map_inchi_keys_to_qm_conformers(forcefield)
     assert len(mapping) == 0
-
-
