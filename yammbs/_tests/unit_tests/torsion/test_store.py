@@ -28,6 +28,21 @@ class TestTorsionStore:
 
         assert len(store) == 20
 
+    def test_torsions_with_same_smiles_and_indices(self, tmp_path):
+        """Reproduce Issue #131"""
+        store = TorsionStore.from_qcsubmit_collection(
+            TorsionDriveResultCollection.parse_file(
+                get_data_file_path(
+                    "_tests/data/qcsubmit/duplicate-smiles-atom-indices.json",
+                    "yammbs",
+                ),
+            ),
+            database_name=tmp_path / "tmp.sqlite",
+        )
+
+        assert store.get_qm_points_by_molecule_id(1) != store.get_qm_points_by_molecule_id(2)
+        assert store.get_dihedral_indices_by_molecule_id(1) == store.get_dihedral_indices_by_molecule_id(2)
+        assert store.get_smiles_by_molecule_id(1) == store.get_smiles_by_molecule_id(2)
 
 def test_minimize_basic(single_torsion_dataset, tmp_path):
     store = TorsionStore.from_torsion_dataset(

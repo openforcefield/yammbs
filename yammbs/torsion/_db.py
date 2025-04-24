@@ -15,6 +15,7 @@ class DBTorsionRecord(DBBase):  # type: ignore
     mapped_smiles = Column(String, nullable=False)
 
     dihedral_indices = Column(PickleType, nullable=False)
+    qcarchive_id = Column(Integer, nullable=False)
 
 
 class DBTorsionProfileRecord(DBBase):  # type: ignore
