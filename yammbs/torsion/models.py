@@ -13,6 +13,10 @@ class TorsionRecord(MoleculeRecord):
         ...,
         description="The indices of the atoms which define the driven dihedral angle",
     )
+    qcarchive_id: int = Field(
+        ...,
+        description="The record ID of the torsion drive as stored in QCArchive.",
+    )
 
 
 class QMTorsionPointRecord(Record):

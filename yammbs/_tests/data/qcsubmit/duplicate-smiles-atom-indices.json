@@ -1,0 +1,20 @@
+{
+    "entries": {
+        "https://api.qcarchive.molssi.org:443/": [
+            {
+                "type": "torsion",
+                "record_id": 21272423,
+                "cmiles": "[H:13][c:1]1[c:2]([c:6]([c:10]([c:7]([c:3]1[H:15])[H:19])[c:11]2[c:8]([c:4]([c:5]([c:9]([n:12]2)[H:21])[H:17])[H:16])[H:20])[H:18])[H:14]",
+                "inchi_key": "VQGHOUODWALEFC-UHFFFAOYNA-N"
+            },
+            {
+                "type": "torsion",
+                "record_id": 120098113,
+                "cmiles": "[c:1]1([H:13])[c:2]([H:14])[c:6]([H:18])[c:10](-[c:11]2[c:8]([H:20])[c:4]([H:16])[c:5]([H:17])[c:9]([H:21])[n:12]2)[c:7]([H:19])[c:3]1[H:15]",
+                "inchi_key": "VQGHOUODWALEFC-UHFFFAOYNA-N"
+            }
+        ]
+    },
+    "provenance": {},
+    "type": "TorsionDriveResultCollection"
+}

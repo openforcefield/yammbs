@@ -11,6 +11,7 @@ class TorsionDBSessionManager(DBSessionManager):
                 mapped_smiles=record.mapped_smiles,
                 inchi_key=record.inchi_key,
                 dihedral_indices=record.dihedral_indices,
+                qcarchive_id=record.qcarchive_id,
             ),
         )
 

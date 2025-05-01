@@ -227,6 +227,7 @@ class TorsionStore:
                 mapped_smiles=qm_torsion.mapped_smiles,
                 inchi_key=_smiles_to_inchi_key(qm_torsion.mapped_smiles),
                 dihedral_indices=qm_torsion.dihedral_indices,
+                qcarchive_id=qm_torsion.qcarchive_id,
             )
 
             store.store_torsion_record(torsion_record)
