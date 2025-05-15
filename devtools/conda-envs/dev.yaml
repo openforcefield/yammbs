@@ -22,6 +22,8 @@ dependencies:
 
   - geometric =1
   - pydantic =2
+  - click
+  - scipy
 
   - qcportal ~=0.55
 
