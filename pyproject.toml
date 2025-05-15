@@ -5,7 +5,27 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "yammbs"
+description = "A tool for benchmarking force fields."
+readme = "README.md"
+authors = [{name = "Open Force Field Initiative", email = "info@openforcefield.org"}]
+license = {text = "MIT"}
+dynamic = ["version"]
+
 [tool.versioningit]
+
+[tool.mypy]
+exclude = [
+    "scripts/",
+    "yammbs/_tests",
+]
+python_version = "3.11"
+plugins = "numpy.typing.mypy_plugin,pydantic.mypy"
+warn_unused_configs = true
+warn_unused_ignores = true
+warn_incomplete_stub = true
+show_error_codes = true
 
 [tool.ruff]
 line-length = 119
