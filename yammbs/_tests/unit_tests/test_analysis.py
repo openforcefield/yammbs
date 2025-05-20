@@ -6,12 +6,14 @@ from yammbs.analysis import get_internal_coordinate_differences, get_internal_co
 
 
 class TestAnalysis:
-    def test_rmsd(self, allicin, conformers):
+    @pytest.mark.parametrize("include_hydrogens", [True, False])
+    def test_rmsd(self, allicin, conformers, include_hydrogens):
         # Passing the same conformers should return 0.0
         last_last = get_rmsd(
             molecule=allicin,
             reference=conformers[-1],
             target=conformers[-1],
+            include_hydrogens=include_hydrogens,
         )
 
         assert last_last == 0.0
@@ -20,6 +22,7 @@ class TestAnalysis:
             molecule=allicin,
             reference=conformers[0],
             target=conformers[-1],
+            include_hydrogens=include_hydrogens,
         )
 
         assert isinstance(first_last, float)
@@ -28,6 +31,7 @@ class TestAnalysis:
             molecule=allicin,
             reference=conformers[0],
             target=conformers[1],
+            include_hydrogens=include_hydrogens,
         )
 
         assert first_second != first_last
@@ -36,9 +40,27 @@ class TestAnalysis:
             molecule=allicin,
             reference=conformers[-1],
             target=conformers[0],
+            include_hydrogens=include_hydrogens,
         )
 
         assert last_first == pytest.approx(first_last)
+
+    def test_rmsd_all_atom_rmsd_differs(self, allicin, conformers):
+        heavy_atom_rmsd = get_rmsd(
+            molecule=allicin,
+            reference=conformers[0],
+            target=conformers[1],
+            include_hydrogens=False,
+        )
+
+        all_atom_rmsd = get_rmsd(
+            molecule=allicin,
+            reference=conformers[0],
+            target=conformers[1],
+            include_hydrogens=True,
+        )
+
+        assert heavy_atom_rmsd != all_atom_rmsd
 
     def test_tfd(self, allicin, conformers):
         # Passing the same conformers should return 0.0

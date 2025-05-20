@@ -350,6 +350,7 @@ class TorsionStore:
         force_field: str,
         molecule_ids: list[int] | None = None,
         skip_check: bool = False,
+        include_hydrogens: bool = False,
     ) -> RMSDCollection:
         """Get the RMSD summed over the torsion profile."""
         from openff.toolkit import Molecule
@@ -376,7 +377,15 @@ class TorsionStore:
             rmsds.append(
                 RMSD(
                     id=molecule_id,
-                    rmsd=sum(get_rmsd(molecule, qm_points[key], mm_points[key]) for key in qm_points),
+                    rmsd=sum(
+                        get_rmsd(
+                            molecule,
+                            qm_points[key],
+                            mm_points[key],
+                            include_hydrogens=include_hydrogens,
+                        )
+                        for key in qm_points
+                    ),
                 ),
             )
 
@@ -462,6 +471,7 @@ class TorsionStore:
 
     def get_metrics(
         self,
+        include_hydrogens: bool = False,
     ) -> MetricCollection:
         import pandas
 
@@ -471,8 +481,15 @@ class TorsionStore:
 
         # TODO: Optimize this for speed
         for force_field in self.get_force_fields():
-            rmsds = self.get_rmsd(force_field=force_field, skip_check=True).to_dataframe()
-            eens = self.get_een(force_field=force_field, skip_check=True).to_dataframe()
+            rmsds = self.get_rmsd(
+                force_field=force_field,
+                skip_check=True,
+                include_hydrogens=include_hydrogens,
+            ).to_dataframe()
+            eens = self.get_een(
+                force_field=force_field,
+                skip_check=True,
+            ).to_dataframe()
 
             dataframe = rmsds.join(eens)
 
