@@ -109,10 +109,11 @@ class TorsionStore:
             return [molecule_id for (molecule_id,) in db.db.query(DBTorsionRecord.id).distinct()]
 
     # TODO: Allow by multiple selectors (how to do with multiple args? 1-arg case is smiles: list[str])
-    def get_molecule_id_by_smiles_and_dihedral_indices(
+    def get_molecule_id_by_smiles_and_dihedral_indices_and_qcarchive_id(
         self,
         smiles: str,
         dihedral_indices: tuple[int, int, int, int],
+        qcarchive_id: int,
     ) -> int:
         with self._get_session() as db:
             return next(
@@ -121,6 +122,7 @@ class TorsionStore:
                 .filter_by(
                     mapped_smiles=smiles,
                     dihedral_indices=dihedral_indices,
+                    qcarchive_id=qcarchive_id,
                 )
                 .all()
             )
@@ -234,9 +236,10 @@ class TorsionStore:
 
             for angle in qm_torsion.coordinates:
                 qm_point_record = QMTorsionPointRecord(
-                    molecule_id=store.get_molecule_id_by_smiles_and_dihedral_indices(
+                    molecule_id=store.get_molecule_id_by_smiles_and_dihedral_indices_and_qcarchive_id(
                         smiles=torsion_record.mapped_smiles,
                         dihedral_indices=torsion_record.dihedral_indices,
+                        qcarchive_id=torsion_record.qcarchive_id,
                     ),
                     grid_id=angle,  # TODO: This needs to be a tuple later
                     coordinates=qm_torsion.coordinates[angle],
