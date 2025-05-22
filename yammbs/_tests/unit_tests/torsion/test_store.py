@@ -1,3 +1,4 @@
+import numpy
 import os
 
 from openff.qcsubmit.results import TorsionDriveResultCollection
@@ -40,9 +41,14 @@ class TestTorsionStore:
             database_name=tmp_path / "tmp.sqlite",
         )
 
-        assert store.get_qm_points_by_molecule_id(1) != store.get_qm_points_by_molecule_id(2)
-        assert store.get_dihedral_indices_by_molecule_id(1) == store.get_dihedral_indices_by_molecule_id(2)
-        assert store.get_smiles_by_molecule_id(1) == store.get_smiles_by_molecule_id(2)
+        assert not numpy.allclose(
+             [*store.get_qm_points_by_torsion_id(1).values()],
+             [*store.get_qm_points_by_torsion_id(2).values()],
+        )
+
+        assert store.get_dihedral_indices_by_torsion_id(2) == store.get_dihedral_indices_by_torsion_id(1)
+
+        assert store.get_smiles_by_torsion_id(1) == store.get_smiles_by_torsion_id(2)
 
 def test_minimize_basic(single_torsion_dataset, tmp_path):
     store = TorsionStore.from_torsion_dataset(
@@ -52,10 +58,10 @@ def test_minimize_basic(single_torsion_dataset, tmp_path):
 
     store.optimize_mm(force_field="openff-2.2.0", n_processes=os.cpu_count())
 
-    molecule_id = store.get_molecule_ids()[0]
+    torsion_id = store.get_torsion_ids()[0]
 
-    assert len(store.get_mm_points_by_molecule_id(molecule_id, force_field="openff-2.2.0")) == len(
-        store.get_mm_points_by_molecule_id(molecule_id, force_field="openff-2.2.0"),
+    assert len(store.get_mm_points_by_torsion_id(torsion_id, force_field="openff-2.2.0")) == len(
+        store.get_mm_points_by_torsion_id(torsion_id, force_field="openff-2.2.0"),
     )
 
     assert store.get_force_fields() == ["openff-2.2.0"]

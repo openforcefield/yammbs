@@ -10,7 +10,7 @@ def ethane_input() -> ConstrainedMinimizationInput:
     ethane.generate_conformers(n_conformers=1)
 
     return ConstrainedMinimizationInput(
-        molecule_id=100,
+        torsion_id=100,
         mapped_smiles=ethane.to_smiles(mapped=True),
         dihedral_indices=[0, 1, 2, 3],
         force_field="openff-2.0.0",

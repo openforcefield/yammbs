@@ -98,7 +98,7 @@ class TorsionStore:
         with self._get_session() as db:
             db.store_mm_torsion_point(point)
 
-    def get_molecule_ids(self) -> list[int]:
+    def get_torsion_ids(self) -> list[int]:
         """Get the molecule IDs of all records in the store.
 
         These are likely to be integers sequentially incrementing from 1, but that
@@ -106,15 +106,16 @@ class TorsionStore:
         """
         # TODO: This isn't really a "molecule ID", it's more like a torsiondrive ID
         with self._get_session() as db:
-            return [molecule_id for (molecule_id,) in db.db.query(DBTorsionRecord.id).distinct()]
+            return [torsion_id for (torsion_id,) in db.db.query(DBTorsionRecord.id).distinct()]
 
     # TODO: Allow by multiple selectors (how to do with multiple args? 1-arg case is smiles: list[str])
-    def get_molecule_id_by_smiles_and_dihedral_indices_and_qcarchive_id(
+    def get_torsion_id_by_unique_identifiers(
         self,
         smiles: str,
         dihedral_indices: tuple[int, int, int, int],
         qcarchive_id: int,
     ) -> int:
+        """Get torsion ID by the minimal unique identifiers: mapped SMILES, dihedral indices, and QCArchive ID."""
         with self._get_session() as db:
             return next(
                 id
@@ -128,12 +129,12 @@ class TorsionStore:
             )
 
     # TODO: Allow by multiple selectors (id: list[int])
-    def get_smiles_by_molecule_id(self, id: int) -> str:
+    def get_smiles_by_torsion_id(self, id: int) -> str:
         with self._get_session() as db:
             return next(smiles for (smiles,) in db.db.query(DBTorsionRecord.mapped_smiles).filter_by(id=id).all())
 
     # TODO: Allow by multiple selectors (id: list[int])
-    def get_dihedral_indices_by_molecule_id(self, id: int) -> tuple[int, int, int, int]:
+    def get_dihedral_indices_by_torsion_id(self, id: int) -> tuple[int, int, int, int]:
         with self._get_session() as db:
             return next(
                 dihedral_indices
@@ -152,7 +153,7 @@ class TorsionStore:
                 ).distinct()
             ]
 
-    def get_qm_points_by_molecule_id(self, id: int) -> dict[float, NDArray]:
+    def get_qm_points_by_torsion_id(self, id: int) -> dict[float, NDArray]:
         with self._get_session() as db:
             return {
                 grid_id: coordinates
@@ -164,7 +165,7 @@ class TorsionStore:
                 .all()
             }
 
-    def get_mm_points_by_molecule_id(
+    def get_mm_points_by_torsion_id(
         self,
         id: int,
         force_field: str,
@@ -181,7 +182,7 @@ class TorsionStore:
                 .all()
             }
 
-    def get_qm_energies_by_molecule_id(self, id: int) -> dict[float, float]:
+    def get_qm_energies_by_torsion_id(self, id: int) -> dict[float, float]:
         with self._get_session() as db:
             return {
                 grid_id: energy
@@ -193,7 +194,7 @@ class TorsionStore:
                 .all()
             }
 
-    def get_mm_energies_by_molecule_id(self, id: int, force_field: str) -> dict[float, float]:
+    def get_mm_energies_by_torsion_id(self, id: int, force_field: str) -> dict[float, float]:
         with self._get_session() as db:
             return {
                 grid_id: energy
@@ -236,7 +237,7 @@ class TorsionStore:
 
             for angle in qm_torsion.coordinates:
                 qm_point_record = QMTorsionPointRecord(
-                    molecule_id=store.get_molecule_id_by_smiles_and_dihedral_indices_and_qcarchive_id(
+                    torsion_id=store.get_torsion_id_by_unique_identifiers(
                         smiles=torsion_record.mapped_smiles,
                         dihedral_indices=torsion_record.dihedral_indices,
                         qcarchive_id=torsion_record.qcarchive_id,
@@ -278,18 +279,18 @@ class TorsionStore:
 
         from yammbs.torsion._minimize import _minimize_torsions
 
-        molecule_ids = self.get_molecule_ids()
+        torsion_ids = self.get_torsion_ids()
 
         # TODO Do this by interacting with the database in one step?
         ids_to_minimize = [
-            molecule_id
-            for molecule_id in molecule_ids
-            if len(self.get_mm_points_by_molecule_id(molecule_id, force_field)) == 0
+            torsion_id
+            for torsion_id in torsion_ids
+            if len(self.get_mm_points_by_torsion_id(torsion_id, force_field)) == 0
         ]
 
-        id_to_smiles = {molecule_id: self.get_smiles_by_molecule_id(molecule_id) for molecule_id in ids_to_minimize}
+        id_to_smiles = {torsion_id: self.get_smiles_by_torsion_id(torsion_id) for torsion_id in ids_to_minimize}
         id_to_dihedral_indices = {
-            molecule_id: self.get_dihedral_indices_by_molecule_id(molecule_id) for molecule_id in ids_to_minimize
+            torsion_id: self.get_dihedral_indices_by_torsion_id(torsion_id) for torsion_id in ids_to_minimize
         }
 
         LOGGER.info(f"Setting up generator of data for minimization with {force_field=}")
@@ -309,14 +310,14 @@ class TorsionStore:
                 None,
             ] = (  # Probably a better way to do this with some proper database query with join
                 (
-                    molecule_id,
-                    id_to_smiles[molecule_id],
-                    id_to_dihedral_indices[molecule_id],
+                    torsion_id,
+                    id_to_smiles[torsion_id],
+                    id_to_dihedral_indices[torsion_id],
                     grid_id,
                     coordinates,
                     energy,
                 )
-                for (molecule_id, grid_id, coordinates, energy) in db.db.query(
+                for (torsion_id, grid_id, coordinates, energy) in db.db.query(
                     DBQMTorsionPointRecord.parent_id,
                     DBQMTorsionPointRecord.grid_id,
                     DBQMTorsionPointRecord.coordinates,
@@ -340,7 +341,7 @@ class TorsionStore:
             for result in minimization_results:
                 db.store_mm_torsion_point(
                     MMTorsionPointRecord(
-                        molecule_id=result.molecule_id,
+                        torsion_id=result.torsion_id,
                         grid_id=result.grid_id,
                         coordinates=result.coordinates,
                         force_field=result.force_field,
@@ -351,14 +352,14 @@ class TorsionStore:
     def get_rmsd(
         self,
         force_field: str,
-        molecule_ids: list[int] | None = None,
+        torsion_ids: list[int] | None = None,
         skip_check: bool = False,
     ) -> RMSDCollection:
         """Get the RMSD summed over the torsion profile."""
         from openff.toolkit import Molecule
 
-        if not molecule_ids:
-            molecule_ids = self.get_molecule_ids()
+        if not torsion_ids:
+            torsion_ids = self.get_torsion_ids()
 
         if not skip_check:
             # TODO: Copy this into each get_* method?
@@ -367,18 +368,18 @@ class TorsionStore:
 
         rmsds = RMSDCollection()
 
-        for molecule_id in molecule_ids:
-            qm_points = self.get_qm_points_by_molecule_id(id=molecule_id)
-            mm_points = self.get_mm_points_by_molecule_id(id=molecule_id, force_field=force_field)
+        for torsion_id in torsion_ids:
+            qm_points = self.get_qm_points_by_torsion_id(id=torsion_id)
+            mm_points = self.get_mm_points_by_torsion_id(id=torsion_id, force_field=force_field)
 
             molecule = Molecule.from_mapped_smiles(
-                self.get_smiles_by_molecule_id(molecule_id),
+                self.get_smiles_by_torsion_id(torsion_id),
                 allow_undefined_stereo=True,
             )
 
             rmsds.append(
                 RMSD(
-                    id=molecule_id,
+                    id=torsion_id,
                     rmsd=sum(get_rmsd(molecule, qm_points[key], mm_points[key]) for key in qm_points),
                 ),
             )
@@ -388,36 +389,36 @@ class TorsionStore:
     def get_een(
         self,
         force_field: str,
-        molecule_ids: list[int] | None = None,
+        torsion_ids: list[int] | None = None,
         skip_check: bool = False,
     ) -> EENCollection:
         """Get the vector norm of the energy errors over the torsion profile."""
-        if not molecule_ids:
-            molecule_ids = self.get_molecule_ids()
+        if not torsion_ids:
+            torsion_ids = self.get_torsion_ids()
 
         if not skip_check:
             self.optimize_mm(force_field=force_field)
 
         eens = EENCollection()
 
-        for molecule_id in molecule_ids:
+        for torsion_id in torsion_ids:
             qm, mm = (
                 numpy.fromiter(dct.values(), dtype=float)
                 for dct in _normalize(
-                    self.get_qm_energies_by_molecule_id(id=molecule_id),
-                    self.get_mm_energies_by_molecule_id(id=molecule_id, force_field=force_field),
+                    self.get_qm_energies_by_torsion_id(id=torsion_id),
+                    self.get_mm_energies_by_torsion_id(id=torsion_id, force_field=force_field),
                 )
             )
 
             if len(mm) * len(qm) == 0:
                 LOGGER.warning(
                     "Missing QM OR MM data for this no mm data, returning empty dicts; \n\t"
-                    f"{molecule_id=}, {force_field=}, {len(qm)=}, {len(mm)=}",
+                    f"{torsion_id=}, {force_field=}, {len(qm)=}, {len(mm)=}",
                 )
 
             eens.append(
                 EEN(
-                    id=molecule_id,
+                    id=torsion_id,
                     een=numpy.linalg.norm(qm - mm),
                 ),
             )
@@ -435,7 +436,7 @@ class TorsionStore:
             for force_field in self.get_force_fields():
                 output_dataset.mm_torsions[force_field] = list()
 
-                for molecule_id in self.get_molecule_ids():
+                for torsion_id in self.get_torsion_ids():
                     mm_data = tuple(
                         (grid_id, coordinates, energy)
                         for (grid_id, coordinates, energy) in db.db.query(
@@ -443,7 +444,7 @@ class TorsionStore:
                             DBMMTorsionPointRecord.coordinates,
                             DBMMTorsionPointRecord.energy,
                         )
-                        .filter_by(parent_id=molecule_id)
+                        .filter_by(parent_id=torsion_id)
                         .filter_by(force_field=force_field)
                         .all()
                     )
@@ -454,8 +455,8 @@ class TorsionStore:
                     # TODO: Call _normalize here?
                     output_dataset.mm_torsions[force_field].append(
                         MinimizedTorsionProfile(
-                            mapped_smiles=self.get_smiles_by_molecule_id(molecule_id),
-                            dihedral_indices=self.get_dihedral_indices_by_molecule_id(molecule_id),
+                            mapped_smiles=self.get_smiles_by_torsion_id(torsion_id),
+                            dihedral_indices=self.get_dihedral_indices_by_torsion_id(torsion_id),
                             coordinates={grid_id: coordinates for grid_id, coordinates, _ in mm_data},
                             energies={grid_id: energy for grid_id, _, energy in mm_data},
                         ),

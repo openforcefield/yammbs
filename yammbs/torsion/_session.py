@@ -18,7 +18,7 @@ class TorsionDBSessionManager(DBSessionManager):
     def store_qm_torsion_point(self, record: QMTorsionPointRecord):
         self.db.add(
             DBQMTorsionPointRecord(
-                parent_id=record.molecule_id,
+                parent_id=record.torsion_id,
                 grid_id=record.grid_id,
                 coordinates=record.coordinates,
                 energy=record.energy,
@@ -28,7 +28,7 @@ class TorsionDBSessionManager(DBSessionManager):
     def store_mm_torsion_point(self, record: MMTorsionPointRecord):
         self.db.add(
             DBMMTorsionPointRecord(
-                parent_id=record.molecule_id,
+                parent_id=record.torsion_id,
                 grid_id=record.grid_id,
                 coordinates=record.coordinates,
                 force_field=record.force_field,
