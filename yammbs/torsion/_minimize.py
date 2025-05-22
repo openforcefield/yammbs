@@ -14,11 +14,9 @@ LOGGER = logging.getLogger(__name__)
 
 
 class ConstrainedMinimizationInput(ImmutableModel):
-    # This is more like a "TorsionDrive" ID than a molecule ID,
-    # but it's how the database is currently structured.
-    molecule_id: int = Field(
+    torsion_id: int = Field(
         ...,
-        description="The identifier of the molecule",
+        description="The identifier of the torsion unit",
     )
     mapped_smiles: str = Field(
         ...,
@@ -72,14 +70,14 @@ def _minimize_torsions(
     # from inside of TorsionStore
     inputs: Generator[ConstrainedMinimizationInput, None, None] = (
         ConstrainedMinimizationInput(
-            molecule_id=molecule_id,
+            torsion_id=torsion_id,
             mapped_smiles=mapped_smiles,
             dihedral_indices=dihedral_indices,
             force_field=force_field,
             coordinates=coordinates,
             grid_id=grid_id,
         )
-        for (molecule_id, mapped_smiles, dihedral_indices, grid_id, coordinates, _) in data
+        for (torsion_id, mapped_smiles, dihedral_indices, grid_id, coordinates, _) in data
     )
 
     LOGGER.info("Setting up multiprocessing pool with generator (of unknown length)")
@@ -201,7 +199,7 @@ def _minimize_constrained(
 
     LOGGER.debug("Returning result")
     return ConstrainedMinimizationResult(
-        molecule_id=input.molecule_id,
+        torsion_id=input.torsion_id,
         mapped_smiles=input.mapped_smiles,
         dihedral_indices=input.dihedral_indices,
         force_field=input.force_field,

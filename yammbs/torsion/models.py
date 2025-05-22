@@ -22,7 +22,7 @@ class TorsionRecord(MoleculeRecord):
 class QMTorsionPointRecord(Record):
     """A record for a specific 'point' in a torsion scan."""
 
-    molecule_id: int = Field(
+    torsion_id: int = Field(
         ...,
         description="The ID of the molecule in the database",
     )
