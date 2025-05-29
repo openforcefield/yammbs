@@ -106,39 +106,40 @@ class TorsionStore:
         """
         # TODO: This isn't really a "molecule ID", it's more like a torsiondrive ID
         with self._get_session() as db:
-            return [torsion_id for (torsion_id,) in db.db.query(DBTorsionRecord.id).distinct()]
+            return [torsion_id for (torsion_id,) in db.db.query(DBTorsionRecord.torsion_id).distinct()]
 
     # TODO: Allow by multiple selectors (how to do with multiple args? 1-arg case is smiles: list[str])
-    def get_torsion_id_by_unique_identifiers(
+    def get_torsion_id_by_id(
         self,
-        smiles: str,
-        dihedral_indices: tuple[int, int, int, int],
-        qcarchive_id: int,
+        torsion_id: int,
     ) -> int:
-        """Get torsion ID by the minimal unique identifiers: mapped SMILES, dihedral indices, and QCArchive ID."""
+        """Get torsion by a torsion ID."""
         with self._get_session() as db:
             return next(
                 id
                 for (id,) in db.db.query(DBTorsionRecord.id)
                 .filter_by(
-                    mapped_smiles=smiles,
-                    dihedral_indices=dihedral_indices,
-                    qcarchive_id=qcarchive_id,
+                    torsion_id=torsion_id,
                 )
                 .all()
             )
 
     # TODO: Allow by multiple selectors (id: list[int])
-    def get_smiles_by_torsion_id(self, id: int) -> str:
+    def get_smiles_by_torsion_id(self, torsion_id: int) -> str:
         with self._get_session() as db:
-            return next(smiles for (smiles,) in db.db.query(DBTorsionRecord.mapped_smiles).filter_by(id=id).all())
+            return next(
+                smiles
+                for (smiles,) in db.db.query(DBTorsionRecord.mapped_smiles).filter_by(torsion_id=torsion_id).all()
+            )
 
     # TODO: Allow by multiple selectors (id: list[int])
-    def get_dihedral_indices_by_torsion_id(self, id: int) -> tuple[int, int, int, int]:
+    def get_dihedral_indices_by_torsion_id(self, torsion_id: int) -> tuple[int, int, int, int]:
         with self._get_session() as db:
             return next(
                 dihedral_indices
-                for (dihedral_indices,) in db.db.query(DBTorsionRecord.dihedral_indices).filter_by(id=id).all()
+                for (dihedral_indices,) in db.db.query(DBTorsionRecord.dihedral_indices)
+                .filter_by(torsion_id=torsion_id)
+                .all()
             )
 
     def get_force_fields(
@@ -153,7 +154,7 @@ class TorsionStore:
                 ).distinct()
             ]
 
-    def get_qm_points_by_torsion_id(self, id: int) -> dict[float, NDArray]:
+    def get_qm_points_by_torsion_id(self, torsion_id: int) -> dict[float, NDArray]:
         with self._get_session() as db:
             return {
                 grid_id: coordinates
@@ -161,13 +162,13 @@ class TorsionStore:
                     DBQMTorsionPointRecord.grid_id,
                     DBQMTorsionPointRecord.coordinates,
                 )
-                .filter_by(parent_id=id)
+                .filter_by(parent_id=torsion_id)
                 .all()
             }
 
     def get_mm_points_by_torsion_id(
         self,
-        id: int,
+        torsion_id: int,
         force_field: str,
     ) -> dict[float, NDArray]:
         with self._get_session() as db:
@@ -177,12 +178,12 @@ class TorsionStore:
                     DBMMTorsionPointRecord.grid_id,
                     DBMMTorsionPointRecord.coordinates,
                 )
-                .filter_by(parent_id=id)
+                .filter_by(parent_id=torsion_id)
                 .filter_by(force_field=force_field)
                 .all()
             }
 
-    def get_qm_energies_by_torsion_id(self, id: int) -> dict[float, float]:
+    def get_qm_energies_by_torsion_id(self, torsion_id: int) -> dict[float, float]:
         with self._get_session() as db:
             return {
                 grid_id: energy
@@ -190,11 +191,11 @@ class TorsionStore:
                     DBQMTorsionPointRecord.grid_id,
                     DBQMTorsionPointRecord.energy,
                 )
-                .filter_by(parent_id=id)
+                .filter_by(parent_id=torsion_id)
                 .all()
             }
 
-    def get_mm_energies_by_torsion_id(self, id: int, force_field: str) -> dict[float, float]:
+    def get_mm_energies_by_torsion_id(self, torsion_id: int, force_field: str) -> dict[float, float]:
         with self._get_session() as db:
             return {
                 grid_id: energy
@@ -202,7 +203,7 @@ class TorsionStore:
                     DBMMTorsionPointRecord.grid_id,
                     DBMMTorsionPointRecord.energy,
                 )
-                .filter_by(parent_id=id)
+                .filter_by(parent_id=torsion_id)
                 .filter_by(force_field=force_field)
                 .all()
             }
@@ -226,23 +227,22 @@ class TorsionStore:
         LOGGER.info("Iterating through qm_torsions field of QCArchiveTorsionDataset (which is a YAMMBS model).")
 
         for qm_torsion in dataset.qm_torsions:
+            # TODO: Adapt this for non-QCArchive datasets like TorsionNet500
+            this_id = qm_torsion.qcarchive_id
+
             torsion_record = TorsionRecord(
+                torsion_id=this_id,
                 mapped_smiles=qm_torsion.mapped_smiles,
                 inchi_key=_smiles_to_inchi_key(qm_torsion.mapped_smiles),
                 dihedral_indices=qm_torsion.dihedral_indices,
-                qcarchive_id=qm_torsion.qcarchive_id,
             )
 
             store.store_torsion_record(torsion_record)
 
             for angle in qm_torsion.coordinates:
                 qm_point_record = QMTorsionPointRecord(
-                    torsion_id=store.get_torsion_id_by_unique_identifiers(
-                        smiles=torsion_record.mapped_smiles,
-                        dihedral_indices=torsion_record.dihedral_indices,
-                        qcarchive_id=torsion_record.qcarchive_id,
-                    ),
-                    grid_id=angle,  # TODO: This needs to be a tuple later
+                    torsion_id=this_id,
+                    grid_id=angle,  # TODO: This needs to be a tuple later for 2D scans
                     coordinates=qm_torsion.coordinates[angle],
                     energy=qm_torsion.energies[angle],
                 )
@@ -369,8 +369,8 @@ class TorsionStore:
         rmsds = RMSDCollection()
 
         for torsion_id in torsion_ids:
-            qm_points = self.get_qm_points_by_torsion_id(id=torsion_id)
-            mm_points = self.get_mm_points_by_torsion_id(id=torsion_id, force_field=force_field)
+            qm_points = self.get_qm_points_by_torsion_id(torsion_id=torsion_id)
+            mm_points = self.get_mm_points_by_torsion_id(torsion_id=torsion_id, force_field=force_field)
 
             molecule = Molecule.from_mapped_smiles(
                 self.get_smiles_by_torsion_id(torsion_id),
@@ -405,8 +405,8 @@ class TorsionStore:
             qm, mm = (
                 numpy.fromiter(dct.values(), dtype=float)
                 for dct in _normalize(
-                    self.get_qm_energies_by_torsion_id(id=torsion_id),
-                    self.get_mm_energies_by_torsion_id(id=torsion_id, force_field=force_field),
+                    self.get_qm_energies_by_torsion_id(torsion_id=torsion_id),
+                    self.get_mm_energies_by_torsion_id(torsion_id=torsion_id, force_field=force_field),
                 )
             )
 

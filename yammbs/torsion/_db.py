@@ -11,11 +11,12 @@ class DBTorsionRecord(DBBase):  # type: ignore
 
     id = Column(Integer, primary_key=True, index=True)
 
+    torsion_id = Column(Integer, nullable=False, index=True)
+
     inchi_key = Column(String, nullable=False, index=True)
     mapped_smiles = Column(String, nullable=False)
 
     dihedral_indices = Column(PickleType, nullable=False)
-    qcarchive_id = Column(Integer, nullable=False)
 
 
 class DBTorsionProfileRecord(DBBase):  # type: ignore

@@ -41,14 +41,15 @@ class TestTorsionStore:
             database_name=tmp_path / "tmp.sqlite",
         )
 
+        # these ints are torsion IDs, same as the record IDs in the source data
         assert not numpy.allclose(
-             [*store.get_qm_points_by_torsion_id(1).values()],
-             [*store.get_qm_points_by_torsion_id(2).values()],
+             [*store.get_qm_points_by_torsion_id(21272423).values()],
+             [*store.get_qm_points_by_torsion_id(120098113).values()],
         )
 
-        assert store.get_dihedral_indices_by_torsion_id(2) == store.get_dihedral_indices_by_torsion_id(1)
+        assert store.get_dihedral_indices_by_torsion_id(21272423) == store.get_dihedral_indices_by_torsion_id(120098113)
 
-        assert store.get_smiles_by_torsion_id(1) == store.get_smiles_by_torsion_id(2)
+        assert store.get_smiles_by_torsion_id(21272423) == store.get_smiles_by_torsion_id(120098113)
 
 def test_minimize_basic(single_torsion_dataset, tmp_path):
     store = TorsionStore.from_torsion_dataset(

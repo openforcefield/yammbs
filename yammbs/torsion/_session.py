@@ -8,10 +8,10 @@ class TorsionDBSessionManager(DBSessionManager):
     def store_torsion_record(self, record: TorsionRecord):
         self.db.add(
             DBTorsionRecord(
+                torsion_id=record.torsion_id,
                 mapped_smiles=record.mapped_smiles,
                 inchi_key=record.inchi_key,
                 dihedral_indices=record.dihedral_indices,
-                qcarchive_id=record.qcarchive_id,
             ),
         )
 
