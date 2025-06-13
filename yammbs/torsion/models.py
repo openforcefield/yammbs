@@ -9,20 +9,20 @@ from yammbs.models import MoleculeRecord, Record
 class TorsionRecord(MoleculeRecord):
     """Base class for torsion records."""
 
+    torsion_id: int = Field(
+        ...,
+        description="The ID of the molecule in the database",
+    )
     dihedral_indices: tuple[int, int, int, int] = Field(
         ...,
         description="The indices of the atoms which define the driven dihedral angle",
-    )
-    qcarchive_id: int = Field(
-        ...,
-        description="The record ID of the torsion drive as stored in QCArchive.",
     )
 
 
 class QMTorsionPointRecord(Record):
     """A record for a specific 'point' in a torsion scan."""
 
-    molecule_id: int = Field(
+    torsion_id: int = Field(
         ...,
         description="The ID of the molecule in the database",
     )
