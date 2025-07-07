@@ -61,10 +61,6 @@ def test_minimize_basic(single_torsion_dataset, tmp_path):
 
     torsion_id = store.get_torsion_ids()[0]
 
-    assert len(store.get_mm_points_by_torsion_id(torsion_id, force_field="openff-2.2.0")) == len(
-        store.get_mm_points_by_torsion_id(torsion_id, force_field="openff-2.2.0"),
-    )
-
     assert store.get_force_fields() == ["openff-2.2.0"]
 
     # stored outputs include MM profiles for 1 molecule with 1 force field
