@@ -8,12 +8,12 @@ repos:
     exclude: '\.(pdb|gro|top|sdf)$'
   - id: debug-statements
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.11.10
+  rev: v0.12.3
   hooks:
     - id: ruff
       args: ['--fix']
     - id: ruff-format
 - repo: https://github.com/asottile/add-trailing-comma
-  rev: v3.1.0
+  rev: v3.2.0
   hooks:
   - id: add-trailing-comma
