@@ -116,7 +116,7 @@ class TorsionStore:
                 for (smiles,) in db.db.query(DBTorsionRecord.mapped_smiles).filter_by(torsion_id=torsion_id).all()
             )
 
-    def get_torsion_id_by_smiles(self, smiles: str) -> list[int]:
+    def get_torsion_ids_by_smiles(self, smiles: str) -> list[int]:
         """Get all torsion IDs having a given mapped SMILES."""
         with self._get_session() as db:
             return [
