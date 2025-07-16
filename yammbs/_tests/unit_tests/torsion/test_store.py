@@ -67,7 +67,7 @@ class TestTorsionStore:
                 assert isinstance(torsion_ids, list)
                 assert len(torsion_ids) > 0
                 assert isinstance(torsion_ids[-1], int)
-            
+
                 assert torsion_id in torsion_ids
 
 
