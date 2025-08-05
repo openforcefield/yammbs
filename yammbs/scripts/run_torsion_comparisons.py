@@ -21,7 +21,13 @@ pyplot.style.use("ggplot")
     "--base-force-fields",
     "-bf",
     multiple=True,
-    default=["openff-1.0.0", "openff-2.0.0", "openff-2.1.0", "openff-2.2.0", "openff-2.2.1"],
+    default=[
+        "openff-1.0.0",
+        "openff-2.0.0",
+        "openff-2.1.0",
+        "openff-2.2.0",
+        "openff-2.2.1",
+    ],
     help="List of force fields to use for optimization.",
 )
 @click.option(
@@ -102,10 +108,10 @@ def main(
     plot_rms_js_distance(force_fields, output_metrics, plot_dir)
 
 
-def get_torsion_image(molecule_id: int, store: TorsionStore) -> pyplot.Figure:
+def get_torsion_image(torsion_id: int, store: TorsionStore) -> pyplot.Figure:
     """Plot the torsion image for a given molecule ID."""
-    smiles = store.get_smiles_by_molecule_id(molecule_id)
-    dihedral_indices = store.get_dihedral_indices_by_molecule_id(molecule_id)
+    smiles = store.get_smiles_by_torsion_id(torsion_id)
+    dihedral_indices = store.get_dihedral_indices_by_torsion_id(torsion_id)
 
     # Use the mapped SMILES to get the molecule
     mol = Molecule.from_mapped_smiles(smiles, allow_undefined_stereo=True)
@@ -117,7 +123,12 @@ def get_torsion_image(molecule_id: int, store: TorsionStore) -> pyplot.Figure:
     # Draw in 2D - compute 2D coordinates
     AllChem.Compute2DCoords(rdmol)
     # Highlight the dihedral
-    atom_indices = [dihedral_indices[0], dihedral_indices[1], dihedral_indices[2], dihedral_indices[3]]
+    atom_indices = [
+        dihedral_indices[0],
+        dihedral_indices[1],
+        dihedral_indices[2],
+        dihedral_indices[3],
+    ]
     bond_indices = [
         rdmol.GetBondBetweenAtoms(atom_indices[0], atom_indices[1]).GetIdx(),
         rdmol.GetBondBetweenAtoms(atom_indices[1], atom_indices[2]).GetIdx(),
@@ -143,7 +154,7 @@ def plot_torsions(plot_dir: str, force_fields: list[str], store: TorsionStore) -
     n_cols = 5
 
     # Adjust number of rows and columns down if we have fewer than 40 molecules
-    n_molecules = len(store.get_molecule_ids())
+    n_molecules = len(store.get_torsion_ids())
     if n_molecules * 2 < n_rows * n_cols:
         n_rows = n_molecules // n_cols
         if n_molecules % n_cols != 0:
@@ -154,7 +165,7 @@ def plot_torsions(plot_dir: str, force_fields: list[str], store: TorsionStore) -
 
     fig, axes = pyplot.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 4))
 
-    for i, molecule_id in enumerate(store.get_molecule_ids()):
+    for i, torsion_id in enumerate(store.get_torsion_ids()):
         # Draw the molecule on the upper axis and the torsion plot on the lower axis
         if i >= n_torsions:
             break
@@ -166,12 +177,12 @@ def plot_torsions(plot_dir: str, force_fields: list[str], store: TorsionStore) -
         torsion_axis = axes[row * 2 + 1, col]
 
         # Draw the molecule
-        image_axis.imshow(get_torsion_image(molecule_id, store))
+        image_axis.imshow(get_torsion_image(torsion_id, store))
         image_axis.axis("off")
 
         # Plot the torsion data
-        torsion_axis.set_title(f"ID: {molecule_id}")
-        _qm = store.get_qm_energies_by_molecule_id(molecule_id)
+        torsion_axis.set_title(f"ID: {torsion_id}")
+        _qm = store.get_qm_energies_by_torsion_id(torsion_id)
 
         _qm = dict(sorted(_qm.items()))
 
@@ -195,7 +206,7 @@ def plot_torsions(plot_dir: str, force_fields: list[str], store: TorsionStore) -
         cmap = pyplot.get_cmap("viridis", len(force_fields))
 
         for force_field in force_fields:
-            mm = dict(sorted(store.get_mm_energies_by_molecule_id(molecule_id, force_field=force_field).items()))
+            mm = dict(sorted(store.get_mm_energies_by_torsion_id(torsion_id, force_field=force_field).items()))
             if len(mm) == 0:
                 continue
 
@@ -225,7 +236,7 @@ def plot_torsions(plot_dir: str, force_fields: list[str], store: TorsionStore) -
         axes[row * 2 + 1, col].axis("off")
 
     fig.tight_layout()
-    fig.savefig(f"{plot_dir}/torsions.png")
+    fig.savefig(f"{plot_dir}/torsions.png", dpi=300, bbox_inches="tight")
 
 
 def plot_cdfs(force_fields: list[str], metrics_file: str, plot_dir: str):
@@ -302,9 +313,9 @@ def plot_cdfs(force_fields: list[str], metrics_file: str, plot_dir: str):
                 axis.set_xlim(x_ranges[key])
                 axis.set_ylim((-0.05, 1.05))
 
-        axis.legend(loc=0)
+        axis.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
 
-        figure.savefig(f"{plot_dir}/{key}.png", dpi=300)
+        figure.savefig(f"{plot_dir}/{key}.png", dpi=300, bbox_inches="tight")
 
 
 def get_rms(array: np.ndarray) -> float:
