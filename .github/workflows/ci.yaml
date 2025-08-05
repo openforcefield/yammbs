@@ -73,13 +73,15 @@ jobs:
         python -m "from openff.toolkit import *"
 
         pytest -r fEx -n logical --durations=10 \
-          --cov=yammbs/ --cov-report=xml --cov-config=setup.cfg \
+          --cov=yammbs/ --cov-report=xml --cov-config=pyproject.toml \
           yammbs/
 
     - name: Run mypy
       # RDKit packages have bad stubs on Linux for some reason
       if: ${{ matrix.python-version == '3.12' && matrix.os == 'macos-latest' }}
-      run: pip install -r typing-requirements.txt && python -m mypy -p "yammbs" --exclude "yammbs/_tests" --exclude "yammbs/scripts"
+      run: |
+        pip install -r typing-requirements.txt
+        mypy yammbs
 
     - name: CodeCov
       uses: codecov/codecov-action@v5

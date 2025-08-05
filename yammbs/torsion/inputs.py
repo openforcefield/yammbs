@@ -31,6 +31,10 @@ class TorsionProfile(ImmutableModel):
         ...,
         description="The indices, 0-indexed, of the atoms which define the driven dihedral angle",
     )
+    qcarchive_id: int = Field(
+        ...,
+        description="The ID of the torsion profile in QCArchive, probably the same as the TorsiondriveRecord.id",
+    )
 
     # TODO: Should this store more information than just the grid points and
     #       final geometries? i.e. each point is tagged with an ID in QCArchive
@@ -85,7 +89,10 @@ class QCArchiveTorsionDataset(TorsionDataset):
                         isomeric=True,
                         explicit_hydrogens=True,
                     ),
-                    dihedral_indices=record.specification.keywords.dihedrals[0],  # assuming this is only ever 1-len?
+                    dihedral_indices=record.specification.keywords.dihedrals[
+                        0
+                    ],  # might be 2-D in the future, 1-D for now
+                    qcarchive_id=record.id,
                     coordinates={
                         grid_id[0]: optimization.final_molecule.geometry * bohr2angstroms
                         for grid_id, optimization in record.minimum_optimizations.items()

@@ -89,7 +89,7 @@ class RMSD(AnalysisMetric):
     @classmethod
     def from_data(
         cls,
-        molecule_id: int,
+        torsion_id: int,
         molecule: "Molecule",
         qm_points: dict[float, Array],
         mm_points: dict[float, Array],
@@ -97,7 +97,7 @@ class RMSD(AnalysisMetric):
         """Create an RMSD object by calculating the RMSD between QM and MM points."""
         rmsd_vals = numpy.array([get_rmsd(molecule, qm_points[key], mm_points[key]) for key in qm_points])
         return cls(
-            id=molecule_id,
+            id=torsion_id,
             rmsd=numpy.sqrt((rmsd_vals**2).mean()),
         )
 
@@ -115,10 +115,10 @@ class RMSE(AnalysisMetric):
     rmse: float
 
     @classmethod
-    def from_data(cls, molecule_id: int, qm_energies: Array, mm_energies: Array) -> Self:
+    def from_data(cls, torsion_id: int, qm_energies: Array, mm_energies: Array) -> Self:
         """Create an RMSE object by calculating the RMSE between QM and MM energies."""
         return cls(
-            id=molecule_id,
+            id=torsion_id,
             rmse=numpy.sqrt(((qm_energies - mm_energies) ** 2).mean()),
         )
 
@@ -136,10 +136,10 @@ class MeanError(AnalysisMetric):
     mean_error: float
 
     @classmethod
-    def from_data(cls, molecule_id: int, qm_energies: Array, mm_energies: Array) -> Self:
+    def from_data(cls, torsion_id: int, qm_energies: Array, mm_energies: Array) -> Self:
         """Create a MeanError object by calculating the mean MM - QM energy."""
         return cls(
-            id=molecule_id,
+            id=torsion_id,
             mean_error=numpy.mean(mm_energies - qm_energies),
         )
 
@@ -160,7 +160,7 @@ class JSDistance(AnalysisMetric):
     @classmethod
     def from_data(
         cls,
-        molecule_id: int,
+        torsion_id: int,
         qm_energies: Array,
         mm_energies: Array,
         temperature: float,
@@ -183,7 +183,7 @@ class JSDistance(AnalysisMetric):
         p_mm /= p_mm.sum()
 
         return cls(
-            id=molecule_id,
+            id=torsion_id,
             # Use base 2 so that the upper limit is 1
             js_distance=jensenshannon(p_qm, p_mm, base=2),
             js_temperature=temperature,
