@@ -1,3 +1,4 @@
+import numpy
 import os
 
 import pytest
@@ -29,6 +30,27 @@ class TestTorsionStore:
 
         assert len(store) == 20
 
+    def test_torsions_with_same_smiles_and_indices(self, tmp_path):
+        """Reproduce Issue #131"""
+        store = TorsionStore.from_qcsubmit_collection(
+            TorsionDriveResultCollection.parse_file(
+                get_data_file_path(
+                    "_tests/data/qcsubmit/duplicate-smiles-atom-indices.json",
+                    "yammbs",
+                ),
+            ),
+            database_name=tmp_path / "tmp.sqlite",
+        )
+
+        # these ints are torsion IDs, same as the record IDs in the source data
+        assert not numpy.allclose(
+             [*store.get_qm_points_by_torsion_id(21272423).values()],
+             [*store.get_qm_points_by_torsion_id(120098113).values()],
+        )
+
+        assert store.get_dihedral_indices_by_torsion_id(21272423) == store.get_dihedral_indices_by_torsion_id(120098113)
+
+        assert store.get_smiles_by_torsion_id(21272423) == store.get_smiles_by_torsion_id(120098113)
 
 def test_minimize_basic(single_torsion_dataset, tmp_path):
     store = TorsionStore.from_torsion_dataset(
@@ -38,11 +60,7 @@ def test_minimize_basic(single_torsion_dataset, tmp_path):
 
     store.optimize_mm(force_field="openff-2.2.0", n_processes=os.cpu_count())
 
-    molecule_id = store.get_molecule_ids()[0]
-
-    assert len(store.get_mm_points_by_molecule_id(molecule_id, force_field="openff-2.2.0")) == len(
-        store.get_mm_points_by_molecule_id(molecule_id, force_field="openff-2.2.0"),
-    )
+    torsion_id = store.get_torsion_ids()[0]
 
     assert store.get_force_fields() == ["openff-2.2.0"]
 
@@ -64,12 +82,13 @@ def test_minimize_basic(single_torsion_dataset, tmp_path):
         "mean_error": -0.35170719027937586,
         "js_distance": (0.3168201337322116, 500.0),
     }
+    TORSION_ID = 119466834
 
-    assert len(expected_metrics) == len(metrics["metrics"]["openff-2.2.0"][1])
+    assert len(expected_metrics) == len(metrics["metrics"]["openff-2.2.0"][TORSION_ID])
 
-    for metric in metrics["metrics"]["openff-2.2.0"][1]:
+    for metric in metrics["metrics"]["openff-2.2.0"][TORSION_ID]:
         assert metric in expected_metrics
-        assert metrics["metrics"]["openff-2.2.0"][1][metric] == pytest.approx(
+        assert metrics["metrics"]["openff-2.2.0"][TORSION_ID][metric] == pytest.approx(
             expected_metrics[metric],
             rel=5e-2,
         )

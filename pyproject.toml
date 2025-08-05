@@ -1,16 +1,51 @@
 [build-system]
-requires = [
-    "setuptools",
-    "versioningit",
-]
+requires = ["setuptools>=61.2", "versioningit"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "yammbs"
-version = "0.1.0"
+description = "A tool for benchmarking force fields."
 readme = "README.md"
+authors = [{name = "Open Force Field Initiative", email = "info@openforcefield.org"}]
+license = {text = "MIT"}
+dynamic = ["version"]
+
+[tool.setuptools]
+packages = ["yammbs"]
 
 [tool.versioningit]
+
+[tool.mypy]
+exclude = [
+    "scripts/",
+    "yammbs/_tests",
+    "yammbs/scripts",
+]
+python_version = "3.12"
+plugins = [ "pydantic.mypy", "sqlmypy",]
+warn_unused_configs = true
+warn_unused_ignores = true
+warn_incomplete_stub = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+    "openeye",
+    "rdkit.Chem",
+    "openff.toolkit.*",
+    "openff.nagl.toolkits.openff",
+    "espaloma",
+    "openmm.*",
+    "openmm.app",
+    "openmm.unit",
+    "openmmforcefields.generators",
+    "sqlalchemy",
+    "sqlalchemy.org",
+    "geometric.*",
+    "qcelemental",
+    "openff.qcsubmit.results",
+]
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 119
@@ -23,3 +58,8 @@ select = ["D", "F", "E", "W", "NPY", "UP", "I", "RUF027"]
 
 [project.scripts]
 yammbs_analyse_torsions = "yammbs.scripts.run_torsion_comparisons:main"
+[tool.coverage.run]
+omit = [ "yammbs/_tests/*", "setup.py",]
+
+[tool.coverage.report]
+exclude_lines = [ "pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError",]
