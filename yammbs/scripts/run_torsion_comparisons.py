@@ -79,7 +79,8 @@ def main(
     """Run torsion drive comparisons using specified force fields and input data."""
     force_fields = base_force_fields + extra_force_fields
 
-    dataset = QCArchiveTorsionDataset.model_validate_json(open(qcarchive_torsion_data).read())
+    with open(qcarchive_torsion_data) as f:
+        dataset = QCArchiveTorsionDataset.model_validate_json(f.read())
 
     if pathlib.Path(database_file).exists():
         store = TorsionStore(database_file)
@@ -202,9 +203,6 @@ def plot_torsions(plot_dir: str, force_fields: list[str], store: TorsionStore) -
             label="QM",
         )
 
-        # Viridis colormap for force fields, tuned to the length of the force fields
-        cmap = pyplot.get_cmap("viridis", len(force_fields))
-
         for force_field in force_fields:
             mm = dict(sorted(store.get_mm_energies_by_torsion_id(torsion_id, force_field=force_field).items()))
             if len(mm) == 0:
@@ -215,7 +213,6 @@ def plot_torsions(plot_dir: str, force_fields: list[str], store: TorsionStore) -
                 [val - mm[qm_minimum_index] for val in mm.values()],
                 "o--",
                 label=force_field,
-                color=cmap(force_fields.index(force_field)),
             )
 
         # Only add the axis if this is the last in the row - and add it off to the right
