@@ -12,7 +12,6 @@ from typing_extensions import Self
 
 from yammbs._molecule import _smiles_to_inchi_key
 from yammbs._types import Pathlike
-from yammbs.analysis import get_rmsd
 from yammbs.exceptions import DatabaseExistsError
 from yammbs.torsion._db import (
     DBBase,
@@ -21,7 +20,15 @@ from yammbs.torsion._db import (
     DBTorsionRecord,
 )
 from yammbs.torsion._session import TorsionDBSessionManager
-from yammbs.torsion.analysis import EEN, RMSD, EENCollection, RMSDCollection, _normalize
+from yammbs.torsion.analysis import (
+    RMSD,
+    AnalysisMetricCollectionTypeVar,
+    JSDistanceCollection,
+    MeanErrorCollection,
+    RMSDCollection,
+    RMSECollection,
+    _normalize,
+)
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, TorsionRecord
 from yammbs.torsion.outputs import Metric, MetricCollection, MinimizedTorsionDataset
@@ -361,29 +368,28 @@ class TorsionStore:
                 allow_undefined_stereo=True,
             )
 
-            rmsds.append(
-                RMSD(
-                    id=torsion_id,
-                    rmsd=sum(get_rmsd(molecule, qm_points[key], mm_points[key]) for key in qm_points),
-                ),
-            )
+            rmsds.append(RMSD.from_data(torsion_id, molecule, qm_points, mm_points))
 
         return rmsds
 
-    def get_een(
+    def _get_energy_based_metric(
         self,
         force_field: str,
+        analysis_metric_collection: type[AnalysisMetricCollectionTypeVar],
         torsion_ids: list[int] | None = None,
         skip_check: bool = False,
-    ) -> EENCollection:
-        """Get the vector norm of the energy errors over the torsion profile."""
+        kwargs: dict | None = None,
+    ) -> AnalysisMetricCollectionTypeVar:
+        """Calculate energy-based metrics for the supplied analysis metric collection."""
+        kwargs = kwargs if kwargs else dict()
+
         if not torsion_ids:
             torsion_ids = self.get_torsion_ids()
 
         if not skip_check:
             self.optimize_mm(force_field=force_field)
 
-        eens = EENCollection()
+        collection = analysis_metric_collection()
 
         for torsion_id in torsion_ids:
             qm, mm = (
@@ -400,14 +406,59 @@ class TorsionStore:
                     f"{torsion_id=}, {force_field=}, {len(qm)=}, {len(mm)=}",
                 )
 
-            eens.append(
-                EEN(
-                    id=torsion_id,
-                    een=numpy.linalg.norm(qm - mm),
+            collection.append(
+                collection.get_item_type().from_data(
+                    torsion_id=torsion_id,
+                    qm_energies=qm,
+                    mm_energies=mm,
+                    **kwargs,
                 ),
             )
 
-        return eens
+        return collection
+
+    def get_rmse(
+        self,
+        force_field: str,
+        torsion_ids: list[int] | None = None,
+        skip_check: bool = False,
+    ) -> RMSECollection:
+        """Get the RMS RMSD over the torsion profile."""
+        return self._get_energy_based_metric(
+            force_field=force_field,
+            analysis_metric_collection=RMSECollection,
+            torsion_ids=torsion_ids,
+            skip_check=skip_check,
+        )
+
+    def get_mean_error(
+        self,
+        force_field: str,
+        torsion_ids: list[int] | None = None,
+        skip_check: bool = False,
+    ) -> MeanErrorCollection:
+        return self._get_energy_based_metric(
+            force_field=force_field,
+            analysis_metric_collection=MeanErrorCollection,
+            torsion_ids=torsion_ids,
+            skip_check=skip_check,
+        )
+
+    def get_js_distance(
+        self,
+        force_field: str,
+        torsion_ids: list[int] | None = None,
+        skip_check: bool = False,
+        temperature: float = 500.0,
+    ) -> JSDistanceCollection:
+        """Get the RMS RMSD over the torsion profile."""
+        return self._get_energy_based_metric(
+            force_field=force_field,
+            analysis_metric_collection=JSDistanceCollection,
+            torsion_ids=torsion_ids,
+            skip_check=skip_check,
+            kwargs={"temperature": temperature},
+        )
 
     def get_outputs(self) -> MinimizedTorsionDataset:
         from yammbs.torsion.outputs import MinimizedTorsionProfile
@@ -459,17 +510,21 @@ class TorsionStore:
 
         # TODO: Optimize this for speed
         for force_field in self.get_force_fields():
+            rmses = self.get_rmse(force_field=force_field, skip_check=True).to_dataframe()
             rmsds = self.get_rmsd(force_field=force_field, skip_check=True).to_dataframe()
-            eens = self.get_een(force_field=force_field, skip_check=True).to_dataframe()
+            mean_errors = self.get_mean_error(force_field=force_field, skip_check=True).to_dataframe()
+            js_distances = self.get_js_distance(force_field=force_field, skip_check=True).to_dataframe()
 
-            dataframe = rmsds.join(eens)
+            dataframe = rmses.join(rmsds).join(mean_errors).join(js_distances)
 
             dataframe = dataframe.replace({pandas.NA: numpy.nan})
 
             metrics.metrics[force_field] = {
                 id: Metric(  # type: ignore[misc]
                     rmsd=row["rmsd"],
-                    een=row["een"],
+                    rmse=row["rmse"],
+                    mean_error=row["mean_error"],
+                    js_distance=(row["js_distance"], row["js_temperature"]),
                 )
                 for id, row in dataframe.iterrows()
             }
