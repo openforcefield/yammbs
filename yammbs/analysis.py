@@ -152,18 +152,16 @@ def get_rmsd(
 
 def get_internal_coordinates(
     molecule: Molecule,
-    reference: Array,
-    target: Array,
+    coordinates: Array,
     _types: tuple[str, ...] = ("Bond", "Angle", "Dihedral", "Improper"),
-) -> dict[str, dict[tuple[int, ...], tuple[int, int]]]:
-    """Get internal coordinates of two conformers of the same molecule using geomeTRIC.
+) -> dict[str, dict[tuple[int, ...], float]]:
+    """Get internal coordinates of one conformers of a molecule using geomeTRIC.
 
     The return value is keyed by valence type (Bond, Angle, Dihedral, Improper). Each
-    value is itself a dictionary containing key-val pairs of relevant atom indices and a
-    2-length tuple of the internal coordinates. The first tuple is the internal coordinate
-    of the reference conformer, the second is the internal coordinate of the target.
+    value is itself a dictionary containing key-val pairs of relevant atom indices and
+    the corresponding "internal coordinate."
 
-    The conformers attached to the `molecule` argument are ignored, only the values in
+    The conformer(s) attached to the `molecule` argument are ignored, only the values in
     the `reference` and `target` arguments are used. The `molecule` argument is only used
     to determine the atom indices of the internal coordinates.
 
@@ -180,13 +178,12 @@ def get_internal_coordinates(
 
     Returns
     -------
-    dict[str, dict[tuple[int, ...], tuple[int, int]]]
+    dict[str, dict[tuple[int, ...], float]]
         A dictionary of dictionaries containing the internal coordinates of the two
         conformers. The keys of the outer dictionary are the valence types (Bond, Angle,
         Dihedral, Improper). The keys of the inner dictionaries are tuples of atom
-        indices. The values of the inner dictionaries are tuples of the internal
-        coordinates, the first value corresponding to the "reference" conformer and the
-        second to the "target" conformer.
+        indices. The values of the inner dictionaries are the corresponding internal
+        coordinates.
 
     """
     from geometric.internal import (
@@ -199,14 +196,11 @@ def get_internal_coordinates(
 
     from yammbs._molecule import _to_geometric_molecule
 
-    if isinstance(reference, Quantity):
-        reference = reference.m_as("angstrom")
-
-    if isinstance(target, Quantity):
-        target = target.m_as("angstrom")
+    if isinstance(coordinates, Quantity):
+        coordinates = coordinates.m_as("angstrom")
 
     _generator = PrimitiveInternalCoordinates(
-        _to_geometric_molecule(molecule=molecule, coordinates=target),
+        _to_geometric_molecule(molecule=molecule, coordinates=coordinates),
     )
 
     _mapping = {
@@ -217,7 +211,7 @@ def get_internal_coordinates(
     }
     types: dict[str, type] = {_type: _mapping[_type] for _type in _types}
 
-    internal_coordinates: dict[str, dict[tuple[int, ...], tuple[int, int]]] = dict()
+    internal_coordinates: dict[str, dict[tuple[int, ...], float]] = dict()
 
     for label, internal_coordinate_class in types.items():
         internal_coordinates[label] = dict()
@@ -226,7 +220,7 @@ def get_internal_coordinates(
             if not isinstance(internal_coordinate, internal_coordinate_class):
                 continue
 
-            if isinstance(internal_coordinate, Distance):
+            elif isinstance(internal_coordinate, Distance):
                 key = tuple(
                     (
                         internal_coordinate.a,
@@ -234,7 +228,7 @@ def get_internal_coordinates(
                     ),
                 )
 
-            if isinstance(internal_coordinate, Angle):
+            elif isinstance(internal_coordinate, Angle):
                 key = tuple(
                     (
                         internal_coordinate.a,
@@ -243,7 +237,7 @@ def get_internal_coordinates(
                     ),
                 )
 
-            if isinstance(internal_coordinate, Dihedral):
+            elif isinstance(internal_coordinate, Dihedral):
                 key = tuple(
                     (
                         internal_coordinate.a,
@@ -253,7 +247,7 @@ def get_internal_coordinates(
                     ),
                 )
 
-            if isinstance(internal_coordinate, OutOfPlane):
+            elif isinstance(internal_coordinate, OutOfPlane):
                 # geomeTRIC lists the central atom FIRST, but SMIRNOFF force fields list
                 # the central atom SECOND. Re-ordering here to be consistent with SMIRNOFF
                 # see PR #109 for more
@@ -267,15 +261,8 @@ def get_internal_coordinates(
                     ),
                 )
 
-            key = tuple(int(index) for index in key)
-
             internal_coordinates[label].update(
-                {
-                    key: (
-                        internal_coordinate.value(reference),
-                        internal_coordinate.value(target),
-                    ),
-                },
+                {tuple(int(index) for index in key): float(internal_coordinate.value(coordinates))},
             )
 
     return internal_coordinates
@@ -290,8 +277,8 @@ def get_internal_coordinate_differences(
     """Get internal coordinate differences between two conformers of one molecule.
 
     The behavior is identical to get_internal_coordinates, except that the return value
-    is the difference in the relevant internal coordinate of each conformers, not the
-    two values themselves.
+    is the difference in the relevant internal coordinate of each conformer, not the
+    value of one conformer.
 
     The conformers attached to the `molecule` argument are ignored, only the values in
     the `reference` and `target` arguments are used. The `molecule` argument is only used
@@ -320,18 +307,24 @@ def get_internal_coordinate_differences(
     """
     differences: dict[str, dict[tuple[int, ...], float]] = dict()
 
-    internal_coordinates = get_internal_coordinates(
-        molecule=molecule,
-        reference=reference,
-        target=target,
-        _types=_types,
+    (
+        reference_coordinates,
+        target_coordinates,
+    ) = (
+        get_internal_coordinates(
+            molecule=molecule,
+            coordinates=coordinates,
+            _types=_types,
+        )
+        for coordinates in [reference, target]
     )
 
-    for label, values_with_indices in internal_coordinates.items():
+    # the keys of each dictionary (and nested dictionaries) should be the same
+    for label, values_with_indices in reference_coordinates.items():
         differences[label] = dict()
 
-        for indices, values in values_with_indices.items():
-            differences[label][indices] = values[1] - values[0]
+        for indices, value in values_with_indices.items():
+            differences[label][indices] = target_coordinates[label][indices] - value
 
     return differences
 
@@ -372,24 +365,29 @@ def get_internal_coordinate_rmsds(
     """
     from yammbs._forcebalance import compute_rmsd as forcebalance_rmsd
 
-    internal_coordinates = get_internal_coordinates(
-        molecule=molecule,
-        reference=reference,
-        target=target,
-        _types=_types,
+    (
+        reference_coordinates,
+        target_coordinates,
+    ) = (
+        get_internal_coordinates(
+            molecule=molecule,
+            coordinates=coordinates,
+            _types=_types,
+        )
+        for coordinates in [reference, target]
     )
 
     internal_coordinate_rmsd = dict()
 
-    for _type, values_with_indices in internal_coordinates.items():
-        if len(values_with_indices) == 0:
+    for _type in reference_coordinates:
+        qm_values = numpy.array([*reference_coordinates[_type].values()])
+        mm_values = numpy.array([*target_coordinates[_type].values()])
+
+        if len(qm_values) * len(mm_values) == 0:
             continue
 
-        _qm_values = [value[0] for value in values_with_indices.values()]
-        _mm_values = [value[1] for value in values_with_indices.values()]
-
-        qm_values = numpy.array(_qm_values)
-        mm_values = numpy.array(_mm_values)
+        if len(qm_values) != len(mm_values):
+            continue
 
         # Converting from radians to degrees
         if _type in ["Angle", "Dihedral", "Improper"]:
@@ -401,7 +399,7 @@ def get_internal_coordinate_rmsds(
         else:
             rmsd = forcebalance_rmsd(qm_values, mm_values)
 
-        internal_coordinate_rmsd[_type] = rmsd
+        internal_coordinate_rmsd[_type] = float(rmsd)
 
     return internal_coordinate_rmsd
 
