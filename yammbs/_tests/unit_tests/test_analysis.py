@@ -1,3 +1,4 @@
+import numpy
 import pandas
 from openff.utilities import get_data_file_path
 import pytest
@@ -227,3 +228,7 @@ class TestInternalCoordinateRMSD:
         )
 
         assert len(geometric_bond_differences["Bond"]) == qm_molecule.n_bonds
+
+        # calculate by hand, found to be 0.01664882645659995, although Chapin found
+        # a slightly different value of: 0.016649928941590085
+        assert 0.01664882645659995 == numpy.sqrt(numpy.mean(numpy.square([(x -y) for x, y in geometric_bond_differences['Bond'].values()])))
