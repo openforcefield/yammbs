@@ -1,8 +1,9 @@
 import pandas
+from openff.utilities import get_data_file_path
 import pytest
 from openff.toolkit import ForceField, Molecule
 
-from yammbs.analysis import get_internal_coordinate_differences, get_internal_coordinate_rmsds, get_rmsd, get_tfd
+from yammbs.analysis import get_internal_coordinate_differences, get_internal_coordinate_rmsds, get_rmsd, get_tfd, get_internal_coordinates
 
 
 class TestAnalysis:
@@ -209,3 +210,20 @@ class TestInternalCoordinateRMSD:
 
         # should be [(1, 0, 5, 6), (1, 2, 3, 7), (3, 4, 5, 8)]
         assert sorted(differences["Improper"].keys()) == sage_impropers
+
+    def test_geometric_does_not_add_bonds(self):
+        qm_molecule = Molecule(
+            get_data_file_path("_tests/data/36966574-qm.sdf", "yammbs"),
+        )
+        mm_molecule = Molecule(
+            get_data_file_path("_tests/data/36966574-mm.sdf", "yammbs"),
+        )
+
+        geometric_bond_differences = get_internal_coordinates(
+            molecule=qm_molecule,
+            reference=qm_molecule.conformers[0],
+            target=mm_molecule.conformers[0],
+            _types=["Bond"],
+        )
+
+        assert len(geometric_bond_differences["Bond"]) == qm_molecule.n_bonds
