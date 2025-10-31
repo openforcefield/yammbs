@@ -231,9 +231,11 @@ def get_internal_coordinates(
 
             if isinstance(internal_coordinate, Distance):
                 key = tuple(
-                    (
-                        internal_coordinate.a,
-                        int(internal_coordinate.b),  # geomeTRIC somehow makes this np.int32
+                    sorted(
+                        (
+                            internal_coordinate.a,
+                            int(internal_coordinate.b),  # geomeTRIC somehow makes this np.int32
+                        ),
                     ),
                 )
 

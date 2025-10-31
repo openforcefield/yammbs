@@ -234,4 +234,4 @@ class TestInternalCoordinateRMSD:
 
         # calculate by hand, found to be 0.01664882645659995, although Chapin found
         # a slightly different value of: 0.016649928941590085
-        assert 0.01664882645659995 == numpy.sqrt(numpy.mean(numpy.square([(x -y) for x, y in geometric_bond_differences['Bond'].values()])))
+        assert 0.01664882645659995 == pytest.approx(numpy.sqrt(numpy.mean(numpy.square([(x -y) for x, y in geometric_bond_differences['Bond'].values()]))))
