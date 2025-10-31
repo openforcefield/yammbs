@@ -220,7 +220,19 @@ def get_internal_coordinates(
     internal_coordinates: dict[str, dict[tuple[int, ...], tuple[int, int]]] = dict()
 
     # TODO: Expand this out for angles and torsions as well?
-    openff_bonds = [(bond.atom1_index, bond.atom2_index) for bond in molecule.bonds]
+    openff_bonds = [tuple(sorted((bond.atom1_index, bond.atom2_index))) for bond in molecule.bonds]
+    openff_angles = [
+        tuple(
+            sorted(
+                [
+                    molecule.atom_index(angle[0]),
+                    molecule.atom_index(angle[1]),
+                    molecule.atom_index(angle[2]),
+                ],
+            ),
+        )
+        for angle in molecule.angles
+    ]
 
     for label, internal_coordinate_class in types.items():
         internal_coordinates[label] = dict()
@@ -240,16 +252,27 @@ def get_internal_coordinates(
                 )
 
                 if key not in openff_bonds:
+                    # TODO: Log this
                     continue
+
+                openff_bonds.remove(key)
 
             if isinstance(internal_coordinate, Angle):
                 key = tuple(
-                    (
-                        internal_coordinate.a,
-                        internal_coordinate.b,
-                        internal_coordinate.c,
+                    sorted(
+                        (
+                            int(internal_coordinate.a),
+                            int(internal_coordinate.b),
+                            int(internal_coordinate.c),
+                        ),
                     ),
                 )
+
+                if key not in openff_angles:
+                    # TODO: Log this
+                    continue
+
+                openff_angles.remove(key)
 
             if isinstance(internal_coordinate, Dihedral):
                 key = tuple(
@@ -285,6 +308,16 @@ def get_internal_coordinates(
                     ),
                 },
             )
+
+    if "Bond" in types:
+        assert len(openff_bonds) == 0, (
+            f"Some bonds were not found (0-indexed, indices sorted ascending): {openff_bonds}"
+        )
+
+    if "Angle" in types:
+        assert len(openff_angles) == 0, (
+            f"Some angles were not found (0-indexed, indices sorted ascending): {openff_angles}"
+        )
 
     return internal_coordinates
 
