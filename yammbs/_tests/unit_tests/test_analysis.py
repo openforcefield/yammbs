@@ -213,6 +213,9 @@ class TestInternalCoordinateRMSD:
         assert sorted(differences["Improper"].keys()) == sage_impropers
 
     def test_geometric_does_not_add_bonds(self):
+        """
+        See https://github.com/openforcefield/yammbs/issues/174
+        """
         qm_molecule = Molecule(
             get_data_file_path("_tests/data/36966574-qm.sdf", "yammbs"),
         )
