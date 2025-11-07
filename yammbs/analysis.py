@@ -273,7 +273,7 @@ def get_internal_coordinates(
                 )
 
                 if key not in openff_angles:
-                    # TODO: Log this
+                    logger.info(f"Angle (from geomeTRIC) not found (in OpenFF molecule), skipping: {key=}")
                     continue
 
                 openff_angles.remove(key)
