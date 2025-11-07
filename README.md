@@ -26,11 +26,11 @@ if __name__ == "__main__":
 
 must be used for Python's `multiprocessing` module to behave well.
 
-### Data sources
+## Data sources
 
 It is assumed that the input molecules are stored in an `openff-qcsubmit` model like `OptimizationResultCollection` or YAMMBS's own input models.
 
-### Preparing an input dataset
+### Prepare an input dataset from QCArchive
 
 YAMMBS relies on QCSubmit to provide datasets from QCArchive. See [their docs](https://docs.openforcefield.org/projects/qcsubmit/en/stable/), particularly the [dataset retrieval example](https://docs.openforcefield.org/projects/qcsubmit/en/stable/examples/retrieving-results.html), for more.
 
@@ -87,7 +87,39 @@ Note: This JSON file ("input.json") is from a different model than the JSON file
 
 Note: Both QCSubmit and YAMMBS rely on Pydantic for model validation and serialization. Even though both use V2 in packaging, YAMMBS uses the V2 API and (as of October 2024) QCSubmit still uses the V1 API. Usage like above should work fine; only esoteric use cases (in particular, defining a new model that has both YAMMBS and QCSubmit models as fields) should be unsupported.
 
-### Run a benchmark
+### Prepare an input dataset from SDF files
+
+QCArchive/QCSubmit can be bypassed if all QM molecules have mapped SMILES and coordinates. Each must be transformed into a `QMMolecule` and then a sequence of these can be composed into a `QMDataset`.
+
+```
+from openff.toolkit import Molecule
+from yammbs.inputs import QMMolecule, QMDataset
+from yammbs import MoleculeStore
+
+
+qm_molecules = list()
+
+for index, qm_file in enumerate([
+    "36966569-qm.sdf",
+    "36966572-qm.sdf",
+    "36966574-qm.sdf",
+]):
+    openff_molecule = Molecule.from_file(qm_file, file_format="sdf")
+
+    qm_molecules.append(
+        QMMolecule(
+            id=index,
+            mapped_smiles=openff_molecule.to_smiles(mapped=True),
+            coordinates=openff_molecule.conformers[0].m_as("angstrom"),
+        )
+    )
+
+qm_dataset = QMDataset(tag="example QM dataset", qm_molecules=qm_molecules)
+
+store = MoleculeStore.from_qm_dataset(qm_dataset, database_name="example.sqlite")
+```
+
+## Run a benchmark
 
 With the input prepared, create a `MoleculeStore` object:
 
@@ -159,7 +191,7 @@ The basic structure of the metrics is a hierarchical dictionary. It is keyed by 
 
 This data can be transformed for plotting, summary statistics, etc. which compare the metrics of each force field (for this molecule dataset).
 
-### Run a TorsionDrive benchmark
+## Run a TorsionDrive benchmark
 
 `YAMMBS` contains functionality for running TorsionDrive benchmarks in `yammbs.torsion`. Also, a convenience script for torsion analysis is provided in `yammbs/scripts/run_torsion_comparisons.py`. This can be run from anywhere using `yammbs_analyse_torsions`:
 
@@ -208,11 +240,11 @@ A range of OpenFF force fields will be run for comparison if no `--base-force-fi
 
 See [examples.ipynb](examples.ipynb) for some examples of interacting with benchmarking results and a starting point for custom analyses.
 
-### License
+## License
 
 YAMMBS is open-source software distrubuted under the MIT license (see LICENSE). It derives from
 other open-source work that may be distributed under other licenses (see LICENSE-3RD-PARTY).
 
-### Copyright
+## Copyright
 
 Copyright (c) 2022, Open Force Field Initiative

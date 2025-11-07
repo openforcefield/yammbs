@@ -36,7 +36,7 @@ from yammbs.analysis import (
 )
 from yammbs.checkmol import ChemicalEnvironment
 from yammbs.exceptions import DatabaseExistsError
-from yammbs.inputs import QCArchiveDataset
+from yammbs.inputs import QCArchiveDataset, QMDataset
 from yammbs.models import MMConformerRecord, MoleculeRecord, QMConformerRecord
 from yammbs.outputs import Metric, MetricCollection, MinimizedQMDataset
 
@@ -410,7 +410,7 @@ class MoleculeStore:
     @classmethod
     def from_qm_dataset(
         cls,
-        dataset: QCArchiveDataset,
+        dataset: QMDataset,
         database_name: str,
     ) -> Self:
         # TODO: This only works on the child class QCArchiveDataset, should be
