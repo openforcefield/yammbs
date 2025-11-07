@@ -1,8 +1,10 @@
+import numpy
 import pandas
+from openff.utilities import get_data_file_path
 import pytest
 from openff.toolkit import ForceField, Molecule
 
-from yammbs.analysis import get_internal_coordinate_differences, get_internal_coordinate_rmsds, get_rmsd, get_tfd
+from yammbs.analysis import get_internal_coordinate_differences, get_internal_coordinate_rmsds, get_rmsd, get_tfd, get_internal_coordinates
 
 
 class TestAnalysis:
@@ -209,3 +211,27 @@ class TestInternalCoordinateRMSD:
 
         # should be [(1, 0, 5, 6), (1, 2, 3, 7), (3, 4, 5, 8)]
         assert sorted(differences["Improper"].keys()) == sage_impropers
+
+    def test_geometric_does_not_add_bonds(self):
+        """
+        See https://github.com/openforcefield/yammbs/issues/174
+        """
+        qm_molecule = Molecule(
+            get_data_file_path("_tests/data/36966574-qm.sdf", "yammbs"),
+        )
+        mm_molecule = Molecule(
+            get_data_file_path("_tests/data/36966574-mm.sdf", "yammbs"),
+        )
+
+        geometric_bond_differences = get_internal_coordinates(
+            molecule=qm_molecule,
+            reference=qm_molecule.conformers[0],
+            target=mm_molecule.conformers[0],
+            _types=["Bond"],
+        )
+
+        assert len(geometric_bond_differences["Bond"]) == qm_molecule.n_bonds
+
+        # calculate by hand, found to be 0.01664882645659995, although Chapin found
+        # a slightly different value of: 0.016649928941590085
+        assert 0.01664882645659995 == pytest.approx(numpy.sqrt(numpy.mean(numpy.square([(x -y) for x, y in geometric_bond_differences['Bond'].values()]))))

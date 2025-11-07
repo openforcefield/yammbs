@@ -6,7 +6,6 @@ from multiprocessing import Pool
 
 import numpy
 import openmm
-import openmm.app
 import openmm.unit
 from openff.toolkit import ForceField, Molecule
 from openff.toolkit.typing.engines.smirnoff import get_available_force_fields
