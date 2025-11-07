@@ -159,6 +159,51 @@ The basic structure of the metrics is a hierarchical dictionary. It is keyed by 
 
 This data can be transformed for plotting, summary statistics, etc. which compare the metrics of each force field (for this molecule dataset).
 
+### Run a TorsionDrive benchmark
+
+`YAMMBS` contains functionality for running TorsionDrive benchmarks in `yammbs.torsion`. Also, a convenience script for torsion analysis is provided in `yammbs/scripts/run_torsion_comparisons.py`. This can be run from anywhere using `yammbs_analyse_torsions`:
+
+```bash
+yammbs_analyse_torsions --help
+```
+
+For example, to run the [OpenFF Rowley Biaryl v1.0 TorsionDrive dataset](https://github.com/openforcefield/qca-dataset-submission/tree/master/submissions/2020-06-17-OpenFF-Biaryl-set), first download it with
+
+```python
+from openff.qcsubmit.results import TorsionDriveResultCollection
+from qcportal import PortalClient
+
+from yammbs.torsion.inputs import QCArchiveTorsionDataset
+
+client = PortalClient("https://api.qcarchive.molssi.org:443", cache_dir=".")
+
+rowley_torsion_dataset = TorsionDriveResultCollection.from_server(
+    client=client,
+    datasets="OpenFF Rowley Biaryl v1.0",
+    spec_name="default",
+)
+
+dataset = QCArchiveTorsionDataset.from_qcsubmit_collection(rowley_torsion_dataset)
+
+with open("input.json", "w") as f:
+    f.write(dataset.model_dump_json())
+```
+
+Then, to run the benchmark with `openff-1.0.0.offxml` and `openff-2.2.1.offxml`:
+
+```bash
+yammbs_analyse_torsions --qcarchive-torsion-data input.json \
+    --base-force-fields openff-1.0.0 \
+    --base-force-fields openff-2.2.1
+```
+This takes a bit over 10 minutes on a 32-core machine with 125 GB RAM. Note that when supplying your own force fields, make sure that these are the unconstrained versions (this is done automatically for e.g. `openff-1.0.0`), for example:
+
+```bash
+yammbs_analyse_torsions --qcarchive-torsion-data input.json \
+    --extra-force-fields my_unconstrained_ff.offxml
+```
+A range of OpenFF force fields will be run for comparison if no `--base-force-fields` are specified.
+
 ## Custom analyses
 
 See [examples.ipynb](examples.ipynb) for some examples of interacting with benchmarking results and a starting point for custom analyses.

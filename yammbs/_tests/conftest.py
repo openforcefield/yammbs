@@ -108,7 +108,6 @@ def allicin():
         allow_undefined_stereo=True,
     )
 
-
 @pytest.fixture
 def conformers(allicin):
     other_allicin = Molecule(allicin)

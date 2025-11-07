@@ -220,6 +220,9 @@ def get_internal_coordinates(
 
     internal_coordinates: dict[str, dict[tuple[int, ...], tuple[int, int]]] = dict()
 
+    # TODO: Expand this out for angles and torsions as well?
+    openff_bonds = [(bond.atom1_index, bond.atom2_index) for bond in molecule.bonds]
+
     for label, internal_coordinate_class in types.items():
         internal_coordinates[label] = dict()
 
@@ -229,11 +232,16 @@ def get_internal_coordinates(
 
             if isinstance(internal_coordinate, Distance):
                 key = tuple(
-                    (
-                        internal_coordinate.a,
-                        internal_coordinate.b,
+                    sorted(
+                        (
+                            internal_coordinate.a,
+                            int(internal_coordinate.b),  # geomeTRIC somehow makes this np.int32
+                        ),
                     ),
                 )
+
+                if key not in openff_bonds:
+                    continue
 
             if isinstance(internal_coordinate, Angle):
                 key = tuple(
