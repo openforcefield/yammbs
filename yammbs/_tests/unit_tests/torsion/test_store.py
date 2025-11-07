@@ -58,9 +58,9 @@ def test_minimize_basic(single_torsion_dataset, tmp_path):
         database_name=tmp_path / "test.sqlite",
     )
 
-    store.optimize_mm(force_field="openff-2.2.0", n_processes=os.cpu_count())
+    TORSION_ID = 119466834
 
-    torsion_id = store.get_torsion_ids()[0]
+    store.optimize_mm(force_field="openff-2.2.0", n_processes=os.cpu_count())
 
     assert store.get_force_fields() == ["openff-2.2.0"]
 
@@ -82,7 +82,6 @@ def test_minimize_basic(single_torsion_dataset, tmp_path):
         "mean_error": -0.35170719027937586,
         "js_distance": (0.3168201337322116, 500.0),
     }
-    TORSION_ID = 119466834
 
     assert len(expected_metrics) == len(metrics["metrics"]["openff-2.2.0"][TORSION_ID])
 

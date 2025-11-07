@@ -28,6 +28,7 @@ from yammbs.torsion.analysis import (
     RMSDCollection,
     RMSECollection,
     _normalize,
+    get_rmsd,
 )
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, TorsionRecord
@@ -350,10 +351,10 @@ class TorsionStore:
         """Get the RMSD summed over the torsion profile."""
         from openff.toolkit import Molecule
 
-        if not torsion_ids:
+        if torsion_ids is None:
             torsion_ids = self.get_torsion_ids()
 
-        if not skip_check:
+        if skip_check is None:
             # TODO: Copy this into each get_* method?
             LOGGER.info("Calling optimize_mm from inside of get_log_sse.")
             self.optimize_mm(force_field=force_field)
@@ -373,14 +374,15 @@ class TorsionStore:
                 RMSD(
                     id=torsion_id,
                     rmsd=sum(
-                        self.get_rmsd(
+                        get_rmsd(
                             molecule,
                             qm_points[key],
                             mm_points[key],
                             include_hydrogens=include_hydrogens,
                         )
                         for key in qm_points
-                    ),
+                    )
+                    / len(qm_points),
                 ),
             )
 
