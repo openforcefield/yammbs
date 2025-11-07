@@ -1,5 +1,6 @@
 """Analysis routines for optimizations."""
 
+import logging
 from typing import TYPE_CHECKING
 
 import numpy
@@ -10,6 +11,9 @@ from yammbs._base.base import ImmutableModel
 
 if TYPE_CHECKING:
     from pandas import DataFrame
+
+logger = logging.getLogger(__name__)
+logging.basicConfig()
 
 
 class DDE(ImmutableModel):
@@ -252,7 +256,7 @@ def get_internal_coordinates(
                 )
 
                 if key not in openff_bonds:
-                    # TODO: Log this
+                    logger.info(f"Bond (from geomeTRIC) not found (in OpenFF molecule), skipping: {key=}")
                     continue
 
                 openff_bonds.remove(key)
@@ -315,9 +319,8 @@ def get_internal_coordinates(
         )
 
     if "Angle" in types:
-        assert len(openff_angles) == 0, (
-            f"Some angles were not found (0-indexed, indices sorted ascending): {openff_angles}"
-        )
+        if len(openff_angles) != 0:
+            logger.warning(f"Some angles were not found (0-indexed, indices sorted ascending): {openff_angles}")
 
     return internal_coordinates
 
