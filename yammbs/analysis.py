@@ -193,6 +193,7 @@ def get_internal_coordinates(
         Angle,
         Dihedral,
         Distance,
+        LinearAngle,
         OutOfPlane,
         PrimitiveInternalCoordinates,
     )
@@ -210,10 +211,10 @@ def get_internal_coordinates(
     )
 
     _mapping = {
-        "Bond": Distance,
-        "Angle": Angle,
-        "Dihedral": Dihedral,
-        "Improper": OutOfPlane,
+        "Bond": (Distance,),
+        "Angle": (Angle, LinearAngle),
+        "Dihedral": (Dihedral,),
+        "Improper": (OutOfPlane,),
     }
     types: dict[str, type] = {_type: _mapping[_type] for _type in _types}
 
@@ -242,12 +243,12 @@ def get_internal_coordinates(
                 if key not in openff_bonds:
                     continue
 
-            if isinstance(internal_coordinate, Angle):
+            if isinstance(internal_coordinate, (Angle, LinearAngle)):
                 key = tuple(
                     (
                         internal_coordinate.a,
                         internal_coordinate.b,
-                        internal_coordinate.c,
+                        int(internal_coordinate.c),
                     ),
                 )
 
