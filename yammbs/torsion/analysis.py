@@ -97,7 +97,9 @@ class RMSRMSD(AnalysisMetric):
         """Calculate the RMSD (between QM and MM) at each point and then report the RMS over the entire torsion profile."""
         return cls(
             id=torsion_id,
-            rmsd=numpy.sqrt(numpy.mean([get_rmsd(molecule, qm_points[key], mm_points[key]) ** 2 for key in qm_points])),
+            rmsd=numpy.sqrt(
+                numpy.mean([get_rmsd(molecule, qm_points[key], mm_points[key]) ** 2 for key in qm_points]),
+            ),
         )
 
 
