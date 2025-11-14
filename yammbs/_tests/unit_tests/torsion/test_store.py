@@ -87,9 +87,13 @@ def test_minimize_basic(single_torsion_dataset, tmp_path):
 
     assert len(expected_metrics) == len(metrics["metrics"]["openff-2.2.0"][TORSION_ID])
 
+    assert metrics['metrics']["openff-2.2.0"][TORSION_ID]['rms_rmsd'] != metrics['metrics']["openff-2.2.0"][TORSION_ID]['mean_rmsd']
+
     for metric in metrics["metrics"]["openff-2.2.0"][TORSION_ID]:
         assert metric in expected_metrics
+
+        # should be closer to 1e-4, but machine-to-machine variance forces looser tolerance
         assert metrics["metrics"]["openff-2.2.0"][TORSION_ID][metric] == pytest.approx(
             expected_metrics[metric],
-            rel=1e-3,
+            rel=2e-3,
         )
