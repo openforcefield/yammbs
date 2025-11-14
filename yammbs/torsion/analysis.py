@@ -80,6 +80,27 @@ class Minima(AnalysisMetric):
     minima: list[float]
 
 
+class RMSRMSD(AnalysisMetric):
+    """A model storing the RMS of RMSDs over a torsion profile."""
+
+    id: int
+    rmsd: float
+
+    @classmethod
+    def from_data(
+        cls,
+        torsion_id: int,
+        molecule: "Molecule",
+        qm_points: dict[float, Array],
+        mm_points: dict[float, Array],
+    ) -> Self:
+        """Calculate the RMSD (between QM and MM) at each point and then report the RMS over the entire torsion profile."""
+        return cls(
+            id=torsion_id,
+            rmsd=numpy.sqrt(numpy.mean([get_rmsd(molecule, qm_points[key], mm_points[key]) ** 2 for key in qm_points])),
+        )
+
+
 class RMSD(AnalysisMetric):
     """A model storing the mean RMSD over a torsion profile."""
 
