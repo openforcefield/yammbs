@@ -21,12 +21,14 @@ from yammbs.torsion._db import (
 )
 from yammbs.torsion._session import TorsionDBSessionManager
 from yammbs.torsion.analysis import (
-    RMSD,
+    RMSRMSD,
     AnalysisMetricCollectionTypeVar,
     JSDistanceCollection,
     MeanErrorCollection,
-    RMSDCollection,
+    MeanRMSD,
+    MeanRMSDCollection,
     RMSECollection,
+    RMSRMSDCollection,
     _normalize,
 )
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
@@ -340,12 +342,12 @@ class TorsionStore:
                     ),
                 )
 
-    def get_rmsd(
+    def get_rms_rmsd(
         self,
         force_field: str,
         torsion_ids: list[int] | None = None,
         skip_check: bool = False,
-    ) -> RMSDCollection:
+    ) -> RMSRMSDCollection:
         """Get the RMSD summed over the torsion profile."""
         from openff.toolkit import Molecule
 
@@ -357,7 +359,7 @@ class TorsionStore:
             LOGGER.info("Calling optimize_mm from inside of get_log_sse.")
             self.optimize_mm(force_field=force_field)
 
-        rmsds = RMSDCollection()
+        rmsds = RMSRMSDCollection()
 
         for torsion_id in torsion_ids:
             qm_points = self.get_qm_points_by_torsion_id(torsion_id=torsion_id)
@@ -368,7 +370,39 @@ class TorsionStore:
                 allow_undefined_stereo=True,
             )
 
-            rmsds.append(RMSD.from_data(torsion_id, molecule, qm_points, mm_points))
+            rmsds.append(RMSRMSD.from_data(torsion_id, molecule, qm_points, mm_points))
+
+        return rmsds
+
+    def get_mean_rmsd(
+        self,
+        force_field: str,
+        torsion_ids: list[int] | None = None,
+        skip_check: bool = False,
+    ) -> MeanRMSDCollection:
+        """Get the RMSD summed over the torsion profile."""
+        from openff.toolkit import Molecule
+
+        if not torsion_ids:
+            torsion_ids = self.get_torsion_ids()
+
+        if not skip_check:
+            # TODO: Copy this into each get_* method?
+            LOGGER.info("Calling optimize_mm from inside of get_log_sse.")
+            self.optimize_mm(force_field=force_field)
+
+        rmsds = MeanRMSDCollection()
+
+        for torsion_id in torsion_ids:
+            qm_points = self.get_qm_points_by_torsion_id(torsion_id=torsion_id)
+            mm_points = self.get_mm_points_by_torsion_id(torsion_id=torsion_id, force_field=force_field)
+
+            molecule = Molecule.from_mapped_smiles(
+                self.get_smiles_by_torsion_id(torsion_id),
+                allow_undefined_stereo=True,
+            )
+
+            rmsds.append(MeanRMSD.from_data(torsion_id, molecule, qm_points, mm_points))
 
         return rmsds
 
@@ -511,17 +545,19 @@ class TorsionStore:
         # TODO: Optimize this for speed
         for force_field in self.get_force_fields():
             rmses = self.get_rmse(force_field=force_field, skip_check=True).to_dataframe()
-            rmsds = self.get_rmsd(force_field=force_field, skip_check=True).to_dataframe()
+            rms_rmsds = self.get_rms_rmsd(force_field=force_field, skip_check=True).to_dataframe()
+            mean_rmsds = self.get_mean_rmsd(force_field=force_field, skip_check=True).to_dataframe()
             mean_errors = self.get_mean_error(force_field=force_field, skip_check=True).to_dataframe()
             js_distances = self.get_js_distance(force_field=force_field, skip_check=True).to_dataframe()
 
-            dataframe = rmses.join(rmsds).join(mean_errors).join(js_distances)
+            dataframe = rmses.join(rms_rmsds).join(mean_rmsds).join(mean_errors).join(js_distances)
 
             dataframe = dataframe.replace({pandas.NA: numpy.nan})
 
             metrics.metrics[force_field] = {
                 id: Metric(  # type: ignore[misc]
-                    rmsd=row["rmsd"],
+                    rms_rmsd=row["rms_rmsd"],
+                    mean_rmsd=row["mean_rmsd"],
                     rmse=row["rmse"],
                     mean_error=row["mean_error"],
                     js_distance=(row["js_distance"], row["js_temperature"]),

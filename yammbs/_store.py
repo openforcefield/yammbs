@@ -31,7 +31,7 @@ from yammbs.analysis import (
     RMSDCollection,
     TFDCollection,
     get_internal_coordinate_rmsds,
-    get_rmsd,
+    get_single_rmsd,
     get_tfd,
 )
 from yammbs.checkmol import ChemicalEnvironment
@@ -732,7 +732,7 @@ class MoleculeStore:
                 rmsds.append(
                     RMSD(
                         qcarchive_id=id,
-                        rmsd=get_rmsd(molecule, qm, mm),
+                        rmsd=get_single_rmsd(molecule, qm, mm),
                     ),
                 )
 
