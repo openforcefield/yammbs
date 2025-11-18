@@ -28,6 +28,7 @@ from yammbs.torsion.analysis import (
     RMSDCollection,
     RMSECollection,
     _normalize,
+    get_rmsd,
 )
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, TorsionRecord
@@ -345,14 +346,15 @@ class TorsionStore:
         force_field: str,
         torsion_ids: list[int] | None = None,
         skip_check: bool = False,
+        include_hydrogens: bool = False,
     ) -> RMSDCollection:
         """Get the RMSD summed over the torsion profile."""
         from openff.toolkit import Molecule
 
-        if not torsion_ids:
+        if torsion_ids is None:
             torsion_ids = self.get_torsion_ids()
 
-        if not skip_check:
+        if skip_check is None:
             # TODO: Copy this into each get_* method?
             LOGGER.info("Calling optimize_mm from inside of get_log_sse.")
             self.optimize_mm(force_field=force_field)
@@ -368,7 +370,21 @@ class TorsionStore:
                 allow_undefined_stereo=True,
             )
 
-            rmsds.append(RMSD.from_data(torsion_id, molecule, qm_points, mm_points))
+            rmsds.append(
+                RMSD(
+                    id=torsion_id,
+                    rmsd=sum(
+                        get_rmsd(
+                            molecule,
+                            qm_points[key],
+                            mm_points[key],
+                            include_hydrogens=include_hydrogens,
+                        )
+                        for key in qm_points
+                    )
+                    / len(qm_points),
+                ),
+            )
 
         return rmsds
 
@@ -501,6 +517,7 @@ class TorsionStore:
 
     def get_metrics(
         self,
+        include_hydrogens: bool = False,
     ) -> MetricCollection:
         import pandas
 
@@ -510,8 +527,12 @@ class TorsionStore:
 
         # TODO: Optimize this for speed
         for force_field in self.get_force_fields():
+            rmsds = self.get_rmsd(
+                force_field=force_field,
+                skip_check=True,
+                include_hydrogens=include_hydrogens,
+            ).to_dataframe()
             rmses = self.get_rmse(force_field=force_field, skip_check=True).to_dataframe()
-            rmsds = self.get_rmsd(force_field=force_field, skip_check=True).to_dataframe()
             mean_errors = self.get_mean_error(force_field=force_field, skip_check=True).to_dataframe()
             js_distances = self.get_js_distance(force_field=force_field, skip_check=True).to_dataframe()
 
