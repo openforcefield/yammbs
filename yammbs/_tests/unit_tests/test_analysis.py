@@ -147,17 +147,17 @@ class TestInternalCoordinateRMSD:
 
     def test_ethleneye_oxide_angles(self):
         sage = ForceField("openff-2.2.1.offxml")
-        ethnylene_oxide = Molecule.from_smiles("O1CC1")
+        ethylene_oxide = Molecule.from_smiles("O1CC1")
 
-        ethnylene_oxide.generate_conformers(n_conformers=1)
-        reference_conformer = ethnylene_oxide.conformers[0].m_as("angstrom")
+        ethylene_oxide.generate_conformers(n_conformers=1)
+        reference_conformer = ethylene_oxide.conformers[0].m_as("angstrom")
 
-        out = sage.create_interchange(ethnylene_oxide.to_topology())
+        out = sage.create_interchange(ethylene_oxide.to_topology())
         out.minimize()
         mm_conformer = out.get_positions().m_as("angstrom")
 
         angles = get_internal_coordinates(
-            molecule=ethnylene_oxide,
+            molecule=ethylene_oxide,
             reference=reference_conformer,
             target=mm_conformer,
         _types=("Angle",),
@@ -166,7 +166,7 @@ class TestInternalCoordinateRMSD:
         # 13 topological angles, missing (2, 1, 3), (1, 2, 5) for unclear reasons
         assert len(angles) == 11
 
-        topological_angles = [tuple(ethnylene_oxide.atom_index(atom) for atom in angle) for angle in ethnylene_oxide.angles]
+        topological_angles = [tuple(ethylene_oxide.atom_index(atom) for atom in angle) for angle in ethylene_oxide.angles]
 
         for angle_indices, values in angles.items():
             assert angle_indices in topological_angles
