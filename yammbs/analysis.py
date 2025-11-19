@@ -272,7 +272,11 @@ def get_internal_coordinates(
 
             if isinstance(internal_coordinate, Angle):
                 key = sort_angle_indices(
-                    tuple((int(internal_coordinate.a), int(internal_coordinate.b), int(internal_coordinate.c))),
+                    (
+                        int(internal_coordinate.a),
+                        int(internal_coordinate.b),
+                        int(internal_coordinate.c),
+                    ),
                 )
 
                 if key not in openff_angles:
