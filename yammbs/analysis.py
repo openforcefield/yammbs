@@ -13,7 +13,16 @@ if TYPE_CHECKING:
     from pandas import DataFrame
 
 logger = logging.getLogger(__name__)
-logging.basicConfig()
+
+
+def sort_angle_indices(indices: tuple[int, int, int]) -> tuple[int, int, int]:
+    """Ensure the first atom index is less than the last, leave the middle alone."""
+    if indices[2] > indices[0]:
+        return indices
+    elif indices[2] < indices[0]:
+        return indices[2], indices[1], indices[0]
+    else:
+        raise ValueError("Cannot sort angle indices with identical first and third atoms.")
 
 
 class DDE(ImmutableModel):
@@ -223,16 +232,16 @@ def get_internal_coordinates(
 
     internal_coordinates: dict[str, dict[tuple[int, ...], tuple[int, int]]] = dict()
 
-    # TODO: Expand this out for angles and torsions as well?
+    # TODO: Expand this out for torsions as well?
     openff_bonds = [tuple(sorted((bond.atom1_index, bond.atom2_index))) for bond in molecule.bonds]
     openff_angles = [
-        tuple(
-            sorted(
-                [
+        sort_angle_indices(
+            tuple(
+                (
                     molecule.atom_index(angle[0]),
                     molecule.atom_index(angle[1]),
                     molecule.atom_index(angle[2]),
-                ],
+                ),
             ),
         )
         for angle in molecule.angles
@@ -262,14 +271,8 @@ def get_internal_coordinates(
                 openff_bonds.remove(key)
 
             if isinstance(internal_coordinate, Angle):
-                key = tuple(
-                    sorted(
-                        (
-                            int(internal_coordinate.a),
-                            int(internal_coordinate.b),
-                            int(internal_coordinate.c),
-                        ),
-                    ),
+                key = sort_angle_indices(
+                    tuple((int(internal_coordinate.a), int(internal_coordinate.b), int(internal_coordinate.c))),
                 )
 
                 if key not in openff_angles:
@@ -319,8 +322,10 @@ def get_internal_coordinates(
         )
 
     if "Angle" in types:
+        # TODO: It would be nice to make this an error, but geometric needs to find all
+        # topological angles first
         if len(openff_angles) != 0:
-            logger.warning(f"Some angles were not found (0-indexed, indices sorted ascending): {openff_angles}")
+            logger.warning(f"Some angles were not found (0-indexed): {openff_angles}")
 
     return internal_coordinates
 
