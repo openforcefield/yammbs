@@ -174,7 +174,7 @@ class TestInternalCoordinateRMSD:
             angle_diff = values[0] - values[1]
 
             # All angle differences (radians here) should be small, but leave some wiggle room
-            assert abs(angle_diff) < 0.1
+            assert abs(angle_diff) < 0.01858
 
     def test_torsions_not_in_methane_icrmsd(self, small_store):
         dataframe = small_store.get_internal_coordinate_rmsd(
