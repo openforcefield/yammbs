@@ -38,6 +38,10 @@ class ConstrainedMinimizationInput(ImmutableModel):
         ...,
         description="The grid identifier of the torsion scan point.",
     )
+    restrain_k: float = Field(
+        default=0.0,
+        description="Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.",
+    )
 
 
 class ConstrainedMinimizationResult(ConstrainedMinimizationInput):
@@ -63,6 +67,7 @@ def _minimize_torsions(
     force_field: str,
     n_processes: int = 2,
     chunksize=32,
+    restrain_k: float = 0.0,
 ) -> Generator[ConstrainedMinimizationResult, None, None]:
     LOGGER.info("Mapping `data` generator into `inputs` generator")
 
@@ -76,8 +81,16 @@ def _minimize_torsions(
             force_field=force_field,
             coordinates=coordinates,
             grid_id=grid_id,
+            restrain_k=restrain_k,
         )
-        for (torsion_id, mapped_smiles, dihedral_indices, grid_id, coordinates, _) in data
+        for (
+            torsion_id,
+            mapped_smiles,
+            dihedral_indices,
+            grid_id,
+            coordinates,
+            _,
+        ) in data
     )
 
     LOGGER.info("Setting up multiprocessing pool with generator (of unknown length)")
@@ -112,13 +125,12 @@ def _minimize_constrained(
     """
     import openmm
     import openmm.unit
-    from openff.interchange.operations.minimize import _DEFAULT_ENERGY_MINIMIZATION_TOLERANCE
+    from openff.interchange.operations.minimize import (
+        _DEFAULT_ENERGY_MINIMIZATION_TOLERANCE,
+    )
     from openff.toolkit import Molecule, Quantity
 
     LOGGER.debug(f"Setting up constrained minimization for {input.dict()=}")
-
-    # TODO: Pass this through
-    restrain_k = 1.0
 
     # TODO: GAFF/Espaloma/local file/plugin force fields
 
@@ -141,7 +153,7 @@ def _minimize_constrained(
     restraint_force = openmm.CustomExternalForce("0.5*k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
     restraint_force.addGlobalParameter(
         "k",
-        restrain_k * openmm.unit.kilocalorie_per_mole / openmm.unit.angstrom**2,
+        input.restrain_k * openmm.unit.kilocalorie_per_mole / openmm.unit.angstrom**2,
     )
     for parameter in ("x0", "y0", "z0"):
         restraint_force.addPerParticleParameter(parameter)

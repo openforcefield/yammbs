@@ -261,8 +261,17 @@ class TorsionStore:
         force_field: str,
         n_processes: int = 2,
         chunksize: int = 32,
+        restrain_k: float = 0.0,
     ):
-        """Run a constrained minimization of all torsion points."""
+        """Run a constrained minimization of all torsion points.
+
+        Args:
+            force_field: Force field to use for minimization.
+            n_processes: Number of parallel processes.
+            chunksize: Chunk size for multiprocessing.
+            restrain_k: Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.
+
+        """
         # TODO: Pass through more options for constrained minimization process?
 
         from yammbs.torsion._minimize import _minimize_torsions
@@ -321,6 +330,7 @@ class TorsionStore:
             data=data,
             force_field=force_field,
             n_processes=n_processes,
+            restrain_k=restrain_k,
         )
 
         LOGGER.info(f"Storing minimization results in database with {force_field=}")
@@ -343,6 +353,7 @@ class TorsionStore:
         metric_collection_type: type[analysis.AnalysisMetricCollectionTypeVar],
         torsion_ids: list[int] | None = None,
         skip_check: bool = False,
+        restrain_k: float = 0.0,
         **kwargs,
     ) -> analysis.AnalysisMetricCollectionTypeVar:
         """Calculate any metric for the supplied collection type.
@@ -352,6 +363,7 @@ class TorsionStore:
             metric_collection_type: The collection class (e.g., RMSECollection).
             torsion_ids: Optional list of specific torsion IDs to process.
             skip_check: Skip the optimize_mm check if True.
+            restrain_k: Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.
             **kwargs: Additional keyword arguments to pass to the metric's from_data method.
 
         Returns:
@@ -362,7 +374,7 @@ class TorsionStore:
             torsion_ids = self.get_torsion_ids()
 
         if not skip_check:
-            self.optimize_mm(force_field=force_field)
+            self.optimize_mm(force_field=force_field, restrain_k=restrain_k)
 
         collection = metric_collection_type()
         item_type = collection.get_item_type()
@@ -464,11 +476,13 @@ class TorsionStore:
     def get_metrics(
         self,
         temperature: float = 500.0,
+        restrain_k: float = 0.0,
     ) -> MetricCollection:
         """Automatically compute all registered metrics for all force fields.
 
         Args:
             temperature: Temperature for JS distance calculation (default: 500.0 K).
+            restrain_k: Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.
 
         Returns:
             A MetricCollection containing all computed metrics.
@@ -499,6 +513,7 @@ class TorsionStore:
                     metric_collection_type=collection_type,
                     torsion_ids=self.get_torsion_ids(),
                     skip_check=True,
+                    restrain_k=restrain_k,
                     **kwargs,
                 )
                 dataframes.append(metric_data.to_dataframe())
