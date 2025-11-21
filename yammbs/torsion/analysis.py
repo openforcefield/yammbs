@@ -2,7 +2,14 @@
 
 import logging
 from abc import ABC
-from typing import TYPE_CHECKING, Generic, Self, TypeVar
+from enum import Enum
+from typing import (
+    TYPE_CHECKING,
+    ClassVar,
+    Generic,
+    Self,
+    TypeVar,
+)
 
 import numpy
 
@@ -11,6 +18,7 @@ from yammbs._base.base import ImmutableModel
 from yammbs.analysis import get_rmsd, get_tfd
 
 LOGGER = logging.getLogger(__name__)
+
 
 if TYPE_CHECKING:
     import pandas
@@ -33,10 +41,53 @@ def _normalize(qm: dict[float, float], mm: dict[float, float]) -> tuple[dict[flo
     }
 
 
+def _compute_rms(vals: numpy.ndarray) -> float:
+    """Compute the root mean square of an array."""
+    return float(numpy.sqrt((vals**2).mean()))
+
+
+def _compute_mean(vals: numpy.ndarray) -> float:
+    """Compute the mean of an array."""
+    return float(vals.mean())
+
+
+class MetricType(Enum):
+    """Enum to distinguish between coordinate-based and energy-based metrics."""
+
+    COORDINATE_BASED = "coordinate_based"
+    ENERGY_BASED = "energy_based"
+
+
+def _compute_metric_from_coordinates(
+    molecule: "Molecule",
+    qm_points: dict[float, Array],
+    mm_points: dict[float, Array],
+    metric_func,
+    aggregation_func,
+) -> float:
+    """Compute coordinate-based metrics (RMSD/TFD) with different aggregations.
+
+    Args:
+        molecule: The molecule object.
+        qm_points: QM coordinate points indexed by grid angle.
+        mm_points: MM coordinate points indexed by grid angle.
+        metric_func: Function to compute per-point metric (get_rmsd or get_tfd).
+        aggregation_func: Function to aggregate values (_compute_rms or _compute_mean).
+
+    Returns:
+        The aggregated metric value.
+
+    """
+    vals = numpy.array([metric_func(molecule, qm_points[key], mm_points[key]) for key in qm_points])
+    return aggregation_func(vals)
+
+
 class AnalysisMetric(ABC, ImmutableModel):
     """A model storing a single analysis metric."""
 
     id: int
+
+    metric_type: ClassVar[MetricType]
 
 
 AnalysisMetricTypeVar = TypeVar("AnalysisMetricTypeVar", bound=AnalysisMetric)
@@ -45,11 +96,11 @@ AnalysisMetricTypeVar = TypeVar("AnalysisMetricTypeVar", bound=AnalysisMetric)
 class AnalysisMetricCollection(ABC, Generic[AnalysisMetricTypeVar], list[AnalysisMetricTypeVar]):
     """A generic collection class for typed lists of analysis metrics."""
 
-    item_type: type[AnalysisMetricTypeVar]  # This must be set in subclasses
+    item_type: ClassVar[type[AnalysisMetric]]  # Set in subclasses to specific metric type
 
     @classmethod
-    def get_item_type(cls) -> type[AnalysisMetricTypeVar]:
-        """Retrieve the type of items in the collection (AnalysisMetricTypeVar)."""
+    def get_item_type(cls) -> type[AnalysisMetric]:
+        """Retrieve the type of items in the collection."""
         if not hasattr(cls, "item_type") or cls.item_type is None:
             raise NotImplementedError(f"{cls.__name__} must define the 'item_type' class variable.")
         return cls.item_type
@@ -73,8 +124,25 @@ class AnalysisMetricCollection(ABC, Generic[AnalysisMetricTypeVar], list[Analysi
 AnalysisMetricCollectionTypeVar = TypeVar("AnalysisMetricCollectionTypeVar", bound=AnalysisMetricCollection)
 
 
+# Global registry for all metric collections
+_METRIC_REGISTRY: list[type[AnalysisMetricCollection]] = []
+
+
+def register_metric(collection_class: type[AnalysisMetricCollection]):
+    """Register a metric collection for auto-discovery."""
+    _METRIC_REGISTRY.append(collection_class)
+    return collection_class
+
+
+def get_all_metric_collections() -> list[type[AnalysisMetricCollection]]:
+    """Get all registered metric collections."""
+    return _METRIC_REGISTRY.copy()
+
+
 class Minima(AnalysisMetric):
     """A model storing the minima of a torsion profile."""
+
+    metric_type: ClassVar[MetricType] = MetricType.ENERGY_BASED
 
     id: int
     minima: list[float]
@@ -82,6 +150,8 @@ class Minima(AnalysisMetric):
 
 class RMSRMSD(AnalysisMetric):
     """A model storing the RMS RMSD over a torsion profile."""
+
+    metric_type: ClassVar[MetricType] = MetricType.COORDINATE_BASED
 
     id: int
     rms_rmsd: float
@@ -93,15 +163,16 @@ class RMSRMSD(AnalysisMetric):
         molecule: "Molecule",
         qm_points: dict[float, Array],
         mm_points: dict[float, Array],
+        **kwargs,
     ) -> Self:
         """Create an RMSD object by calculating the RMSD between QM and MM points."""
-        rmsd_vals = numpy.array([get_rmsd(molecule, qm_points[key], mm_points[key]) for key in qm_points])
         return cls(
             id=torsion_id,
-            rms_rmsd=numpy.sqrt((rmsd_vals**2).mean()),
+            rms_rmsd=_compute_metric_from_coordinates(molecule, qm_points, mm_points, get_rmsd, _compute_rms),
         )
 
 
+@register_metric
 class RMSRMSDCollection(AnalysisMetricCollection[RMSRMSD]):
     """A collection of RMSD models."""
 
@@ -110,6 +181,8 @@ class RMSRMSDCollection(AnalysisMetricCollection[RMSRMSD]):
 
 class MeanRMSD(AnalysisMetric):
     """A model storing the mean RMSD over a torsion profile."""
+
+    metric_type: ClassVar[MetricType] = MetricType.COORDINATE_BASED
 
     id: int
     mean_rmsd: float
@@ -121,14 +194,19 @@ class MeanRMSD(AnalysisMetric):
         molecule: "Molecule",
         qm_points: dict[float, Array],
         mm_points: dict[float, Array],
+        **kwargs,
     ) -> Self:
         """Create an RMSD object by calculating the RMSD between QM and MM points."""
-        rmsd_vals = numpy.array([get_rmsd(molecule, qm_points[key], mm_points[key]) for key in qm_points])
-        return cls(id=torsion_id, mean_rmsd=rmsd_vals.mean())
+        return cls(
+            id=torsion_id,
+            mean_rmsd=_compute_metric_from_coordinates(molecule, qm_points, mm_points, get_rmsd, _compute_mean),
+        )
 
 
 class MeanTFD(AnalysisMetric):
     """A model storing the mean TFD over a torsion profile."""
+
+    metric_type: ClassVar[MetricType] = MetricType.COORDINATE_BASED
 
     id: int
     mean_tfd: float
@@ -140,12 +218,16 @@ class MeanTFD(AnalysisMetric):
         molecule: "Molecule",
         qm_points: dict[float, Array],
         mm_points: dict[float, Array],
+        **kwargs,
     ) -> Self:
         """Create a MeanTFD object by calculating the TFD between QM and MM points."""
-        tfd_vals = numpy.array([get_tfd(molecule, qm_points[key], mm_points[key]) for key in qm_points])
-        return cls(id=torsion_id, mean_tfd=tfd_vals.mean())
+        return cls(
+            id=torsion_id,
+            mean_tfd=_compute_metric_from_coordinates(molecule, qm_points, mm_points, get_tfd, _compute_mean),
+        )
 
 
+@register_metric
 class MeanTFDCollection(AnalysisMetricCollection[MeanTFD]):
     """A collection of MeanTFD models."""
 
@@ -154,6 +236,8 @@ class MeanTFDCollection(AnalysisMetricCollection[MeanTFD]):
 
 class RMSTFD(AnalysisMetric):
     """A model storing the RMS TFD over a torsion profile."""
+
+    metric_type: ClassVar[MetricType] = MetricType.COORDINATE_BASED
 
     id: int
     rms_tfd: float
@@ -165,21 +249,23 @@ class RMSTFD(AnalysisMetric):
         molecule: "Molecule",
         qm_points: dict[float, Array],
         mm_points: dict[float, Array],
+        **kwargs,
     ) -> Self:
         """Create an RMSTFD object by calculating the TFD between QM and MM points."""
-        tfd_vals = numpy.array([get_tfd(molecule, qm_points[key], mm_points[key]) for key in qm_points])
         return cls(
             id=torsion_id,
-            rms_tfd=numpy.sqrt((tfd_vals**2).mean()),
+            rms_tfd=_compute_metric_from_coordinates(molecule, qm_points, mm_points, get_tfd, _compute_rms),
         )
 
 
+@register_metric
 class RMSTFDCollection(AnalysisMetricCollection[RMSTFD]):
     """A collection of RMSTFD models."""
 
     item_type = RMSTFD
 
 
+@register_metric
 class MeanRMSDCollection(AnalysisMetricCollection[MeanRMSD]):
     """A collection of RMSD models."""
 
@@ -189,11 +275,18 @@ class MeanRMSDCollection(AnalysisMetricCollection[MeanRMSD]):
 class RMSE(AnalysisMetric):
     """A model storing the RMSE error over a torsion profile."""
 
+    metric_type: ClassVar[MetricType] = MetricType.ENERGY_BASED
+
     id: int
     rmse: float
 
     @classmethod
-    def from_data(cls, torsion_id: int, qm_energies: Array, mm_energies: Array) -> Self:
+    def from_data(
+        cls,
+        torsion_id: int,
+        qm_energies: Array,
+        mm_energies: Array,
+    ) -> Self:
         """Create an RMSE object by calculating the RMSE between QM and MM energies."""
         return cls(
             id=torsion_id,
@@ -201,6 +294,7 @@ class RMSE(AnalysisMetric):
         )
 
 
+@register_metric
 class RMSECollection(AnalysisMetricCollection[RMSE]):
     """A collection of RMSE models."""
 
@@ -210,11 +304,18 @@ class RMSECollection(AnalysisMetricCollection[RMSE]):
 class MeanAbsoluteError(AnalysisMetric):
     """A model storing the mean absolute error over a torsion profile."""
 
+    metric_type: ClassVar[MetricType] = MetricType.ENERGY_BASED
+
     id: int
     mean_absolute_error: float
 
     @classmethod
-    def from_data(cls, torsion_id: int, qm_energies: Array, mm_energies: Array) -> Self:
+    def from_data(
+        cls,
+        torsion_id: int,
+        qm_energies: Array,
+        mm_energies: Array,
+    ) -> Self:
         """Create a MeanAbsoluteError object by calculating the mean absolute MM - QM energy."""
         return cls(
             id=torsion_id,
@@ -222,6 +323,7 @@ class MeanAbsoluteError(AnalysisMetric):
         )
 
 
+@register_metric
 class MeanAbsoluteErrorCollection(AnalysisMetricCollection[MeanAbsoluteError]):
     """A collection of MeanAbsoluteError models."""
 
@@ -231,11 +333,18 @@ class MeanAbsoluteErrorCollection(AnalysisMetricCollection[MeanAbsoluteError]):
 class MeanError(AnalysisMetric):
     """A model storing the mean error over a torsion profile."""
 
+    metric_type: ClassVar[MetricType] = MetricType.ENERGY_BASED
+
     id: int
     mean_error: float
 
     @classmethod
-    def from_data(cls, torsion_id: int, qm_energies: Array, mm_energies: Array) -> Self:
+    def from_data(
+        cls,
+        torsion_id: int,
+        qm_energies: Array,
+        mm_energies: Array,
+    ) -> Self:
         """Create a MeanError object by calculating the mean MM - QM energy."""
         return cls(
             id=torsion_id,
@@ -243,6 +352,7 @@ class MeanError(AnalysisMetric):
         )
 
 
+@register_metric
 class MeanErrorCollection(AnalysisMetricCollection[MeanError]):
     """A collection of MeanError models."""
 
@@ -252,11 +362,18 @@ class MeanErrorCollection(AnalysisMetricCollection[MeanError]):
 class AbsoluteBarrierHeightError(AnalysisMetric):
     """A model storing the barrier height error."""
 
+    metric_type: ClassVar[MetricType] = MetricType.ENERGY_BASED
+
     id: int
     absolute_barrier_height_error: float
 
     @classmethod
-    def from_data(cls, torsion_id: int, qm_energies: Array, mm_energies: Array) -> Self:
+    def from_data(
+        cls,
+        torsion_id: int,
+        qm_energies: Array,
+        mm_energies: Array,
+    ) -> Self:
         """Create an AbsoluteBarrierHeightError from the absolute barrier height error between QM and MM energies."""
         barrier_height_qm = qm_energies.max() - qm_energies.min()
         barrier_height_mm = mm_energies.max() - mm_energies.min()
@@ -266,6 +383,7 @@ class AbsoluteBarrierHeightError(AnalysisMetric):
         )
 
 
+@register_metric
 class AbsoluteBarrierHeightErrorCollection(AnalysisMetricCollection[AbsoluteBarrierHeightError]):
     """A collection of AbsoluteBarrierHeightError models."""
 
@@ -274,6 +392,8 @@ class AbsoluteBarrierHeightErrorCollection(AnalysisMetricCollection[AbsoluteBarr
 
 class JSDistance(AnalysisMetric):
     """A model storing the Jensen-Shannon distances."""
+
+    metric_type: ClassVar[MetricType] = MetricType.ENERGY_BASED
 
     id: int
     js_distance: float
@@ -285,7 +405,7 @@ class JSDistance(AnalysisMetric):
         torsion_id: int,
         qm_energies: Array,
         mm_energies: Array,
-        temperature: float,
+        temperature: float = 500.0,  # Kelvin
     ) -> Self:
         """Create a JSDistance object from supplied data.
 
@@ -294,6 +414,13 @@ class JSDistance(AnalysisMetric):
         specified temperature, using base 2 logs. A distance of 0 indicates
         identical distributions, while a distance of 1 indicates completely
         non-overlapping distributions.
+
+        Args:
+            torsion_id: ID of the torsion.
+            qm_energies: QM energies array.
+            mm_energies: MM energies array.
+            temperature: Temperature in Kelvin for Boltzmann inversion.
+
         """
         from scipy.spatial.distance import jensenshannon
 
@@ -312,6 +439,7 @@ class JSDistance(AnalysisMetric):
         )
 
 
+@register_metric
 class JSDistanceCollection(AnalysisMetricCollection[JSDistance]):
     """A collection of JSDistance models."""
 
