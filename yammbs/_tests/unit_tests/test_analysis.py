@@ -163,7 +163,7 @@ class TestInternalCoordinateRMSD:
         _types=("Angle",),
         )['Angle']
 
-        # 13 topological angles, missing (2, 1, 3), (1, 2, 5) for unclear reasons
+        # 13 topological angles, however GeomeTRIC only returns 11 (excludes (2, 1, 3), (1, 2, 5) for unclear reasons)
         assert len(angles) == 11
 
         topological_angles = [tuple(ethylene_oxide.atom_index(atom) for atom in angle) for angle in ethylene_oxide.angles]
