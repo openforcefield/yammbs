@@ -19,6 +19,8 @@ def _to_geometric_molecule(
 
     geometric_molecule = GeometricMolecule()
 
+    geometric_molecule.top_settings["read_bonds"] = True
+
     geometric_molecule.Data = {
         "resname": ["UNK"] * molecule.n_atoms,
         "resid": [0] * molecule.n_atoms,

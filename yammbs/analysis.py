@@ -1,5 +1,6 @@
 """Analysis routines for optimizations."""
 
+import logging
 from typing import TYPE_CHECKING
 
 import numpy
@@ -10,6 +11,18 @@ from yammbs._base.base import ImmutableModel
 
 if TYPE_CHECKING:
     from pandas import DataFrame
+
+logger = logging.getLogger(__name__)
+
+
+def sort_angle_indices(indices: tuple[int, int, int]) -> tuple[int, int, int]:
+    """Ensure the first atom index is less than the last, leave the middle alone."""
+    if indices[2] > indices[0]:
+        return indices
+    elif indices[2] < indices[0]:
+        return indices[2], indices[1], indices[0]
+    else:
+        raise ValueError("Cannot sort angle indices with identical first and third atoms.")
 
 
 class DDE(ImmutableModel):
@@ -219,8 +232,20 @@ def get_internal_coordinates(
 
     internal_coordinates: dict[str, dict[tuple[int, ...], tuple[int, int]]] = dict()
 
-    # TODO: Expand this out for angles and torsions as well?
-    openff_bonds = [(bond.atom1_index, bond.atom2_index) for bond in molecule.bonds]
+    # TODO: Expand this out for torsions as well?
+    openff_bonds = [tuple(sorted((bond.atom1_index, bond.atom2_index))) for bond in molecule.bonds]
+    openff_angles = [
+        sort_angle_indices(
+            tuple(
+                (
+                    molecule.atom_index(angle[0]),
+                    molecule.atom_index(angle[1]),
+                    molecule.atom_index(angle[2]),
+                ),
+            ),
+        )
+        for angle in molecule.angles
+    ]
 
     for label, internal_coordinate_class in types.items():
         internal_coordinates[label] = dict()
@@ -240,16 +265,25 @@ def get_internal_coordinates(
                 )
 
                 if key not in openff_bonds:
+                    logger.info(f"Bond (from geomeTRIC) not found (in OpenFF molecule), skipping: {key=}")
                     continue
 
+                openff_bonds.remove(key)
+
             if isinstance(internal_coordinate, Angle):
-                key = tuple(
+                key = sort_angle_indices(
                     (
-                        internal_coordinate.a,
-                        internal_coordinate.b,
-                        internal_coordinate.c,
+                        int(internal_coordinate.a),
+                        int(internal_coordinate.b),
+                        int(internal_coordinate.c),
                     ),
                 )
+
+                if key not in openff_angles:
+                    logger.info(f"Angle (from geomeTRIC) not found (in OpenFF molecule), skipping: {key=}")
+                    continue
+
+                openff_angles.remove(key)
 
             if isinstance(internal_coordinate, Dihedral):
                 key = tuple(
@@ -285,6 +319,17 @@ def get_internal_coordinates(
                     ),
                 },
             )
+
+    if "Bond" in types:
+        assert len(openff_bonds) == 0, (
+            f"Some bonds were not found (0-indexed, indices sorted ascending): {openff_bonds}"
+        )
+
+    if "Angle" in types:
+        # TODO: It would be nice to make this an error, but geometric needs to find all
+        # topological angles first
+        if len(openff_angles) != 0:
+            logger.warning(f"Some angles were not found (0-indexed): {openff_angles}")
 
     return internal_coordinates
 
