@@ -59,17 +59,16 @@ class TestTorsionStore:
         )
 
         for torsion_id in store.get_torsion_ids():
-            for torsion_id in store.get_torsion_ids():
-                # each torsion ID is unique, so there's only one mapped SMILES per
-                smiles = store.get_smiles_by_torsion_id(torsion_id)
+            # each torsion ID is unique, so there's only one mapped SMILES per
+            smiles = store.get_smiles_by_torsion_id(torsion_id)
 
-                # but the opposite direction is non-unique, so this is a list (though frequently 1-len)
-                torsion_ids = store.get_torsion_ids_by_smiles(smiles)
-                assert isinstance(torsion_ids, list)
-                assert len(torsion_ids) > 0
-                assert isinstance(torsion_ids[-1], int)
+            # but the opposite direction is non-unique, so this is a list (though frequently 1-len)
+            torsion_ids = store.get_torsion_ids_by_smiles(smiles)
+            assert isinstance(torsion_ids, list)
+            assert len(torsion_ids) > 0
+            assert isinstance(torsion_ids[-1], int)
 
-                assert torsion_id in torsion_ids
+            assert torsion_id in torsion_ids
 
 
 def test_minimize_basic(single_torsion_dataset, tmp_path):
