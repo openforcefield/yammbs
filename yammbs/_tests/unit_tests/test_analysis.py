@@ -145,28 +145,47 @@ class TestInternalCoordinateRMSD:
                 assert isinstance(data[key], float)
                 assert data[key] != pytest.approx(0.0)
 
-    def test_ethleneye_oxide_angles(self):
+    @pytest.mark.parametrize(
+        "remapping_dict",
+        [
+            {0: 0, 1: 1, 2: 2},
+            {0: 1, 1: 2, 2: 0},
+            {0: 1, 1: 0, 2: 2},
+            {0: 0, 1: 2, 2: 1},
+        ],
+        ids=[
+            'control',
+            'shifted plus one',
+            'swapped 0 and 1',
+            'swapped 1 and 2',
+        ],
+    )
+    def test_thiirane_angles(self, remapping_dict):
+        """Test a molecule with a 3-membered ring to safeguard against atom reordering issues."""
         sage = ForceField("openff-2.2.1.offxml")
-        ethylene_oxide = Molecule.from_smiles("O1CC1")
+        thiirane = Molecule.from_smiles("C1CS1").remap(
+            mapping_dict=remapping_dict,
+            partial=True,
+        )
 
-        ethylene_oxide.generate_conformers(n_conformers=1)
-        reference_conformer = ethylene_oxide.conformers[0].m_as("angstrom")
+        thiirane.generate_conformers(n_conformers=1)
+        reference_conformer = thiirane.conformers[0].m_as("angstrom")
 
-        out = sage.create_interchange(ethylene_oxide.to_topology())
+        out = sage.create_interchange(thiirane.to_topology())
         out.minimize()
         mm_conformer = out.get_positions().m_as("angstrom")
 
         angles = get_internal_coordinates(
-            molecule=ethylene_oxide,
+            molecule=thiirane,
             reference=reference_conformer,
             target=mm_conformer,
         _types=("Angle",),
         )['Angle']
 
-        # 13 topological angles, missing (2, 1, 3), (1, 2, 5) for unclear reasons
-        assert len(angles) == 11
+        # this isn't always true (geomeTRIC often finds fewer) but is true for this molecule
+        assert len(angles) == thiirane.n_angles
 
-        topological_angles = [tuple(ethylene_oxide.atom_index(atom) for atom in angle) for angle in ethylene_oxide.angles]
+        topological_angles = [tuple(thiirane.atom_index(atom) for atom in angle) for angle in thiirane.angles]
 
         for angle_indices, values in angles.items():
             assert angle_indices in topological_angles
@@ -174,7 +193,8 @@ class TestInternalCoordinateRMSD:
             angle_diff = values[0] - values[1]
 
             # All angle differences (radians here) should be small, but leave some wiggle room
-            assert abs(angle_diff) < 0.01858
+            # 0.011 rad ~ 0.63 degrees
+            assert abs(angle_diff) < 0.011
 
     def test_torsions_not_in_methane_icrmsd(self, small_store):
         dataframe = small_store.get_internal_coordinate_rmsd(
