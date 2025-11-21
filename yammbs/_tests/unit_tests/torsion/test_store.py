@@ -52,6 +52,25 @@ class TestTorsionStore:
 
         assert store.get_smiles_by_torsion_id(21272423) == store.get_smiles_by_torsion_id(120098113)
 
+    def test_get_torsion_ids_by_smiles(self, torsion_dataset, tmp_path):
+        store = TorsionStore.from_torsion_dataset(
+            torsion_dataset,
+            database_name=tmp_path / "tmp.sqlite",
+        )
+
+        for torsion_id in store.get_torsion_ids():
+            # each torsion ID is unique, so there's only one mapped SMILES per
+            smiles = store.get_smiles_by_torsion_id(torsion_id)
+
+            # but the opposite direction is non-unique, so this is a list (though frequently 1-len)
+            torsion_ids = store.get_torsion_ids_by_smiles(smiles)
+            assert isinstance(torsion_ids, list)
+            assert len(torsion_ids) > 0
+            assert isinstance(torsion_ids[-1], int)
+
+            assert torsion_id in torsion_ids
+
+
 def test_minimize_basic(single_torsion_dataset, tmp_path):
     store = TorsionStore.from_torsion_dataset(
         single_torsion_dataset,
