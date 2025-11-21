@@ -125,7 +125,7 @@ class TorsionStore:
 
     def get_torsion_ids_by_smiles(self, smiles: str) -> list[int]:
         """Get all torsion IDs having a given mapped SMILES.
-        
+
         Input mapped smiles must match an existing string in the database exactly.
         No chemical similarity check is performed.
         """
