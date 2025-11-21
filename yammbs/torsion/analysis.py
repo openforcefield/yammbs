@@ -8,7 +8,7 @@ import numpy
 
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
-from yammbs.analysis import get_rmsd
+from yammbs.analysis import get_rmsd, get_tfd
 
 LOGGER = logging.getLogger(__name__)
 
@@ -80,11 +80,11 @@ class Minima(AnalysisMetric):
     minima: list[float]
 
 
-class RMSD(AnalysisMetric):
+class RMSRMSD(AnalysisMetric):
     """A model storing the RMS RMSD over a torsion profile."""
 
     id: int
-    rmsd: float
+    rms_rmsd: float
 
     @classmethod
     def from_data(
@@ -98,14 +98,92 @@ class RMSD(AnalysisMetric):
         rmsd_vals = numpy.array([get_rmsd(molecule, qm_points[key], mm_points[key]) for key in qm_points])
         return cls(
             id=torsion_id,
-            rmsd=numpy.sqrt((rmsd_vals**2).mean()),
+            rms_rmsd=numpy.sqrt((rmsd_vals**2).mean()),
         )
 
 
-class RMSDCollection(AnalysisMetricCollection[RMSD]):
+class RMSRMSDCollection(AnalysisMetricCollection[RMSRMSD]):
     """A collection of RMSD models."""
 
-    item_type = RMSD
+    item_type = RMSRMSD
+
+
+class MeanRMSD(AnalysisMetric):
+    """A model storing the mean RMSD over a torsion profile."""
+
+    id: int
+    mean_rmsd: float
+
+    @classmethod
+    def from_data(
+        cls,
+        torsion_id: int,
+        molecule: "Molecule",
+        qm_points: dict[float, Array],
+        mm_points: dict[float, Array],
+    ) -> Self:
+        """Create an RMSD object by calculating the RMSD between QM and MM points."""
+        rmsd_vals = numpy.array([get_rmsd(molecule, qm_points[key], mm_points[key]) for key in qm_points])
+        return cls(id=torsion_id, mean_rmsd=rmsd_vals.mean())
+
+
+class MeanTFD(AnalysisMetric):
+    """A model storing the mean TFD over a torsion profile."""
+
+    id: int
+    mean_tfd: float
+
+    @classmethod
+    def from_data(
+        cls,
+        torsion_id: int,
+        molecule: "Molecule",
+        qm_points: dict[float, Array],
+        mm_points: dict[float, Array],
+    ) -> Self:
+        """Create a MeanTFD object by calculating the TFD between QM and MM points."""
+        tfd_vals = numpy.array([get_tfd(molecule, qm_points[key], mm_points[key]) for key in qm_points])
+        return cls(id=torsion_id, mean_tfd=tfd_vals.mean())
+
+
+class MeanTFDCollection(AnalysisMetricCollection[MeanTFD]):
+    """A collection of MeanTFD models."""
+
+    item_type = MeanTFD
+
+
+class RMSTFD(AnalysisMetric):
+    """A model storing the RMS TFD over a torsion profile."""
+
+    id: int
+    rms_tfd: float
+
+    @classmethod
+    def from_data(
+        cls,
+        torsion_id: int,
+        molecule: "Molecule",
+        qm_points: dict[float, Array],
+        mm_points: dict[float, Array],
+    ) -> Self:
+        """Create an RMSTFD object by calculating the TFD between QM and MM points."""
+        tfd_vals = numpy.array([get_tfd(molecule, qm_points[key], mm_points[key]) for key in qm_points])
+        return cls(
+            id=torsion_id,
+            rms_tfd=numpy.sqrt((tfd_vals**2).mean()),
+        )
+
+
+class RMSTFDCollection(AnalysisMetricCollection[RMSTFD]):
+    """A collection of RMSTFD models."""
+
+    item_type = RMSTFD
+
+
+class MeanRMSDCollection(AnalysisMetricCollection[MeanRMSD]):
+    """A collection of RMSD models."""
+
+    item_type = MeanRMSD
 
 
 class RMSE(AnalysisMetric):
@@ -129,6 +207,27 @@ class RMSECollection(AnalysisMetricCollection[RMSE]):
     item_type = RMSE
 
 
+class MeanAbsoluteError(AnalysisMetric):
+    """A model storing the mean absolute error over a torsion profile."""
+
+    id: int
+    mean_absolute_error: float
+
+    @classmethod
+    def from_data(cls, torsion_id: int, qm_energies: Array, mm_energies: Array) -> Self:
+        """Create a MeanAbsoluteError object by calculating the mean absolute MM - QM energy."""
+        return cls(
+            id=torsion_id,
+            mean_absolute_error=numpy.mean(numpy.abs(mm_energies - qm_energies)),
+        )
+
+
+class MeanAbsoluteErrorCollection(AnalysisMetricCollection[MeanAbsoluteError]):
+    """A collection of MeanAbsoluteError models."""
+
+    item_type = MeanAbsoluteError
+
+
 class MeanError(AnalysisMetric):
     """A model storing the mean error over a torsion profile."""
 
@@ -148,6 +247,29 @@ class MeanErrorCollection(AnalysisMetricCollection[MeanError]):
     """A collection of MeanError models."""
 
     item_type = MeanError
+
+
+class AbsoluteBarrierHeightError(AnalysisMetric):
+    """A model storing the barrier height error."""
+
+    id: int
+    absolute_barrier_height_error: float
+
+    @classmethod
+    def from_data(cls, torsion_id: int, qm_energies: Array, mm_energies: Array) -> Self:
+        """Create an AbsoluteBarrierHeightError from the absolute barrier height error between QM and MM energies."""
+        barrier_height_qm = qm_energies.max() - qm_energies.min()
+        barrier_height_mm = mm_energies.max() - mm_energies.min()
+        return cls(
+            id=torsion_id,
+            absolute_barrier_height_error=abs(barrier_height_mm - barrier_height_qm),
+        )
+
+
+class AbsoluteBarrierHeightErrorCollection(AnalysisMetricCollection[AbsoluteBarrierHeightError]):
+    """A collection of AbsoluteBarrierHeightError models."""
+
+    item_type = AbsoluteBarrierHeightError
 
 
 class JSDistance(AnalysisMetric):

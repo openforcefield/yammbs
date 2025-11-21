@@ -6,6 +6,7 @@ from contextlib import contextmanager
 import numpy
 from numpy.typing import NDArray
 from openff.qcsubmit.results import TorsionDriveResultCollection
+from openff.toolkit import Molecule
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from typing_extensions import Self
@@ -13,6 +14,7 @@ from typing_extensions import Self
 from yammbs._molecule import _smiles_to_inchi_key
 from yammbs._types import Pathlike
 from yammbs.exceptions import DatabaseExistsError
+from yammbs.torsion import analysis
 from yammbs.torsion._db import (
     DBBase,
     DBMMTorsionPointRecord,
@@ -20,17 +22,12 @@ from yammbs.torsion._db import (
     DBTorsionRecord,
 )
 from yammbs.torsion._session import TorsionDBSessionManager
-from yammbs.torsion.analysis import (
-    RMSD,
-    AnalysisMetricCollectionTypeVar,
-    JSDistanceCollection,
-    MeanErrorCollection,
-    RMSDCollection,
-    RMSECollection,
-    _normalize,
-)
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
-from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, TorsionRecord
+from yammbs.torsion.models import (
+    MMTorsionPointRecord,
+    QMTorsionPointRecord,
+    TorsionRecord,
+)
 from yammbs.torsion.outputs import Metric, MetricCollection, MinimizedTorsionDataset
 
 LOGGER = logging.getLogger(__name__)
@@ -340,46 +337,106 @@ class TorsionStore:
                     ),
                 )
 
-    def get_rmsd(
+    def _get_coordinate_based_metric(
         self,
         force_field: str,
+        analysis_metric_collection: type[analysis.AnalysisMetricCollectionTypeVar],
         torsion_ids: list[int] | None = None,
         skip_check: bool = False,
-    ) -> RMSDCollection:
-        """Get the RMSD summed over the torsion profile."""
-        from openff.toolkit import Molecule
-
+    ) -> analysis.AnalysisMetricCollectionTypeVar:
+        """Calculate coordinate-based metrics for the supplied analysis metric collection."""
         if not torsion_ids:
             torsion_ids = self.get_torsion_ids()
 
         if not skip_check:
-            # TODO: Copy this into each get_* method?
-            LOGGER.info("Calling optimize_mm from inside of get_log_sse.")
+            LOGGER.info("Calling optimize_mm from inside of _get_coordinate_based_metric.")
             self.optimize_mm(force_field=force_field)
 
-        rmsds = RMSDCollection()
+        collection = analysis_metric_collection()
 
         for torsion_id in torsion_ids:
             qm_points = self.get_qm_points_by_torsion_id(torsion_id=torsion_id)
             mm_points = self.get_mm_points_by_torsion_id(torsion_id=torsion_id, force_field=force_field)
-
             molecule = Molecule.from_mapped_smiles(
                 self.get_smiles_by_torsion_id(torsion_id),
                 allow_undefined_stereo=True,
             )
 
-            rmsds.append(RMSD.from_data(torsion_id, molecule, qm_points, mm_points))
+            collection.append(
+                collection.get_item_type().from_data(
+                    torsion_id=torsion_id,
+                    molecule=molecule,
+                    qm_points=qm_points,
+                    mm_points=mm_points,
+                ),
+            )
 
-        return rmsds
+        return collection
+
+    def get_rms_rmsd(
+        self,
+        force_field: str,
+        torsion_ids: list[int] | None = None,
+        skip_check: bool = False,
+    ) -> analysis.RMSRMSDCollection:
+        """Get the RMS RMSD over the torsion profile."""
+        return self._get_coordinate_based_metric(
+            force_field=force_field,
+            analysis_metric_collection=analysis.RMSRMSDCollection,
+            torsion_ids=torsion_ids,
+            skip_check=skip_check,
+        )
+
+    def get_mean_rmsd(
+        self,
+        force_field: str,
+        torsion_ids: list[int] | None = None,
+        skip_check: bool = False,
+    ) -> analysis.MeanRMSDCollection:
+        """Get the Mean RMSD over the torsion profile."""
+        return self._get_coordinate_based_metric(
+            force_field=force_field,
+            analysis_metric_collection=analysis.MeanRMSDCollection,
+            torsion_ids=torsion_ids,
+            skip_check=skip_check,
+        )
+
+    def get_rms_tfd(
+        self,
+        force_field: str,
+        torsion_ids: list[int] | None = None,
+        skip_check: bool = False,
+    ) -> analysis.RMSTFDCollection:
+        """Get the RMS TFD over the torsion profile."""
+        return self._get_coordinate_based_metric(
+            force_field=force_field,
+            analysis_metric_collection=analysis.RMSTFDCollection,
+            torsion_ids=torsion_ids,
+            skip_check=skip_check,
+        )
+
+    def get_mean_tfd(
+        self,
+        force_field: str,
+        torsion_ids: list[int] | None = None,
+        skip_check: bool = False,
+    ) -> analysis.MeanTFDCollection:
+        """Get the Mean TFD over the torsion profile."""
+        return self._get_coordinate_based_metric(
+            force_field=force_field,
+            analysis_metric_collection=analysis.MeanTFDCollection,
+            torsion_ids=torsion_ids,
+            skip_check=skip_check,
+        )
 
     def _get_energy_based_metric(
         self,
         force_field: str,
-        analysis_metric_collection: type[AnalysisMetricCollectionTypeVar],
+        analysis_metric_collection: type[analysis.AnalysisMetricCollectionTypeVar],
         torsion_ids: list[int] | None = None,
         skip_check: bool = False,
         kwargs: dict | None = None,
-    ) -> AnalysisMetricCollectionTypeVar:
+    ) -> analysis.AnalysisMetricCollectionTypeVar:
         """Calculate energy-based metrics for the supplied analysis metric collection."""
         kwargs = kwargs if kwargs else dict()
 
@@ -394,7 +451,7 @@ class TorsionStore:
         for torsion_id in torsion_ids:
             qm, mm = (
                 numpy.fromiter(dct.values(), dtype=float)
-                for dct in _normalize(
+                for dct in analysis._normalize(
                     self.get_qm_energies_by_torsion_id(torsion_id=torsion_id),
                     self.get_mm_energies_by_torsion_id(torsion_id=torsion_id, force_field=force_field),
                 )
@@ -422,11 +479,25 @@ class TorsionStore:
         force_field: str,
         torsion_ids: list[int] | None = None,
         skip_check: bool = False,
-    ) -> RMSECollection:
+    ) -> analysis.RMSECollection:
         """Get the RMS RMSD over the torsion profile."""
         return self._get_energy_based_metric(
             force_field=force_field,
-            analysis_metric_collection=RMSECollection,
+            analysis_metric_collection=analysis.RMSECollection,
+            torsion_ids=torsion_ids,
+            skip_check=skip_check,
+        )
+
+    def get_mean_absolute_error(
+        self,
+        force_field: str,
+        torsion_ids: list[int] | None = None,
+        skip_check: bool = False,
+    ) -> analysis.MeanAbsoluteErrorCollection:
+        """Get the Mean Absolute Error over the torsion profile."""
+        return self._get_energy_based_metric(
+            force_field=force_field,
+            analysis_metric_collection=analysis.MeanAbsoluteErrorCollection,
             torsion_ids=torsion_ids,
             skip_check=skip_check,
         )
@@ -436,10 +507,24 @@ class TorsionStore:
         force_field: str,
         torsion_ids: list[int] | None = None,
         skip_check: bool = False,
-    ) -> MeanErrorCollection:
+    ) -> analysis.MeanErrorCollection:
         return self._get_energy_based_metric(
             force_field=force_field,
-            analysis_metric_collection=MeanErrorCollection,
+            analysis_metric_collection=analysis.MeanErrorCollection,
+            torsion_ids=torsion_ids,
+            skip_check=skip_check,
+        )
+
+    def get_absolute_barrier_height_error(
+        self,
+        force_field: str,
+        torsion_ids: list[int] | None = None,
+        skip_check: bool = False,
+    ) -> analysis.AbsoluteBarrierHeightErrorCollection:
+        """Get the Absolute Barrier Height Error over the torsion profile."""
+        return self._get_energy_based_metric(
+            force_field=force_field,
+            analysis_metric_collection=analysis.AbsoluteBarrierHeightErrorCollection,
             torsion_ids=torsion_ids,
             skip_check=skip_check,
         )
@@ -450,11 +535,11 @@ class TorsionStore:
         torsion_ids: list[int] | None = None,
         skip_check: bool = False,
         temperature: float = 500.0,
-    ) -> JSDistanceCollection:
+    ) -> analysis.JSDistanceCollection:
         """Get the RMS RMSD over the torsion profile."""
         return self._get_energy_based_metric(
             force_field=force_field,
-            analysis_metric_collection=JSDistanceCollection,
+            analysis_metric_collection=analysis.JSDistanceCollection,
             torsion_ids=torsion_ids,
             skip_check=skip_check,
             kwargs={"temperature": temperature},
@@ -511,20 +596,47 @@ class TorsionStore:
         # TODO: Optimize this for speed
         for force_field in self.get_force_fields():
             rmses = self.get_rmse(force_field=force_field, skip_check=True).to_dataframe()
-            rmsds = self.get_rmsd(force_field=force_field, skip_check=True).to_dataframe()
             mean_errors = self.get_mean_error(force_field=force_field, skip_check=True).to_dataframe()
+            mean_absolute_errors = self.get_mean_absolute_error(
+                force_field=force_field,
+                skip_check=True,
+            ).to_dataframe()
+            absolute_barrier_height_errors = self.get_absolute_barrier_height_error(
+                force_field=force_field,
+                skip_check=True,
+            ).to_dataframe()
             js_distances = self.get_js_distance(force_field=force_field, skip_check=True).to_dataframe()
+            rms_rmsds = self.get_rms_rmsd(force_field=force_field, skip_check=True).to_dataframe()
+            mean_rmsds = self.get_mean_rmsd(force_field=force_field, skip_check=True).to_dataframe()
+            mean_tfds = self.get_mean_tfd(force_field=force_field, skip_check=True).to_dataframe()
+            rms_tfds = self.get_rms_tfd(force_field=force_field, skip_check=True).to_dataframe()
 
-            dataframe = rmses.join(rmsds).join(mean_errors).join(js_distances)
+            dataframe = (
+                rmses.join(mean_errors)
+                .join(mean_absolute_errors)
+                .join(
+                    absolute_barrier_height_errors,
+                )
+                .join(js_distances)
+                .join(rms_rmsds)
+                .join(mean_rmsds)
+                .join(mean_tfds)
+                .join(rms_tfds)
+            )
 
             dataframe = dataframe.replace({pandas.NA: numpy.nan})
 
             metrics.metrics[force_field] = {
                 id: Metric(  # type: ignore[misc]
-                    rmsd=row["rmsd"],
                     rmse=row["rmse"],
                     mean_error=row["mean_error"],
+                    mean_absolute_error=row["mean_absolute_error"],
+                    absolute_barrier_height_error=row["absolute_barrier_height_error"],
                     js_distance=(row["js_distance"], row["js_temperature"]),
+                    rms_rmsd=row["rms_rmsd"],
+                    mean_rmsd=row["mean_rmsd"],
+                    mean_tfd=row["mean_tfd"],
+                    rms_tfd=row["rms_tfd"],
                 )
                 for id, row in dataframe.iterrows()
             }
