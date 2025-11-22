@@ -8,7 +8,7 @@ import numpy
 
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
-from yammbs.analysis import get_rmsd
+from yammbs.analysis import get_single_rmsd
 
 LOGGER = logging.getLogger(__name__)
 
@@ -80,11 +80,11 @@ class Minima(AnalysisMetric):
     minima: list[float]
 
 
-class RMSD(AnalysisMetric):
-    """A model storing the RMS RMSD over a torsion profile."""
+class RMSRMSD(AnalysisMetric):
+    """A model storing the RMS of RMSDs over a torsion profile."""
 
     id: int
-    rmsd: float
+    rms_rmsd: float
 
     @classmethod
     def from_data(
@@ -94,18 +94,54 @@ class RMSD(AnalysisMetric):
         qm_points: dict[float, Array],
         mm_points: dict[float, Array],
     ) -> Self:
-        """Create an RMSD object by calculating the RMSD between QM and MM points."""
-        rmsd_vals = numpy.array([get_rmsd(molecule, qm_points[key], mm_points[key]) for key in qm_points])
+        """RMS of RMSDs over a torsion profile.
+
+        Calculate the RMSD (between each QM and MM structure) at each point and then report the
+        RMS of these RMSDs over the entire torsion profile.
+        """
         return cls(
             id=torsion_id,
-            rmsd=numpy.sqrt((rmsd_vals**2).mean()),
+            rms_rmsd=numpy.sqrt(
+                numpy.mean([get_single_rmsd(molecule, qm_points[key], mm_points[key]) ** 2 for key in qm_points]),
+            ),
         )
 
 
-class RMSDCollection(AnalysisMetricCollection[RMSD]):
+class RMSRMSDCollection(AnalysisMetricCollection[RMSRMSD]):
     """A collection of RMSD models."""
 
-    item_type = RMSD
+    item_type = RMSRMSD
+
+
+class MeanRMSD(AnalysisMetric):
+    """A model storing the mean RMSD over a torsion profile."""
+
+    id: int
+    mean_rmsd: float
+
+    @classmethod
+    def from_data(
+        cls,
+        torsion_id: int,
+        molecule: "Molecule",
+        qm_points: dict[float, Array],
+        mm_points: dict[float, Array],
+    ) -> Self:
+        """Mean of RMSDs over a torsion profile.
+
+        Calculate the RMSD (between each QM and MM structure) at each point and then report the
+        mean RMSD over the entire torsion profile.
+        """
+        return cls(
+            id=torsion_id,
+            mean_rmsd=numpy.mean([get_single_rmsd(molecule, qm_points[key], mm_points[key]) for key in qm_points]),
+        )
+
+
+class MeanRMSDCollection(AnalysisMetricCollection[MeanRMSD]):
+    """A collection of RMSD models."""
+
+    item_type = MeanRMSD
 
 
 class RMSE(AnalysisMetric):

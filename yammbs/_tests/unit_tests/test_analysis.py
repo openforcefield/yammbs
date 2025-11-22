@@ -4,13 +4,13 @@ from openff.utilities import get_data_file_path
 import pytest
 from openff.toolkit import ForceField, Molecule
 
-from yammbs.analysis import get_internal_coordinate_differences, get_internal_coordinate_rmsds, get_rmsd, get_tfd, get_internal_coordinates
+from yammbs.analysis import get_internal_coordinate_differences, get_internal_coordinate_rmsds, get_single_rmsd, get_tfd, get_internal_coordinates
 
 
 class TestAnalysis:
     def test_rmsd(self, allicin, conformers):
         # Passing the same conformers should return 0.0
-        last_last = get_rmsd(
+        last_last = get_single_rmsd(
             molecule=allicin,
             reference=conformers[-1],
             target=conformers[-1],
@@ -18,7 +18,7 @@ class TestAnalysis:
 
         assert last_last == 0.0
 
-        first_last = get_rmsd(
+        first_last = get_single_rmsd(
             molecule=allicin,
             reference=conformers[0],
             target=conformers[-1],
@@ -26,7 +26,7 @@ class TestAnalysis:
 
         assert isinstance(first_last, float)
 
-        first_second = get_rmsd(
+        first_second = get_single_rmsd(
             molecule=allicin,
             reference=conformers[0],
             target=conformers[1],
@@ -34,7 +34,7 @@ class TestAnalysis:
 
         assert first_second != first_last
 
-        last_first = get_rmsd(
+        last_first = get_single_rmsd(
             molecule=allicin,
             reference=conformers[-1],
             target=conformers[0],

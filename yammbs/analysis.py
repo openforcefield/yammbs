@@ -120,7 +120,7 @@ class TFDCollection(list):
         self.to_dataframe().to_csv(path)
 
 
-def get_rmsd(
+def get_single_rmsd(
     molecule: Molecule,
     reference: Array,
     target: Array,
