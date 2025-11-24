@@ -4,12 +4,15 @@ from collections.abc import Generator, Iterable
 from contextlib import contextmanager
 
 import numpy
+import pandas as pd
 from numpy.typing import NDArray
 from openff.qcsubmit.results import TorsionDriveResultCollection
+from openff.toolkit.typing.engines.smirnoff.parameters import ProperTorsionHandler
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from typing_extensions import Self
 
+from yammbs._minimize import _lazy_load_force_field
 from yammbs._molecule import _smiles_to_inchi_key
 from yammbs._types import Pathlike
 from yammbs.exceptions import DatabaseExistsError
@@ -30,7 +33,11 @@ from yammbs.torsion.analysis import (
     _normalize,
 )
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
-from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, TorsionRecord
+from yammbs.torsion.models import (
+    MMTorsionPointRecord,
+    QMTorsionPointRecord,
+    TorsionRecord,
+)
 from yammbs.torsion.outputs import Metric, MetricCollection, MinimizedTorsionDataset
 
 LOGGER = logging.getLogger(__name__)
@@ -542,3 +549,253 @@ class TorsionStore:
             }
 
         return metrics
+
+    def get_proper_torsion_by_torsion_id(
+        self,
+        torsion_id: int,
+        force_field_name: str,
+    ) -> list[ProperTorsionHandler.ProperTorsionType]:
+        """Get the proper torsion parameters which match the dihedral being scanned."""
+        from openff.toolkit import Molecule
+
+        # Get the central two atoms for the dihedral being scanned
+        central_dihedral_indices = set(self.get_dihedral_indices_by_torsion_id(torsion_id)[1:3])
+        ff = _lazy_load_force_field(force_field_name)
+        mol = Molecule.from_mapped_smiles(
+            self.get_smiles_by_torsion_id(torsion_id),
+            allow_undefined_stereo=True,
+        )
+        proper_torsions = ff.label_molecules(mol.to_topology())[0]["ProperTorsions"]
+
+        # Get all dihedrals which match the central two atoms
+        matched_dihedrals = []
+        for indices, dihedral in proper_torsions.items():
+            # Make sure we're independent of atom ordering
+            if set(indices[1:3]) == set(central_dihedral_indices):
+                matched_dihedrals.append(dihedral)
+
+        return matched_dihedrals
+
+    def get_torsion_image(self, torsion_id: int) -> str:
+        """Get an image of the molecule with the dihedral highlighted."""
+        import base64
+
+        from openff.toolkit import Molecule
+        from rdkit.Chem import AllChem
+        from rdkit.Chem.Draw import rdMolDraw2D
+
+        smiles = self.get_smiles_by_torsion_id(torsion_id)
+        dihedral_indices = self.get_dihedral_indices_by_torsion_id(torsion_id)
+
+        # Use the mapped SMILES to get the molecule
+        mol = Molecule.from_mapped_smiles(smiles, allow_undefined_stereo=True)
+        if mol is None:
+            raise ValueError(f"Could not convert SMILES to molecule: {smiles}")
+
+        rdmol = mol.to_rdkit()
+
+        # Draw in 2D - compute 2D coordinates
+        AllChem.Compute2DCoords(rdmol)  # type: ignore[attr-defined]
+        # Highlight the dihedral
+        atom_indices = [
+            dihedral_indices[0],
+            dihedral_indices[1],
+            dihedral_indices[2],
+            dihedral_indices[3],
+        ]
+        bond_indices = [
+            rdmol.GetBondBetweenAtoms(atom_indices[0], atom_indices[1]).GetIdx(),
+            rdmol.GetBondBetweenAtoms(atom_indices[1], atom_indices[2]).GetIdx(),
+            rdmol.GetBondBetweenAtoms(atom_indices[2], atom_indices[3]).GetIdx(),
+        ]
+
+        # Create an SVG drawer
+        drawer = rdMolDraw2D.MolDraw2DSVG(200, 200)  # Set the size of the image (width x height)
+        drawer.SetFontSize(0.8)  # Optional: Adjust font size for better readability
+
+        # Prepare the molecule for drawing
+        rdMolDraw2D.PrepareAndDrawMolecule(
+            drawer,
+            rdmol,
+            highlightAtoms=atom_indices,
+            highlightBonds=bond_indices,
+        )
+
+        # Finish the drawing and get the SVG text
+        drawer.FinishDrawing()
+        svg = drawer.GetDrawingText()
+
+        svg_base64 = base64.b64encode(svg.encode()).decode()
+        img_tag = f'<img src="data:image/svg+xml;base64,{svg_base64}" alt="Molecule Image" />'
+        return img_tag
+
+    def get_scan_image(
+        self,
+        torsion_id: int,
+        force_fields: list[str],
+    ) -> str:
+        from matplotlib import pyplot as plt
+
+        # Create plot
+        fig, torsion_axis = plt.subplots(figsize=(3.6, 1.9), dpi=300)
+
+        # Get the energies
+        _qm = self.get_qm_energies_by_torsion_id(torsion_id)
+        _qm = dict(sorted(_qm.items()))
+        qm_minimum_index = min(_qm, key=_qm.get)  # type: ignore[arg-type]
+
+        # Make a new dict to avoid in-place modification while iterating
+        qm = {key: _qm[key] - _qm[qm_minimum_index] for key in _qm}
+
+        torsion_axis.plot(
+            list(qm.keys()),
+            list(qm.values()),
+            "k.-",
+            label="QM",
+        )
+
+        for force_field in force_fields:
+            mm = dict(sorted(self.get_mm_energies_by_torsion_id(torsion_id, force_field=force_field).items()))
+            assert mm.keys() == qm.keys(), "MM data and QM data should have the same keys"
+            if len(mm) == 0:
+                continue
+
+            torsion_axis.plot(
+                list(mm.keys()),
+                [val - mm[qm_minimum_index] for val in mm.values()],
+                "o--",
+                label=force_field,
+            )
+
+            torsion_axis.legend(loc=0, bbox_to_anchor=(1.05, 1))
+
+        # Label the axes
+        torsion_axis.set_ylabel(r"Energy / kcal mol$^{-1}$")
+        torsion_axis.set_xlabel("Torsion angle / degrees")
+
+        # Convert the plot to SVG
+        import base64
+        from io import BytesIO
+
+        buf = BytesIO()
+        plt.savefig(buf, format="svg", bbox_inches="tight")
+        buf.seek(0)
+        svg_data = buf.getvalue()
+        buf.close()
+
+        # Close the figure
+        plt.close(fig)
+
+        # Encode the SVG data to base64
+        svg_base64 = base64.b64encode(svg_data).decode()
+        img_tag = f'<img src="data:image/svg+xml;base64,{svg_base64}" alt="Scan Image" />'
+        return img_tag
+
+    def get_summary_df(
+        self,
+        force_fields: list[str],
+        show_parameters: bool = False,
+    ) -> pd.DataFrame:
+        """Get a summary dataframe of the metrics for a given force field.
+
+        This is intended to be used for generating HTML reports.
+
+        Parameters
+        ----------
+        force_fields : list[str]
+            The force fields to include in the summary dataframe.
+
+        show_parameters : bool
+            Whether to include the dihedral parameters in the summary dataframe.
+
+        Returns
+        -------
+        pd.DataFrame
+            A dataframe containing the summary of the metrics for the given force fields.
+
+        """
+        import pandas as pd
+        from tqdm import tqdm
+
+        rows = []
+        metrics = self.get_metrics().metrics
+        metrics_to_plot = {
+            "RMSD / A": lambda x: x.rmsd,
+            "RMSE / kcal mol-1": lambda x: x.rmse,
+            "Mean Error / kcal mol-1": lambda x: x.mean_error,
+            "JS Distance": lambda x: x.js_distance[0],
+        }
+
+        for mol_id in tqdm(self.get_torsion_ids()):
+            row: dict[str, str | float] = {}
+            row["ID"] = mol_id
+            row["Torsion Image"] = self.get_torsion_image(mol_id)
+            row["Scan Image"] = self.get_scan_image(mol_id, force_fields=force_fields)
+
+            for metric, metric_func in metrics_to_plot.items():
+                for force_field in force_fields:
+                    row[f"{metric}\n{force_field}"] = metric_func(metrics[force_field][mol_id])
+
+            # Also add the dihedral type for each force field, if requested
+            if show_parameters:
+                for force_field in force_fields:
+                    proper_torsions = self.get_proper_torsion_by_torsion_id(
+                        torsion_id=mol_id,
+                        force_field_name=force_field,
+                    )
+                    row[f"Proper Torsion SMIRKS\n{force_field}"] = "\n".join(t.smirks for t in proper_torsions)
+                    row[f"Proper Torsion\n{force_field}"] = "\n".join(str(t) for t in proper_torsions)
+
+            rows.append(row)
+
+        return pd.DataFrame(rows)
+
+    def get_summary(
+        self,
+        file_name: str,
+        force_fields: list[str] | None = None,
+        show_parameters: bool = False,
+    ) -> None:
+        """Create a html summary of the metrics for a given force field."""
+        import bokeh
+        import panel
+
+        force_fields = force_fields if force_fields else self.get_force_fields()
+
+        df = self.get_summary_df(force_fields, show_parameters=show_parameters)
+
+        number_format = bokeh.models.widgets.tables.NumberFormatter(format="0.0000")
+        string_format = {"type": "textarea", "whiteSpace": "pre-wrap"}
+
+        formatters: dict[str, bokeh.models.widgets.tables.NumberFormatter | dict[str, str] | str] = {}
+        for col in df.columns:
+            if "Image" in col:
+                formatters[col] = "html"
+            elif "Proper Torsion" in col:
+                formatters[col] = string_format
+            else:
+                formatters[col] = number_format
+
+        frozen_colums = ["ID", "Torsion Image", "Scan Image"]
+
+        tabulator = panel.widgets.Tabulator(
+            df,
+            show_index=False,
+            selectable=False,
+            disabled=True,
+            formatters=formatters,
+            configuration={"rowHeight": 200},
+            sizing_mode="stretch_width",
+            frozen_columns=frozen_colums,
+            page_size=4,
+            pagination="local",
+        )
+
+        # TODO: Colour scale the metrics
+
+        layout = panel.Column(
+            None,
+            tabulator,
+        )
+
+        layout.save(file_name, title="MetricsSummary", embed=True)
