@@ -595,7 +595,7 @@ class TorsionStore:
         rdmol = mol.to_rdkit()
 
         # Draw in 2D - compute 2D coordinates
-        AllChem.Compute2DCoords(rdmol)  # type: ignore[attr-defined]
+        AllChem.Compute2DCoords(rdmol)  # type: ignore[attr-defined, unused-ignore]
         # Highlight the dihedral
         atom_indices = [
             dihedral_indices[0],
