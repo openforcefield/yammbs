@@ -2,6 +2,7 @@ import logging
 import pathlib
 from collections.abc import Generator, Iterable
 from contextlib import contextmanager
+from typing import Literal
 
 import numpy
 from numpy.typing import NDArray
@@ -30,7 +31,11 @@ from yammbs.torsion.analysis import (
     _normalize,
 )
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
-from yammbs.torsion.models import MMTorsionPointRecord, QMTorsionPointRecord, TorsionRecord
+from yammbs.torsion.models import (
+    MMTorsionPointRecord,
+    QMTorsionPointRecord,
+    TorsionRecord,
+)
 from yammbs.torsion.outputs import Metric, MetricCollection, MinimizedTorsionDataset
 
 LOGGER = logging.getLogger(__name__)
@@ -274,6 +279,7 @@ class TorsionStore:
     def optimize_mm(
         self,
         force_field: str,
+        method: Literal["openmm", "geometric"] = "openmm",
         n_processes: int = 2,
         chunksize: int = 32,
     ):
@@ -335,7 +341,9 @@ class TorsionStore:
         minimization_results = _minimize_torsions(
             data=data,
             force_field=force_field,
+            method=method,
             n_processes=n_processes,
+            chunksize=chunksize,
         )
 
         LOGGER.info(f"Storing minimization results in database with {force_field=}")
