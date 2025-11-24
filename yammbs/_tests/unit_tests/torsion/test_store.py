@@ -56,7 +56,6 @@ class TestTorsionStore:
             21272423,
         ) == store.get_smiles_by_torsion_id(120098113)
 
-
     def test_get_torsion_ids_by_smiles(self, torsion_dataset, tmp_path):
         store = TorsionStore.from_torsion_dataset(
             torsion_dataset,
