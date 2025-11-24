@@ -1,16 +1,32 @@
 import logging
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from multiprocessing import Pool
+from typing import Literal
 
+import numpy
+import openmm
 from numpy.typing import NDArray
+from openff.toolkit import Molecule
 from pydantic import Field
 from tqdm import tqdm
 
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
-from yammbs._minimize import _lazy_load_force_field
+from yammbs._forcefields import build_omm_system
+from yammbs._minimize import _minimize_geometric, _minimize_openmm
 
-LOGGER = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
+
+_ConstrainedMinimizationFn = Callable[
+    [
+        Molecule,
+        openmm.System,
+        numpy.ndarray,
+        tuple[int, int, int, int],
+        float,
+    ],
+    tuple[numpy.ndarray, float],
+]
 
 
 class ConstrainedMinimizationInput(ImmutableModel):
@@ -39,6 +55,15 @@ class ConstrainedMinimizationInput(ImmutableModel):
         description="The grid identifier of the torsion scan point.",
     )
 
+    method: Literal["openmm", "geometric"] = Field(
+        "openmm",
+        description="The minimization method to use.",
+    )
+
+    @property
+    def constrained_minimization_function(self) -> _ConstrainedMinimizationFn:
+        return _minimize_openmm_constrained if self.method == "openmm" else _minimize_geometric_constrained
+
 
 class ConstrainedMinimizationResult(ConstrainedMinimizationInput):
     energy: float = Field(
@@ -61,10 +86,11 @@ def _minimize_torsions(
         None,
     ],
     force_field: str,
+    method: Literal["openmm", "geometric"] = "openmm",
     n_processes: int = 2,
     chunksize=32,
 ) -> Generator[ConstrainedMinimizationResult, None, None]:
-    LOGGER.info("Mapping `data` generator into `inputs` generator")
+    logger.info("Mapping `data` generator into `inputs` generator")
 
     # It'd be smoother to skip this tranformation - just pass this generator
     # from inside of TorsionStore
@@ -76,18 +102,26 @@ def _minimize_torsions(
             force_field=force_field,
             coordinates=coordinates,
             grid_id=grid_id,
+            method=method,
         )
-        for (torsion_id, mapped_smiles, dihedral_indices, grid_id, coordinates, _) in data
+        for (
+            torsion_id,
+            mapped_smiles,
+            dihedral_indices,
+            grid_id,
+            coordinates,
+            _,
+        ) in data
     )
 
-    LOGGER.info("Setting up multiprocessing pool with generator (of unknown length)")
+    logger.info("Setting up multiprocessing pool with generator (of unknown length)")
 
     # TODO: It'd be nice to have the `total` argument passed through, but that would require using
     #       a list-like iterable instead of a generator, which might cause problems at scale
     with Pool(processes=n_processes) as pool:
         for val in tqdm(
             pool.imap(
-                _minimize_constrained,
+                _run_minimization_constrained,
                 inputs,
                 chunksize=chunksize,
             ),
@@ -103,41 +137,14 @@ class ConstrainedMinimizationError(Exception):
     pass
 
 
-def _minimize_constrained(
-    input: ConstrainedMinimizationInput,
-) -> ConstrainedMinimizationResult:
-    """Taken from openff-strike-team 10/31/24.
-
-    https://github.com/lilyminium/openff-strike-team/blob/a6ccd2821ed627064529f5c4a22b47c1fa36efe2/torsions/datasets/mm/minimize-torsion-constrained.py#L35-L106
-    """
-    import openmm
-    import openmm.unit
-    from openff.interchange.operations.minimize import _DEFAULT_ENERGY_MINIMIZATION_TOLERANCE
-    from openff.toolkit import Molecule, Quantity
-
-    LOGGER.debug(f"Setting up constrained minimization for {input.dict()=}")
-
-    # TODO: Pass this through
-    restrain_k = 1.0
-
-    # TODO: GAFF/Espaloma/local file/plugin force fields
-
-    LOGGER.debug(f"Loading force field {input.force_field=}")
-    force_field = _lazy_load_force_field(input.force_field)
-
-    # if this force field is constrained, this will be the H-* constraint ...
-    try:
-        assert "tip3p" not in force_field["Constraints"].parameters[0].id
-    except (KeyError, AssertionError):
-        pass
-
-    LOGGER.debug(f"Creating molecule, with conformer, from {input.mapped_smiles=}")
-    molecule = Molecule.from_mapped_smiles(input.mapped_smiles, allow_undefined_stereo=True)
-    molecule.add_conformer(Quantity(input.coordinates, "angstrom"))
-
-    LOGGER.debug("Creating interchange object")
-    interchange = force_field.create_interchange(molecule.to_topology())
-
+def _restrain_omm_system(
+    mol: Molecule,
+    system: openmm.System,
+    positions: numpy.ndarray,
+    dihedral_indices: tuple[int, int, int, int],
+    restrain_k: float,
+) -> None:
+    """Add a restraint to all atoms except those in the dihedral."""
     restraint_force = openmm.CustomExternalForce("0.5*k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
     restraint_force.addGlobalParameter(
         "k",
@@ -146,72 +153,126 @@ def _minimize_constrained(
     for parameter in ("x0", "y0", "z0"):
         restraint_force.addPerParticleParameter(parameter)
 
-    atom_indices = list(range(len(molecule.atoms)))
-    atom_indices = sorted(set(atom_indices))  # - set([index - 0 for index in input.dihedral_indices]))
-
-    # switch to nm now... just in case
-    positions = interchange.positions.to("nanometer")
-
-    LOGGER.debug(f"Adding restraint to particles not in {input.dihedral_indices=}")
-    for atom_index in range(molecule.n_atoms):
-        if atom_index in input.dihedral_indices:
+    logger.debug(f"Adding restraint to particles not in {dihedral_indices=}")
+    for atom_index in range(mol.n_atoms):
+        if atom_index in dihedral_indices:
             continue
 
         particle_index = restraint_force.addParticle(atom_index)
         restraint_force.setParticleParameters(
             particle_index,
             atom_index,
-            [x.to_openmm() for x in positions[atom_index]],
+            [(x * openmm.unit.angstrom).in_units_of(openmm.unit.nanometer) for x in positions[atom_index]],
         )
 
-    LOGGER.debug("Creating openmm.app.Simulation object")
-    simulation = interchange.to_openmm_simulation(
-        openmm.LangevinMiddleIntegrator(
-            293.15 * openmm.unit.kelvin,
-            1.0 / openmm.unit.picosecond,
-            2.0 * openmm.unit.femtosecond,
-        ),
-        combine_nonbonded_forces=True,
-        additional_forces=[restraint_force],
+    system.addForce(restraint_force)
+
+
+def _zero_masses_of_dihedral_atoms(
+    system: openmm.System,
+    dihedral_indices: tuple[int, int, int, int],
+) -> None:
+    """Set the masses of the dihedral atoms to zero to 'constrain' them minimization."""
+    logger.debug(f"Adding restraint to particles not in {dihedral_indices=}")
+    for index in dihedral_indices:
+        system.setParticleMass(index, 0.0)
+
+
+def _minimize_openmm_constrained(
+    mol: Molecule,
+    system: openmm.System,
+    positions: numpy.ndarray,
+    dihedral_indices: tuple[int, int, int, int],
+    angle: float,
+) -> tuple[numpy.ndarray, float]:
+    """Minimize a molecule with OpenMM with 'constraints' on a dihedral."""
+    # Add the "dihedral constraint" by zeroing the masses of the dihedral atoms
+    _zero_masses_of_dihedral_atoms(system=system, dihedral_indices=dihedral_indices)
+
+    return _minimize_openmm(
+        mol=mol,
+        system=system,
+        positions=positions,
     )
 
-    simulation.context.computeVirtualSites()
 
-    for index in input.dihedral_indices:
-        simulation.system.setParticleMass(index, 0.0)
+def _minimize_geometric_constrained(
+    mol: Molecule,
+    system: openmm.System,
+    positions: numpy.ndarray,
+    dihedral_indices: tuple[int, int, int, int],
+    angle: float,
+) -> tuple[numpy.ndarray, float]:
+    """Minimize a molecule with Geometric with the specified dihedral constrained."""
+    constraints = {"set": [{"indices": dihedral_indices, "type": "dihedral", "value": angle}]}
 
-    LOGGER.debug("Trying to minimize energy")
+    return _minimize_geometric(
+        mol=mol,
+        system=system,
+        positions=positions,
+        constraints=constraints,
+    )
+
+
+def _run_minimization_constrained(
+    input: ConstrainedMinimizationInput,
+) -> ConstrainedMinimizationResult:
+    """Taken from openff-strike-team 10/31/24.
+
+    https://github.com/lilyminium/openff-strike-team/blob/a6ccd2821ed627064529f5c4a22b47c1fa36efe2/torsions/datasets/mm/minimize-torsion-constrained.py#L35-L106
+    """
+    from openff.toolkit import Molecule
+
+    logger.info(f"############ Method: {input.method} ############")
+
+    logger.debug(f"Setting up constrained minimization for {input.model_dump()=}")
+
+    # TODO: Pass this through
+    restrain_k = 1.0
+
+    logger.debug(f"Creating molecule from {input.mapped_smiles=}")
+    molecule = Molecule.from_mapped_smiles(input.mapped_smiles, allow_undefined_stereo=True)
+    # molecule.add_conformer(Quantity(input.coordinates, "angstrom"))
+
+    logger.debug(f"Creating OpenMM system with force field {input.force_field=}")
+    # TODO: Add same error handling as in _run_minimization?
+    system = build_omm_system(
+        force_field=input.force_field,
+        molecule=molecule,
+    )
+
+    atom_indices = list(range(len(molecule.atoms)))
+    atom_indices = sorted(set(atom_indices))  # - set([index - 0 for index in input.dihedral_indices]))
+
+    # Add the restraint force to the system
+    _restrain_omm_system(
+        mol=molecule,
+        system=system,
+        positions=input.coordinates,
+        dihedral_indices=input.dihedral_indices,
+        restrain_k=restrain_k,
+    )
+
+    logger.debug("Trying to minimize energy")
     try:
-        simulation.minimizeEnergy(
-            tolerance=_DEFAULT_ENERGY_MINIMIZATION_TOLERANCE.to_openmm(),
-            maxIterations=10_000,
+        final_positions, final_energy = input.constrained_minimization_function(
+            molecule,
+            system,
+            input.coordinates,
+            input.dihedral_indices,
+            input.grid_id,
         )
     except Exception as e:
-        LOGGER.error(
-            {
-                index: simulation.system.getParticleMass(index)._value
-                for index in range(simulation.system.getNumParticles())
-            },
-        )
-        LOGGER.error(input.dihedral_indices, input.mapped_smiles)
+        raise ConstrainedMinimizationError(f"Minimization failed for {input=} : {e}") from e
 
-        raise ConstrainedMinimizationError("Minimization failed, see logger") from e
-
-    LOGGER.debug("Returning result")
+    logger.debug("Returning result")
     return ConstrainedMinimizationResult(
         torsion_id=input.torsion_id,
         mapped_smiles=input.mapped_smiles,
         dihedral_indices=input.dihedral_indices,
         force_field=input.force_field,
-        coordinates=simulation.context.getState(getPositions=True)
-        .getPositions(asNumpy=True)
-        .value_in_unit(openmm.unit.angstrom)[: interchange.positions.shape[0], :],
-        energy=simulation.context.getState(
-            getEnergy=True,
-        )
-        .getPotentialEnergy()
-        .value_in_unit(
-            openmm.unit.kilocalorie_per_mole,
-        ),
+        coordinates=final_positions,
+        energy=final_energy,
         grid_id=input.grid_id,
+        method=input.method,
     )

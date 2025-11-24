@@ -3,6 +3,7 @@ import pathlib
 from collections import defaultdict
 from collections.abc import Generator, Iterable
 from contextlib import contextmanager
+from typing import Literal
 
 import numpy
 from numpy.typing import NDArray
@@ -561,6 +562,7 @@ class MoleculeStore:
     def optimize_mm(
         self,
         force_field: str,
+        method: Literal["openmm", "geometric"] = "openmm",
         n_processes: int = 2,
         chunksize=32,
     ):
@@ -588,6 +590,7 @@ class MoleculeStore:
         _minimized_blob = _minimize_blob(
             input=inchi_key_qm_conformer_mapping,
             force_field=force_field,
+            method=method,
             n_processes=n_processes,
             chunksize=chunksize,
         )
