@@ -44,6 +44,7 @@ module = [
     "geometric.*",
     "qcelemental",
     "openff.qcsubmit.results",
+    "MDAnalysis",
 ]
 ignore_missing_imports = true
 
