@@ -120,6 +120,18 @@ class TorsionStore:
                 for (smiles,) in db.db.query(DBTorsionRecord.mapped_smiles).filter_by(torsion_id=torsion_id).all()
             )
 
+    def get_torsion_ids_by_smiles(self, smiles: str) -> list[int]:
+        """Get all torsion IDs having a given mapped SMILES.
+
+        Input mapped smiles must match an existing string in the database exactly.
+        No chemical similarity check is performed.
+        """
+        with self._get_session() as db:
+            return [
+                torsion_id
+                for (torsion_id,) in db.db.query(DBTorsionRecord.torsion_id).filter_by(mapped_smiles=smiles).all()
+            ]
+
     # TODO: Allow by multiple selectors (id: list[int])
     def get_dihedral_indices_by_torsion_id(self, torsion_id: int) -> tuple[int, int, int, int]:
         with self._get_session() as db:
@@ -261,8 +273,17 @@ class TorsionStore:
         force_field: str,
         n_processes: int = 2,
         chunksize: int = 32,
+        restraint_k: float = 0.0,
     ):
-        """Run a constrained minimization of all torsion points."""
+        """Run a constrained minimization of all torsion points.
+
+        Args:
+            force_field: Force field to use for minimization.
+            n_processes: Number of parallel processes.
+            chunksize: Chunk size for multiprocessing.
+            restraint_k: Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.
+
+        """
         # TODO: Pass through more options for constrained minimization process?
 
         from yammbs.torsion._minimize import _minimize_torsions
@@ -321,6 +342,7 @@ class TorsionStore:
             data=data,
             force_field=force_field,
             n_processes=n_processes,
+            restraint_k=restraint_k,
         )
 
         LOGGER.info(f"Storing minimization results in database with {force_field=}")
@@ -343,6 +365,7 @@ class TorsionStore:
         metric_collection_type: type[analysis.AnalysisMetricCollectionTypeVar],
         torsion_ids: list[int] | None = None,
         skip_check: bool = False,
+        restraint_k: float = 0.0,
         **kwargs,
     ) -> analysis.AnalysisMetricCollectionTypeVar:
         """Calculate any metric for the supplied collection type.
@@ -352,6 +375,7 @@ class TorsionStore:
             metric_collection_type: The collection class (e.g., RMSECollection).
             torsion_ids: Optional list of specific torsion IDs to process.
             skip_check: Skip the optimize_mm check if True.
+            restraint_k: Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.
             **kwargs: Additional keyword arguments to pass to the metric's from_data method.
 
         Returns:
@@ -362,7 +386,7 @@ class TorsionStore:
             torsion_ids = self.get_torsion_ids()
 
         if not skip_check:
-            self.optimize_mm(force_field=force_field)
+            self.optimize_mm(force_field=force_field, restraint_k=restraint_k)
 
         collection = metric_collection_type()
         item_type = collection.get_item_type()
@@ -463,12 +487,20 @@ class TorsionStore:
 
     def get_metrics(
         self,
-        temperature: float = 500.0,
+        force_fields: Iterable[str] | None = None,
+        js_temperature: float = 500.0,
+        restraint_k: float = 0.0,
+        skip_check: bool = True,
     ) -> MetricCollection:
         """Automatically compute all registered metrics for all force fields.
 
         Args:
-            temperature: Temperature for JS distance calculation (default: 500.0 K).
+            force_fields: Iterable of force fields to compute metrics for. If None, compute for all available.
+            js_temperature: Temperature for JS distance calculation (default: 500.0 K).
+            restraint_k: Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.
+                         This is ignored if skip_check is True.
+            skip_check:  If True, skip the internal call to optimize_mm (assumes that the optimization has
+                         already been performed and ignores restraint_k).
 
         Returns:
             A MetricCollection containing all computed metrics.
@@ -483,14 +515,22 @@ class TorsionStore:
         # Get all registered metric collection types
         metric_collections = analysis.get_all_metric_collections()
 
-        for force_field in self.get_force_fields():
+        force_fields = force_fields if force_fields else self.get_force_fields()
+
+        if not skip_check:
+            LOGGER.info("Calling optimize_mm from inside of get_metrics.")
+            for force_field in force_fields:
+                self.optimize_mm(force_field=force_field, restraint_k=restraint_k)
+
+        # TODO: Optimize this for speed
+        for force_field in force_fields:
             dataframes = []
 
             # Compute each metric
             for collection_type in metric_collections:
                 # Special handling for JSDistance which needs temperature parameter
                 if collection_type == analysis.JSDistanceCollection:
-                    kwargs = {"temperature": temperature}
+                    kwargs = {"temperature": js_temperature}
                 else:
                     kwargs = {}
 
