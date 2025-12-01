@@ -211,8 +211,8 @@ def get_internal_coordinates(
 
     for _type in _types:
         try:
-            reference_values = key_func_mapping[_type](reference_molecule)
-            target_values = key_func_mapping[_type](target_molecule)
+            reference_values: dict = key_func_mapping[_type](reference_molecule)  # type: ignore[assignment]
+            target_values: dict = key_func_mapping[_type](target_molecule)  # type: ignore[assignment]
 
             assert reference_values.keys() == target_values.keys()
 
