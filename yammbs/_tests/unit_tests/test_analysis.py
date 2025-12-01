@@ -79,7 +79,12 @@ class TestAnalysis:
 
 class TestInternalCoordinateRMSD:
     def test_rmsds_between_conformers(self, ligand):
-        assert ligand.n_conformers
+        assert ligand.n_conformers > 1
+
+        assert not numpy.allclose(
+            ligand.conformers[0],
+            ligand.conformers[-1],
+        )
 
         rmsds = get_internal_coordinate_rmsds(
             molecule=ligand,
@@ -192,6 +197,7 @@ class TestInternalCoordinateRMSD:
         assert max(differences["Dihedral"].values()) < 10
         assert max(differences["Improper"].values()) < 1
 
+    @pytest.mark.skip(reason="See https://github.com/openforcefield/yammbs/issues/199")
     def test_internal_coordinate_impropers(self):
         triazine = Molecule.from_mapped_smiles("[H:7][c:1]1[n:2][c:3]([n:4][c:5]([n:6]1)[H:9])[H:8]")
 

@@ -218,14 +218,11 @@ def get_internal_coordinates(
 
             internal_coordinates[_type] = dict()
 
-            try:
-                key = next(iter(reference_values.keys()))
-            except StopIteration:
-                # likely means there are no internal coordinates of this type,
-                # i.e. water having no torsions
-                continue
-
-            internal_coordinates[_type][key] = (reference_values[key], target_values[key])
+            for key in reference_values:
+                internal_coordinates[_type][key] = (
+                    reference_values[key],
+                    target_values[key],
+                )
 
         except KeyError:
             raise ValueError(f"Unknown internal coordinate type: {_type}")

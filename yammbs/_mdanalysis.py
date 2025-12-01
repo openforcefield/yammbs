@@ -1,5 +1,3 @@
-import functools
-
 import MDAnalysis
 from openff.toolkit import Molecule
 
@@ -11,7 +9,9 @@ def from_openff(molecule: Molecule) -> MDAnalysis.Universe:
     )
 
 
-@functools.lru_cache
+# TODO: Caching might be useful, but needs to account for two molecules having
+#       identical (mapped) SMILES but (crucially!) different conformers.
+# @functools.lru_cache
 def from_openff_mapped(molecule: Molecule, mapped_smiles: str) -> MDAnalysis.Universe:
     return MDAnalysis.Universe(molecule.to_rdkit())
 

@@ -13,7 +13,7 @@ from yammbs.checkmol import ChemicalEnvironment
 from yammbs.exceptions import DatabaseExistsError
 from yammbs.inputs import QCArchiveDataset, QCArchiveMolecule
 from yammbs.models import MMConformerRecord, QMConformerRecord
-
+from yammbs.analysis import ICRMSD
 
 def test_from_qcsubmit(small_qcsubmit_collection):
     db = "foo.sqlite"
@@ -330,7 +330,18 @@ def test_filter_by_smirks(small_store, smirks, expected_len, func):
     )
 
     for value in filtered_values:
-        assert value in all_values
+        # equality check sometimes doesn't quite work because of float rounding,
+        # so look up the object that should match and do a softer comparison
+        if isinstance(value, ICRMSD):
+            should_match = [v for v in all_values if v.qcarchive_id == value.qcarchive_id][0]
+
+            assert len(should_match.icrmsd) > 0
+
+            for label in value.icrmsd:
+                assert value.icrmsd[label] == pytest.approx(should_match.icrmsd[label])
+
+        else:
+            assert value in all_values
 
 
 def test_get_metrics(small_store):
