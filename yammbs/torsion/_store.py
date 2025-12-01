@@ -342,6 +342,7 @@ class TorsionStore:
             data=data,
             force_field=force_field,
             n_processes=n_processes,
+            chunksize=chunksize,
             restraint_k=restraint_k,
         )
 
