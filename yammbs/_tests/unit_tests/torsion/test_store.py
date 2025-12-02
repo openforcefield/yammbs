@@ -102,10 +102,15 @@ def test_minimize_basic(single_torsion_dataset, tmp_path):
     assert len(metrics["metrics"]["openff-2.2.0"]) == 1
 
     expected_metrics = {
-        "rmsd": 0.07475493617511018,
         "rmse": 0.8193199571663233,
         "mean_error": -0.35170719027937586,
+        "mean_absolute_error": 0.549303330939933,
+        "absolute_barrier_height_error": 0.48400790618105294,
         "js_distance": (0.3168201337322116, 500.0),
+        "rms_rmsd": 0.07475493617511018,
+        "mean_rmsd": 0.07488366869329068,
+        "rms_tfd": 0.007450184091939644,
+        "mean_tfd": 0.00737728325914333,
     }
     TORSION_ID = 119466834
 
