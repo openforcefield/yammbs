@@ -647,14 +647,12 @@ class TorsionStore:
         # Make a new dict to avoid in-place modification while iterating
         qm = {key: _qm[key] - _qm[qm_minimum_index] for key in _qm}
 
-        torsion_axis.plot(
-            list(qm.keys()),
-            list(qm.values()),
-            "k.-",
-            label="QM",
-        )
+        # Ensure colors are not reused across force fields - use a colour map
+        # with 10 colours and change the symbol for each if more than 10 force fields
+        cmap = plt.get_cmap("tab10")
+        symbols = ["o", "^", "s"]  # Allow up to 30 force fields
 
-        for force_field in force_fields:
+        for i, force_field in enumerate(force_fields):
             mm = dict(sorted(self.get_mm_energies_by_torsion_id(torsion_id, force_field=force_field).items()))
             assert mm.keys() == qm.keys(), "MM data and QM data should have the same keys"
             if len(mm) == 0:
@@ -665,9 +663,18 @@ class TorsionStore:
                 [val - mm[qm_minimum_index] for val in mm.values()],
                 "o--",
                 label=force_field,
+                color=cmap(i % 10),
+                marker=symbols[i // 10],
             )
 
-            torsion_axis.legend(loc=0, bbox_to_anchor=(1.05, 1))
+        torsion_axis.plot(
+            list(qm.keys()),
+            list(qm.values()),
+            "k.-",
+            label="QM",
+        )
+
+        torsion_axis.legend(loc=0, bbox_to_anchor=(1.05, 1))
 
         # Label the axes
         torsion_axis.set_ylabel(r"Energy / kcal mol$^{-1}$")
@@ -778,16 +785,20 @@ class TorsionStore:
 
         frozen_colums = ["ID", "Torsion Image", "Scan Image"]
 
+        # Scale up the row height depending on the number of force fields shown
+        row_height = max(200, 25 * len(force_fields))
+        n_rows = 800 // row_height
+
         tabulator = panel.widgets.Tabulator(
             df,
             show_index=False,
             selectable=False,
             disabled=True,
             formatters=formatters,
-            configuration={"rowHeight": 200},
+            configuration={"rowHeight": row_height},
             sizing_mode="stretch_width",
             frozen_columns=frozen_colums,
-            page_size=4,
+            page_size=n_rows,
             pagination="local",
         )
 
