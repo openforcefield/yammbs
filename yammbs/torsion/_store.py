@@ -550,7 +550,7 @@ class TorsionStore:
 
         return metrics
 
-    def get_proper_torsion_by_torsion_id(
+    def get_proper_torsion_parameters_by_torsion_id(
         self,
         torsion_id: int,
         force_field_name: str,
@@ -746,7 +746,7 @@ class TorsionStore:
             # Also add the dihedral type for each force field, if requested
             if show_parameters:
                 for force_field in force_fields:
-                    proper_torsions = self.get_proper_torsion_by_torsion_id(
+                    proper_torsions = self.get_proper_torsion_parameters_by_torsion_id(
                         torsion_id=mol_id,
                         force_field_name=force_field,
                     )
