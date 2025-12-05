@@ -7,6 +7,7 @@ import numpy
 import pandas as pd
 from numpy.typing import NDArray
 from openff.qcsubmit.results import TorsionDriveResultCollection
+from openff.toolkit import Molecule
 from openff.toolkit.typing.engines.smirnoff.parameters import ProperTorsionHandler
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -284,14 +285,24 @@ class TorsionStore:
         n_processes: int = 2,
         chunksize: int = 32,
         restraint_k: float = 0.0,
-    ):
+    ) -> None:
         """Run a constrained minimization of all torsion points.
 
-        Args:
-            force_field: Force field to use for minimization.
-            n_processes: Number of parallel processes.
-            chunksize: Chunk size for multiprocessing.
-            restraint_k: Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.
+        Parameters
+        ----------
+        force_field : str
+            Force field to use for minimization.
+        n_processes : int
+            Number of parallel processes.
+        chunksize : int
+            Chunk size for multiprocessing.
+        restraint_k : float
+            Restraint force constant in kcal/(mol*Angstrom^2) for atoms not
+            in dihedral.
+
+        Returns
+        -------
+        None
 
         """
         # TODO: Pass through more options for constrained minimization process?
@@ -377,8 +388,6 @@ class TorsionStore:
         restraint_k: float = 0.0,
     ) -> RMSDCollection:
         """Get the RMSD summed over the torsion profile."""
-        from openff.toolkit import Molecule
-
         if not torsion_ids:
             torsion_ids = self.get_torsion_ids()
 
@@ -539,15 +548,22 @@ class TorsionStore:
     ) -> MetricCollection:
         """Automatically compute all registered metrics for all force fields.
 
-        Args:
-            force_fields: Iterable of force fields to compute metrics for. If None, compute for all available.
-            js_temperature: Temperature for JS distance calculation (default: 500.0 K).
-            restraint_k: Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.
-                         This is ignored if skip_check is True.
-            skip_check:  If True, skip the internal call to optimize_mm (assumes that the optimization has
-                         already been performed and ignores restraint_k).
+        Parameters
+        ----------
+        force_fields : Iterable[str] | None
+            Iterable of force fields to compute metrics for. If None, compute for all available.
+        js_temperature : float
+            Temperature for JS distance calculation (default: 500.0 K).
+        restraint_k : float
+            Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.
+            This is ignored if skip_check is True.
+        skip_check : bool
+            If True, skip the internal call to optimize_mm (assumes that the optimization has
+            already been performed and ignores restraint_k).
 
-        Returns:
+        Returns
+        -------
+        MetricCollection
             A MetricCollection containing all computed metrics.
 
         """
@@ -597,8 +613,6 @@ class TorsionStore:
         force_field_name: str,
     ) -> list[ProperTorsionHandler.ProperTorsionType]:
         """Get the proper torsion parameters which match the dihedral being scanned."""
-        from openff.toolkit import Molecule
-
         # Get the central two atoms for the dihedral being scanned
         central_dihedral_indices = set(self.get_dihedral_indices_by_torsion_id(torsion_id)[1:3])
         ff = _lazy_load_force_field(force_field_name)
@@ -621,7 +635,6 @@ class TorsionStore:
         """Get an image of the molecule with the dihedral highlighted."""
         import base64
 
-        from openff.toolkit import Molecule
         from rdkit.Chem import AllChem
         from rdkit.Chem.Draw import rdMolDraw2D
 
@@ -804,7 +817,23 @@ class TorsionStore:
         force_fields: list[str] | None = None,
         show_parameters: bool = False,
     ) -> None:
-        """Create a html summary of the metrics for a given force field."""
+        """Create a html summary table of the metrics for a given force field.
+
+        Parameters
+        ----------
+        file_name : str
+            The name of the file to save the summary to.
+        force_fields : list[str] | None, optional
+            The force fields to include in the summary. If None, include all force fields.
+        show_parameters : bool, optional
+            Whether to include the dihedral parameters in the summary. This is False by default
+            as it substantially slows down the generation of the summary.
+
+        Returns
+        -------
+        None
+
+        """
         import bokeh
         import panel
 
