@@ -81,9 +81,11 @@ def test_minimize_basic(single_torsion_dataset, tmp_path):
         database_name=tmp_path / "test.sqlite",
     )
 
-    store.optimize_mm(force_field="openff-2.2.0", n_processes=os.cpu_count())
-
-    torsion_id = store.get_torsion_ids()[0]
+    store.optimize_mm(
+        force_field="openff-2.2.0",
+        n_processes=os.cpu_count(),
+        restraint_k=1.0,
+    )
 
     assert store.get_force_fields() == ["openff-2.2.0"]
 
