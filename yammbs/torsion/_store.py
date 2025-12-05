@@ -690,8 +690,15 @@ class TorsionStore:
     ) -> str:
         from matplotlib import pyplot as plt
 
-        # Create plot
-        fig, torsion_axis = plt.subplots(figsize=(3.6, 1.9), dpi=300)
+        # Create plot with two subplots
+        fig, (energy_axis, geometry_axis) = plt.subplots(
+            2,
+            1,
+            figsize=(3.6, 3.2),
+            dpi=300,
+            sharex=True,
+            gridspec_kw={"height_ratios": [1, 1]},
+        )
 
         # Get the energies
         _qm = self.get_qm_energies_by_torsion_id(torsion_id)
@@ -700,6 +707,13 @@ class TorsionStore:
 
         # Make a new dict to avoid in-place modification while iterating
         qm = {key: _qm[key] - _qm[qm_minimum_index] for key in _qm}
+
+        # Get QM and MM points for RMSD calculation
+        qm_points = self.get_qm_points_by_torsion_id(torsion_id=torsion_id)
+        molecule = Molecule.from_mapped_smiles(
+            self.get_smiles_by_torsion_id(torsion_id),
+            allow_undefined_stereo=True,
+        )
 
         # Ensure colors are not reused across force fields - use a colour map
         # with 10 colours and change the symbol for each if more than 10 force fields
@@ -712,27 +726,61 @@ class TorsionStore:
             if len(mm) == 0:
                 continue
 
-            torsion_axis.plot(
+            color = cmap(i % 10)
+            marker = symbols[i // 10]
+
+            # Plot energies
+            energy_axis.plot(
                 list(mm.keys()),
                 [val - mm[qm_minimum_index] for val in mm.values()],
-                "o--",
                 label=force_field,
-                color=cmap(i % 10),
-                marker=symbols[i // 10],
+                color=color,
+                marker=marker,
             )
 
-        torsion_axis.plot(
+            # Calculate and plot RMSD at each point
+            mm_points = self.get_mm_points_by_torsion_id(
+                torsion_id=torsion_id,
+                force_field=force_field,
+            )
+
+            angles = []
+            rmsds = []
+            for angle in sorted(mm_points.keys()):
+                if angle in qm_points:
+                    qm_coords = qm_points[angle]
+                    mm_coords = mm_points[angle]
+                    # Calculate RMSD for this point
+                    rmsd_value = RMSD.from_data(
+                        torsion_id=torsion_id,
+                        molecule=molecule,
+                        qm_points={angle: qm_coords},
+                        mm_points={angle: mm_coords},
+                    ).rmsd
+                    angles.append(angle)
+                    rmsds.append(rmsd_value)
+
+            geometry_axis.plot(
+                angles,
+                rmsds,
+                label=force_field,
+                color=color,
+                marker=marker,
+            )
+
+        energy_axis.plot(
             list(qm.keys()),
             list(qm.values()),
             "k.-",
             label="QM",
         )
 
-        torsion_axis.legend(loc=0, bbox_to_anchor=(1.05, 1))
+        energy_axis.legend(loc=0, bbox_to_anchor=(1.05, 1))
 
         # Label the axes
-        torsion_axis.set_ylabel(r"Energy / kcal mol$^{-1}$")
-        torsion_axis.set_xlabel("Torsion angle / degrees")
+        energy_axis.set_ylabel(r"Energy / kcal mol$^{-1}$")
+        geometry_axis.set_ylabel(r"RMSD / $\mathrm{\AA}$")
+        geometry_axis.set_xlabel("Torsion angle / degrees")
 
         # Convert the plot to SVG
         import base64
@@ -856,7 +904,7 @@ class TorsionStore:
         frozen_colums = ["ID", "Torsion Image", "Scan Image"]
 
         # Scale up the row height depending on the number of force fields shown
-        row_height = max(200, 25 * len(force_fields))
+        row_height = max(300, 25 * len(force_fields))
         n_rows = 800 // row_height
 
         tabulator = panel.widgets.Tabulator(
