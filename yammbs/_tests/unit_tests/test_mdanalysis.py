@@ -37,3 +37,7 @@ def test_valences_match(smiles):
     universe = from_openff(molecule)
 
     assert_bonds_match(molecule.bonds, universe.bonds)
+
+# For each valence term (% confusion about impropers)
+#  * Make sure basic behavior matches OpenFF <-> MDAnalysi
+#  * Make sure bad conformers don't change graphs
