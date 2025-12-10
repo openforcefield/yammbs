@@ -193,6 +193,7 @@ def get_internal_coordinates(
         Angle,
         Dihedral,
         Distance,
+        LinearAngle,
         OutOfPlane,
         PrimitiveInternalCoordinates,
     )
@@ -209,13 +210,16 @@ def get_internal_coordinates(
         _to_geometric_molecule(molecule=molecule, coordinates=target),
     )
 
-    _mapping = {
-        "Bond": Distance,
-        "Angle": Angle,
-        "Dihedral": Dihedral,
-        "Improper": OutOfPlane,
+    _mapping: dict[str, tuple[type, ...]] = {
+        "Bond": (Distance,),
+        "Angle": (
+            Angle,
+            LinearAngle,
+        ),
+        "Dihedral": (Dihedral,),
+        "Improper": (OutOfPlane,),
     }
-    types: dict[str, type] = {_type: _mapping[_type] for _type in _types}
+    types: dict[str, tuple[type, ...]] = {_type: _mapping[_type] for _type in _types}
 
     internal_coordinates: dict[str, dict[tuple[int, ...], tuple[int, int]]] = dict()
 
@@ -229,7 +233,7 @@ def get_internal_coordinates(
             if not isinstance(internal_coordinate, internal_coordinate_class):
                 continue
 
-            if isinstance(internal_coordinate, Distance):
+            elif isinstance(internal_coordinate, Distance):
                 key = tuple(
                     sorted(
                         (
@@ -242,16 +246,16 @@ def get_internal_coordinates(
                 if key not in openff_bonds:
                     continue
 
-            if isinstance(internal_coordinate, Angle):
+            elif isinstance(internal_coordinate, (Angle, LinearAngle)):
                 key = tuple(
                     (
                         internal_coordinate.a,
                         internal_coordinate.b,
-                        internal_coordinate.c,
+                        int(internal_coordinate.c),  # geomeTRIC somehow makes this np.int32
                     ),
                 )
 
-            if isinstance(internal_coordinate, Dihedral):
+            elif isinstance(internal_coordinate, Dihedral):
                 key = tuple(
                     (
                         internal_coordinate.a,
@@ -261,7 +265,7 @@ def get_internal_coordinates(
                     ),
                 )
 
-            if isinstance(internal_coordinate, OutOfPlane):
+            elif isinstance(internal_coordinate, OutOfPlane):
                 # geomeTRIC lists the central atom FIRST, but SMIRNOFF force fields list
                 # the central atom SECOND. Re-ordering here to be consistent with SMIRNOFF
                 # see PR #109 for more
@@ -280,8 +284,8 @@ def get_internal_coordinates(
             internal_coordinates[label].update(
                 {
                     key: (
-                        internal_coordinate.value(reference),
-                        internal_coordinate.value(target),
+                        internal_coordinate.value(reference),  # type: ignore[attr-defined]
+                        internal_coordinate.value(target),  # type: ignore[attr-defined]
                     ),
                 },
             )
