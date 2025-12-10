@@ -204,6 +204,11 @@ class MoleculeStore:
 
     # TODO: Allow by multiple selectors (smiles: list[str])
     def get_molecule_id_by_smiles(self, smiles: str) -> int:
+        """Get all molecule IDs having a given mapped SMILES.
+
+        Input mapped smiles must match an existing string in the database exactly.
+        No chemical similarity check is performed.
+        """
         with self._get_session() as db:
             return next(id for (id,) in db.db.query(DBMoleculeRecord.id).filter_by(mapped_smiles=smiles).all())
 
