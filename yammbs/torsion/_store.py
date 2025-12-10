@@ -7,6 +7,7 @@ import numpy
 import pandas as pd
 from numpy.typing import NDArray
 from openff.qcsubmit.results import TorsionDriveResultCollection
+from openff.toolkit import Molecule
 from openff.toolkit.typing.engines.smirnoff.parameters import ProperTorsionHandler
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -284,14 +285,24 @@ class TorsionStore:
         n_processes: int = 2,
         chunksize: int = 32,
         restraint_k: float = 0.0,
-    ):
+    ) -> None:
         """Run a constrained minimization of all torsion points.
 
-        Args:
-            force_field: Force field to use for minimization.
-            n_processes: Number of parallel processes.
-            chunksize: Chunk size for multiprocessing.
-            restraint_k: Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.
+        Parameters
+        ----------
+        force_field : str
+            Force field to use for minimization.
+        n_processes : int
+            Number of parallel processes.
+        chunksize : int
+            Chunk size for multiprocessing.
+        restraint_k : float
+            Restraint force constant in kcal/(mol*Angstrom^2) for atoms not
+            in dihedral.
+
+        Returns
+        -------
+        None
 
         """
         # TODO: Pass through more options for constrained minimization process?
@@ -377,8 +388,6 @@ class TorsionStore:
         restraint_k: float = 0.0,
     ) -> RMSDCollection:
         """Get the RMSD summed over the torsion profile."""
-        from openff.toolkit import Molecule
-
         if not torsion_ids:
             torsion_ids = self.get_torsion_ids()
 
@@ -539,15 +548,22 @@ class TorsionStore:
     ) -> MetricCollection:
         """Automatically compute all registered metrics for all force fields.
 
-        Args:
-            force_fields: Iterable of force fields to compute metrics for. If None, compute for all available.
-            js_temperature: Temperature for JS distance calculation (default: 500.0 K).
-            restraint_k: Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.
-                         This is ignored if skip_check is True.
-            skip_check:  If True, skip the internal call to optimize_mm (assumes that the optimization has
-                         already been performed and ignores restraint_k).
+        Parameters
+        ----------
+        force_fields : Iterable[str] | None
+            Iterable of force fields to compute metrics for. If None, compute for all available.
+        js_temperature : float
+            Temperature for JS distance calculation (default: 500.0 K).
+        restraint_k : float
+            Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.
+            This is ignored if skip_check is True.
+        skip_check : bool
+            If True, skip the internal call to optimize_mm (assumes that the optimization has
+            already been performed and ignores restraint_k).
 
-        Returns:
+        Returns
+        -------
+        MetricCollection
             A MetricCollection containing all computed metrics.
 
         """
@@ -591,14 +607,12 @@ class TorsionStore:
 
         return metrics
 
-    def get_proper_torsion_by_torsion_id(
+    def get_proper_torsion_parameters_by_torsion_id(
         self,
         torsion_id: int,
         force_field_name: str,
     ) -> list[ProperTorsionHandler.ProperTorsionType]:
         """Get the proper torsion parameters which match the dihedral being scanned."""
-        from openff.toolkit import Molecule
-
         # Get the central two atoms for the dihedral being scanned
         central_dihedral_indices = set(self.get_dihedral_indices_by_torsion_id(torsion_id)[1:3])
         ff = _lazy_load_force_field(force_field_name)
@@ -621,7 +635,6 @@ class TorsionStore:
         """Get an image of the molecule with the dihedral highlighted."""
         import base64
 
-        from openff.toolkit import Molecule
         from rdkit.Chem import AllChem
         from rdkit.Chem.Draw import rdMolDraw2D
 
@@ -677,8 +690,15 @@ class TorsionStore:
     ) -> str:
         from matplotlib import pyplot as plt
 
-        # Create plot
-        fig, torsion_axis = plt.subplots(figsize=(3.6, 1.9), dpi=300)
+        # Create plot with two subplots
+        fig, (energy_axis, geometry_axis) = plt.subplots(
+            2,
+            1,
+            figsize=(3.6, 3.2),
+            dpi=300,
+            sharex=True,
+            gridspec_kw={"height_ratios": [1, 1]},
+        )
 
         # Get the energies
         _qm = self.get_qm_energies_by_torsion_id(torsion_id)
@@ -688,31 +708,79 @@ class TorsionStore:
         # Make a new dict to avoid in-place modification while iterating
         qm = {key: _qm[key] - _qm[qm_minimum_index] for key in _qm}
 
-        torsion_axis.plot(
+        # Get QM and MM points for RMSD calculation
+        qm_points = self.get_qm_points_by_torsion_id(torsion_id=torsion_id)
+        molecule = Molecule.from_mapped_smiles(
+            self.get_smiles_by_torsion_id(torsion_id),
+            allow_undefined_stereo=True,
+        )
+
+        # Ensure colors are not reused across force fields - use a colour map
+        # with 10 colours and change the symbol for each if more than 10 force fields
+        cmap = plt.get_cmap("tab10")
+        symbols = ["o", "^", "s"]  # Allow up to 30 force fields
+
+        for i, force_field in enumerate(force_fields):
+            mm = dict(sorted(self.get_mm_energies_by_torsion_id(torsion_id, force_field=force_field).items()))
+            assert mm.keys() == qm.keys(), "MM data and QM data should have the same keys"
+            if len(mm) == 0:
+                continue
+
+            color = cmap(i % 10)
+            marker = symbols[i // 10]
+
+            # Plot energies
+            energy_axis.plot(
+                list(mm.keys()),
+                [val - mm[qm_minimum_index] for val in mm.values()],
+                label=force_field,
+                color=color,
+                marker=marker,
+            )
+
+            # Calculate and plot RMSD at each point
+            mm_points = self.get_mm_points_by_torsion_id(
+                torsion_id=torsion_id,
+                force_field=force_field,
+            )
+
+            angles = []
+            rmsds = []
+            for angle in sorted(mm_points.keys()):
+                if angle in qm_points:
+                    qm_coords = qm_points[angle]
+                    mm_coords = mm_points[angle]
+                    # Calculate RMSD for this point
+                    rmsd_value = RMSD.from_data(
+                        torsion_id=torsion_id,
+                        molecule=molecule,
+                        qm_points={angle: qm_coords},
+                        mm_points={angle: mm_coords},
+                    ).rmsd
+                    angles.append(angle)
+                    rmsds.append(rmsd_value)
+
+            geometry_axis.plot(
+                angles,
+                rmsds,
+                label=force_field,
+                color=color,
+                marker=marker,
+            )
+
+        energy_axis.plot(
             list(qm.keys()),
             list(qm.values()),
             "k.-",
             label="QM",
         )
 
-        for force_field in force_fields:
-            mm = dict(sorted(self.get_mm_energies_by_torsion_id(torsion_id, force_field=force_field).items()))
-            assert mm.keys() == qm.keys(), "MM data and QM data should have the same keys"
-            if len(mm) == 0:
-                continue
-
-            torsion_axis.plot(
-                list(mm.keys()),
-                [val - mm[qm_minimum_index] for val in mm.values()],
-                "o--",
-                label=force_field,
-            )
-
-            torsion_axis.legend(loc=0, bbox_to_anchor=(1.05, 1))
+        energy_axis.legend(loc=0, bbox_to_anchor=(1.05, 1))
 
         # Label the axes
-        torsion_axis.set_ylabel(r"Energy / kcal mol$^{-1}$")
-        torsion_axis.set_xlabel("Torsion angle / degrees")
+        energy_axis.set_ylabel(r"Energy / kcal mol$^{-1}$")
+        geometry_axis.set_ylabel(r"RMSD / $\mathrm{\AA}$")
+        geometry_axis.set_xlabel("Torsion angle / degrees")
 
         # Convert the plot to SVG
         import base64
@@ -780,7 +848,7 @@ class TorsionStore:
             # Also add the dihedral type for each force field, if requested
             if show_parameters:
                 for force_field in force_fields:
-                    proper_torsions = self.get_proper_torsion_by_torsion_id(
+                    proper_torsions = self.get_proper_torsion_parameters_by_torsion_id(
                         torsion_id=mol_id,
                         force_field_name=force_field,
                     )
@@ -797,7 +865,23 @@ class TorsionStore:
         force_fields: list[str] | None = None,
         show_parameters: bool = False,
     ) -> None:
-        """Create a html summary of the metrics for a given force field."""
+        """Create a html summary table of the metrics for a given force field.
+
+        Parameters
+        ----------
+        file_name : str
+            The name of the file to save the summary to.
+        force_fields : list[str] | None, optional
+            The force fields to include in the summary. If None, include all force fields.
+        show_parameters : bool, optional
+            Whether to include the dihedral parameters in the summary. This is False by default
+            as it substantially slows down the generation of the summary.
+
+        Returns
+        -------
+        None
+
+        """
         import bokeh
         import panel
 
@@ -819,16 +903,20 @@ class TorsionStore:
 
         frozen_colums = ["ID", "Torsion Image", "Scan Image"]
 
+        # Scale up the row height depending on the number of force fields shown
+        row_height = max(300, 25 * len(force_fields))
+        n_rows = 800 // row_height
+
         tabulator = panel.widgets.Tabulator(
             df,
             show_index=False,
             selectable=False,
             disabled=True,
             formatters=formatters,
-            configuration={"rowHeight": 200},
+            configuration={"rowHeight": row_height},
             sizing_mode="stretch_width",
             frozen_columns=frozen_colums,
-            page_size=4,
+            page_size=n_rows,
             pagination="local",
         )
 
