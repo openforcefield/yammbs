@@ -117,3 +117,17 @@ def test_minimize_basic(single_torsion_dataset, tmp_path):
             expected_metrics[metric],
             rel=5e-2,
         )
+
+
+def test_get_summary(single_torsion_dataset, tmp_path):
+    store = TorsionStore.from_torsion_dataset(
+        single_torsion_dataset,
+        database_name=tmp_path / "test.sqlite",
+    )
+
+    store.optimize_mm(force_field="openff-2.2.0", n_processes=os.cpu_count())
+
+    output_name = tmp_path / "summary.html"
+    store.get_summary(output_name, ["openff-2.2.0"], show_parameters=True)
+
+    assert output_name.exists()
