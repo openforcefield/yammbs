@@ -9,9 +9,9 @@ dependencies:
 
   - openff-toolkit
   - openff-interchange =0.4
-  - openff-qcsubmit
+  - openff-qcsubmit =0.57
   - openmmforcefields
-  - numpy <2.3  # because parmed is broken
+  - numpy =2.2  # because parmed is broken
   - MDAnalysis
   # add back when merged https://github.com/openforcefield/smirnoff-plugins/pull/76
   # smirnoff-plugins
