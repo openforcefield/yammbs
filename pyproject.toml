@@ -32,6 +32,7 @@ show_error_codes = true
 module = [
     "openeye",
     "rdkit.Chem",
+    "rdkit.Chem.Draw",
     "openff.toolkit.*",
     "openff.nagl.toolkits.openff",
     "espaloma",
@@ -45,6 +46,8 @@ module = [
     "qcelemental",
     "openff.qcsubmit.results",
     "MDAnalysis",
+    "bokeh",
+    "panel",
 ]
 ignore_missing_imports = true
 

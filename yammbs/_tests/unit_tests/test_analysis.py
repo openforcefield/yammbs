@@ -76,6 +76,27 @@ class TestAnalysis:
 
         assert last_first == first_last
 
+class TestgeomeTRICEdgeCases:
+    def test_linear_angles_not_missed(self):
+        carbon_dioxide = Molecule.from_smiles("O=C=O")
+
+        # this will probably only be one conformer, but that's fine,
+        # we just want to make sure we get linear angles out at all
+        carbon_dioxide.generate_conformers(n_conformers=1)
+        internal_coordinates = get_internal_coordinates(
+            molecule=carbon_dioxide,
+            reference=carbon_dioxide.conformers[0],
+            target=carbon_dioxide.conformers[0],
+        )
+
+
+        assert "Angle" in internal_coordinates
+        assert len(internal_coordinates["Angle"]) == 1
+
+        for val in internal_coordinates["Angle"].values():
+            # if the two "conformers" are the same,
+            # the measured angles should be the same
+            assert (val[0] == val[1]) == (carbon_dioxide.n_conformers == 1)
 
 class TestInternalCoordinateRMSD:
     def test_rmsds_between_conformers(self, ligand):
