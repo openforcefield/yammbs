@@ -11,7 +11,7 @@ license = {text = "MIT"}
 dynamic = ["version"]
 
 [tool.setuptools]
-packages = ["yammbs"]
+packages.find = {}
 
 [tool.versioningit]
 
