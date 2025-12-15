@@ -11,7 +11,7 @@ license = {text = "MIT"}
 dynamic = ["version"]
 
 [tool.setuptools]
-packages.find = {}
+packages = ["yammbs"]
 
 [tool.versioningit]
 
@@ -32,6 +32,7 @@ show_error_codes = true
 module = [
     "openeye",
     "rdkit.Chem",
+    "rdkit.Chem.Draw",
     "openff.toolkit.*",
     "openff.nagl.toolkits.openff",
     "espaloma",
@@ -44,6 +45,8 @@ module = [
     "geometric.*",
     "qcelemental",
     "openff.qcsubmit.results",
+    "bokeh",
+    "panel",
 ]
 ignore_missing_imports = true
 
