@@ -286,6 +286,20 @@ def test_get_qm_energies_by_molecule_id(
     ],
 )
 def test_filter_by_checkmol(small_store, environment, expected_len, func):
+    def soft_compare(value: ICRMSD, all_values: list[ICRMSD]):
+        """Allow `value in all_values` to work even if some ICRMSD value differ by a tiny amount."""
+        single_value = [v for v in all_values if v.qcarchive_id == value.qcarchive_id][0]
+
+        match value:
+            case ICRMSD():
+                for key in value.icrmsd:
+                    assert key in single_value.icrmsd, f"key not found: {key}"
+
+                    assert value.icrmsd[key] == pytest.approx(single_value.icrmsd[key])
+
+            case _:
+                assert value == single_value
+
     all_values = getattr(small_store, func)(force_field="openff-2.1.0")
 
     filtered_ids = small_store.filter_by_checkmol(environment)
@@ -297,7 +311,7 @@ def test_filter_by_checkmol(small_store, environment, expected_len, func):
     )
 
     for value in filtered_values:
-        assert value in all_values
+        soft_compare(value, all_values)
 
 
 @pytest.mark.parametrize(
