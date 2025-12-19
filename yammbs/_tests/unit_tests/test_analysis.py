@@ -99,6 +99,15 @@ class TestgeomeTRICEdgeCases:
             assert (val[0] == val[1]) == (carbon_dioxide.n_conformers == 1)
 
 class TestInternalCoordinateRMSD:
+    def test_missing_type(self, ligand):
+        with pytest.raises(ValueError, match="Urey"):
+            get_internal_coordinate_rmsds(
+                molecule=ligand,
+                reference=ligand.conformers[0],
+                target=ligand.conformers[-1],
+                _types=["Bond", "Angle", "Dihedral", "Urey-Bradley"] ,
+            )
+
     def test_rmsds_between_conformers(self, ligand):
         assert ligand.n_conformers > 1
 
