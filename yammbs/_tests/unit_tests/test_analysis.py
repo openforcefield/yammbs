@@ -248,18 +248,23 @@ class TestInternalCoordinateRMSD:
         # should be [(1, 0, 5, 6), (1, 2, 3, 7), (3, 4, 5, 8)]
         assert sorted(differences["Improper"].keys()) == sage_impropers
 
-    def test_bad_mm_same_icrmsd_shape(self):
-        """Essure that bad MM geometries don't cause the number of ICRMSDs to change."""
+    @pytest.mark.parametrize("qcarchive_id", [36966569, 36966572, 36966574])
+    def test_bad_mm_same_icrmsd_shape(self, qcarchive_id):
+        """
+        Essure that bad MM geometries don't cause the number of ICRMSDs to change.
+
+        For context, see https://github.com/openforcefield/yammbs/issues/174
+        """
         qm = Molecule(
             get_data_file_path(
-                "_tests/data/36966569-qm.sdf",
+                f"_tests/data/{qcarchive_id}-qm.sdf",
                 "yammbs",
             ),
         )
 
         mm = Molecule(
             get_data_file_path(
-                "_tests/data/36966569-mm.sdf",
+                f"_tests/data/{qcarchive_id}-mm.sdf",
                 "yammbs",
             ),
         )
