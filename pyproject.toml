@@ -42,9 +42,9 @@ module = [
     "openmmforcefields.generators",
     "sqlalchemy",
     "sqlalchemy.org",
-    "geometric.*",
     "qcelemental",
     "openff.qcsubmit.results",
+    "MDAnalysis",
     "bokeh",
     "panel",
 ]
