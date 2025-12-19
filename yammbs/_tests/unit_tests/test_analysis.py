@@ -247,3 +247,37 @@ class TestInternalCoordinateRMSD:
 
         # should be [(1, 0, 5, 6), (1, 2, 3, 7), (3, 4, 5, 8)]
         assert sorted(differences["Improper"].keys()) == sage_impropers
+
+    def test_bad_mm_same_icrmsd_shape(self):
+        """Essure that bad MM geometries don't cause the number of ICRMSDs to change."""
+        qm = Molecule(
+            get_data_file_path(
+                "_tests/data/36966569-qm.sdf",
+                "yammbs",
+            ),
+        )
+
+        mm = Molecule(
+            get_data_file_path(
+                "_tests/data/36966569-mm.sdf",
+                "yammbs",
+            ),
+        )
+
+        expected_shapes = [
+            len(value) for value in get_internal_coordinates(
+                molecule=qm,
+                reference=qm.conformers[0].m_as("angstrom"),
+                target=qm.conformers[0].m_as("angstrom"),
+            ).values()
+        ]
+
+        actual_shapes = [
+            len(value) for value in get_internal_coordinates(
+                molecule=qm,
+                reference=qm.conformers[0].m_as("angstrom"),
+                target=mm.conformers[0].m_as("angstrom"),
+            ).values()
+        ]
+
+        assert expected_shapes == actual_shapes
