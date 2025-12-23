@@ -26,6 +26,8 @@ dependencies:
   - click
   - scipy
   - seaborn
+  - bokeh
+  - panel
 
   - qcportal ~=0.55
 

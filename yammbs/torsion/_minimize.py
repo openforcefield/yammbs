@@ -54,6 +54,10 @@ class ConstrainedMinimizationInput(ImmutableModel):
         ...,
         description="The grid identifier of the torsion scan point.",
     )
+    restraint_k: float = Field(
+        default=0.0,
+        description="Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.",
+    )
 
     method: Literal["openmm", "geometric"] = Field(
         "openmm",
@@ -89,6 +93,7 @@ def _minimize_torsions(
     method: Literal["openmm", "geometric"] = "openmm",
     n_processes: int = 2,
     chunksize=32,
+    restraint_k: float = 0.0,
 ) -> Generator[ConstrainedMinimizationResult, None, None]:
     logger.info("Mapping `data` generator into `inputs` generator")
 
@@ -103,6 +108,7 @@ def _minimize_torsions(
             coordinates=coordinates,
             grid_id=grid_id,
             method=method,
+            restraint_k=restraint_k,
         )
         for (
             torsion_id,
@@ -142,13 +148,13 @@ def _restrain_omm_system(
     system: openmm.System,
     positions: numpy.ndarray,
     dihedral_indices: tuple[int, int, int, int],
-    restrain_k: float,
+    restraint_k: float,
 ) -> None:
     """Add a restraint to all atoms except those in the dihedral."""
     restraint_force = openmm.CustomExternalForce("0.5*k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
     restraint_force.addGlobalParameter(
         "k",
-        restrain_k * openmm.unit.kilocalorie_per_mole / openmm.unit.angstrom**2,
+        restraint_k * openmm.unit.kilocalorie_per_mole / openmm.unit.angstrom**2,
     )
     for parameter in ("x0", "y0", "z0"):
         restraint_force.addPerParticleParameter(parameter)
@@ -227,9 +233,6 @@ def _run_minimization_constrained(
 
     logger.debug(f"Setting up constrained minimization for {input.model_dump()=}")
 
-    # TODO: Pass this through
-    restrain_k = 1.0
-
     logger.debug(f"Creating molecule from {input.mapped_smiles=}")
     molecule = Molecule.from_mapped_smiles(input.mapped_smiles, allow_undefined_stereo=True)
     # molecule.add_conformer(Quantity(input.coordinates, "angstrom"))
@@ -250,7 +253,7 @@ def _run_minimization_constrained(
         system=system,
         positions=input.coordinates,
         dihedral_indices=input.dihedral_indices,
-        restrain_k=restrain_k,
+        restraint_k=input.restraint_k,
     )
 
     logger.debug("Trying to minimize energy")
