@@ -27,6 +27,9 @@ from yammbs._forcefields import build_omm_system
 
 _AVAILABLE_FORCE_FIELDS = get_available_force_fields()
 
+# Suppress verbose geometric output
+logging.getLogger("geometric.nifty").setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 logging.basicConfig()
 
