@@ -6,7 +6,7 @@ from openff.toolkit import ForceField, Molecule, unit
 from openff.toolkit import __version__ as __toolkit_version__
 
 from yammbs import MoleculeStore
-from yammbs._minimize import MinimizationInput, _run_openmm
+from yammbs._minimize import MinimizationInput, _run_minimization
 from yammbs.inputs import QCArchiveDataset
 
 
@@ -27,7 +27,7 @@ def perturbed_ethane(ethane) -> Molecule:
     return ethane
 
 
-def basic_input(force_field="openff-1.0.0") -> MinimizationInput:
+def basic_input(force_field="openff-1.0.0", method="openmm") -> MinimizationInput:
     ethane = Molecule.from_smiles("CC")
     ethane.generate_conformers(n_conformers=1)
 
@@ -37,6 +37,7 @@ def basic_input(force_field="openff-1.0.0") -> MinimizationInput:
         force_field=force_field,
         mapped_smiles=ethane.to_smiles(mapped=True),
         coordinates=ethane.conformers[0].m_as(unit.angstrom),
+        method=method,
     )
 
 
@@ -56,7 +57,7 @@ def test_minimization_basic(perturbed_input):
     initial = (perturbed_input.coordinates[0] - perturbed_input.coordinates[1],)
     assert numpy.linalg.norm(initial) > 1.6
 
-    result = _run_openmm(perturbed_input)
+    result = _run_minimization(perturbed_input)
 
     for attr in (
         "inchi_key",
@@ -71,7 +72,7 @@ def test_minimization_basic(perturbed_input):
 
 
 def test_minimization_unassigned_torsion(caplog):
-    """Test that ``_run_openmm`` returns None and logs a warning when there are
+    """Test that ``_run_minimization`` returns None and logs a warning when there are
     unassigned valence terms.
     """
     smiles = (
@@ -92,30 +93,40 @@ def test_minimization_unassigned_torsion(caplog):
         coordinates=mol.conformers[0].m_as(unit.angstrom),
     )
 
-    result = _run_openmm(min_input)
+    result = _run_minimization(min_input)
 
     assert "unassigned valence terms" in caplog.text
     assert result is None
 
 
 def test_same_force_field_same_results():
-    energy1 = _run_openmm(basic_input("openff-1.0.0")).energy
-    energy2 = _run_openmm(basic_input("openff-1.0.0")).energy
+    energy1 = _run_minimization(basic_input("openff-1.0.0")).energy
+    energy2 = _run_minimization(basic_input("openff-1.0.0")).energy
 
     assert energy1 == energy2
 
 
 def test_different_force_fields_different_results():
-    energy1 = _run_openmm(basic_input("openff-1.0.0")).energy
-    energy2 = _run_openmm(basic_input("openff-2.0.0")).energy
+    energy1 = _run_minimization(basic_input("openff-1.0.0")).energy
+    energy2 = _run_minimization(basic_input("openff-2.0.0")).energy
 
     assert energy1 != energy2
+
+
+def test_different_methods_similar_results():
+    """Test that OpenMM and Geometric minimization produce similar results.
+    They should only be similar as we're minimizing a very small molecule."""
+    energy1 = _run_minimization(basic_input(method="openmm")).energy
+    energy2 = _run_minimization(basic_input(method="geometric")).energy
+
+    abs_difference = abs(energy1 - energy2)
+    assert abs_difference == pytest.approx(0.0, abs=1.0e-5)
 
 
 def test_plugin_loadable(ethane):
     pytest.importorskip("deforcefields.deforcefields")
 
-    _run_openmm(
+    _run_minimization(
         MinimizationInput(
             inchi_key=ethane.to_inchikey(),
             qcarchive_id=38483483483481384183412831832,
@@ -129,7 +140,7 @@ def test_plugin_loadable(ethane):
 @pytest.mark.timeout(3)
 def test_cached_force_fields_load_quickly():
     """Test that cached force fields are loaded quickly."""
-    from yammbs._minimize import _lazy_load_force_field
+    from yammbs._forcefields import _lazy_load_force_field
 
     # timeout includes the time it takes to load it the first time, but that should be << 1 second
     [_lazy_load_force_field("openff-1.0.0") for _ in range(1000)]
@@ -138,7 +149,7 @@ def test_cached_force_fields_load_quickly():
 def test_finds_local_force_field(ethane, tmp_path):
     ForceField("openff_unconstrained-1.2.0.offxml").to_file(tmp_path / "fOOOO.offxml")
 
-    _run_openmm(
+    _run_minimization(
         MinimizationInput(
             inchi_key=ethane.to_inchikey(),
             qcarchive_id=5,
@@ -162,7 +173,7 @@ def test_plugin_not_needed_to_use_mainline_force_field(monkeypatch, ethane):
 
     assert len(deforcefields.get_forcefield_paths()) == 0
 
-    _run_openmm(
+    _run_minimization(
         MinimizationInput(
             inchi_key=ethane.to_inchikey(),
             qcarchive_id=5,
