@@ -1,10 +1,16 @@
 import numpy
 import pandas
-from openff.utilities import get_data_file_path
 import pytest
 from openff.toolkit import ForceField, Molecule
+from openff.utilities import get_data_file_path
 
-from yammbs.analysis import get_internal_coordinate_differences, get_internal_coordinate_rmsds, get_rmsd, get_tfd, get_internal_coordinates
+from yammbs.analysis import (
+    get_internal_coordinate_differences,
+    get_internal_coordinate_rmsds,
+    get_internal_coordinates,
+    get_rmsd,
+    get_tfd,
+)
 
 
 class TestAnalysis:
@@ -76,6 +82,7 @@ class TestAnalysis:
 
         assert last_first == first_last
 
+
 class TestgeomeTRICEdgeCases:
     def test_linear_angles_not_missed(self):
         carbon_dioxide = Molecule.from_smiles("O=C=O")
@@ -89,7 +96,6 @@ class TestgeomeTRICEdgeCases:
             target=carbon_dioxide.conformers[0],
         )
 
-
         assert "Angle" in internal_coordinates
         assert len(internal_coordinates["Angle"]) == 1
 
@@ -98,9 +104,24 @@ class TestgeomeTRICEdgeCases:
             # the measured angles should be the same
             assert (val[0] == val[1]) == (carbon_dioxide.n_conformers == 1)
 
+
 class TestInternalCoordinateRMSD:
+    def test_missing_type(self, ligand):
+        with pytest.raises(ValueError, match="Urey"):
+            get_internal_coordinate_rmsds(
+                molecule=ligand,
+                reference=ligand.conformers[0],
+                target=ligand.conformers[-1],
+                _types=["Bond", "Angle", "Dihedral", "Urey-Bradley"],
+            )
+
     def test_rmsds_between_conformers(self, ligand):
-        assert ligand.n_conformers
+        assert ligand.n_conformers > 1
+
+        assert not numpy.allclose(
+            ligand.conformers[0],
+            ligand.conformers[-1],
+        )
 
         rmsds = get_internal_coordinate_rmsds(
             molecule=ligand,
@@ -213,6 +234,7 @@ class TestInternalCoordinateRMSD:
         assert max(differences["Dihedral"].values()) < 10
         assert max(differences["Improper"].values()) < 1
 
+    @pytest.mark.skip(reason="See https://github.com/openforcefield/yammbs/issues/199")
     def test_internal_coordinate_impropers(self):
         triazine = Molecule.from_mapped_smiles("[H:7][c:1]1[n:2][c:3]([n:4][c:5]([n:6]1)[H:9])[H:8]")
 
@@ -233,26 +255,42 @@ class TestInternalCoordinateRMSD:
         # should be [(1, 0, 5, 6), (1, 2, 3, 7), (3, 4, 5, 8)]
         assert sorted(differences["Improper"].keys()) == sage_impropers
 
-    def test_geometric_does_not_add_bonds(self):
+    @pytest.mark.parametrize("qcarchive_id", [36966569, 36966572, 36966574])
+    def test_bad_mm_same_icrmsd_shape(self, qcarchive_id):
+        """Essure that bad MM geometries don't cause the number of ICRMSDs to change.
+
+        For context, see https://github.com/openforcefield/yammbs/issues/174
         """
-        See https://github.com/openforcefield/yammbs/issues/174
-        """
-        qm_molecule = Molecule(
-            get_data_file_path("_tests/data/36966574-qm.sdf", "yammbs"),
-        )
-        mm_molecule = Molecule(
-            get_data_file_path("_tests/data/36966574-mm.sdf", "yammbs"),
+        qm = Molecule(
+            get_data_file_path(
+                f"_tests/data/{qcarchive_id}-qm.sdf",
+                "yammbs",
+            ),
         )
 
-        geometric_bond_differences = get_internal_coordinates(
-            molecule=qm_molecule,
-            reference=qm_molecule.conformers[0],
-            target=mm_molecule.conformers[0],
-            _types=["Bond"],
+        mm = Molecule(
+            get_data_file_path(
+                f"_tests/data/{qcarchive_id}-mm.sdf",
+                "yammbs",
+            ),
         )
 
-        assert len(geometric_bond_differences["Bond"]) == qm_molecule.n_bonds
+        expected_shapes = [
+            len(value)
+            for value in get_internal_coordinates(
+                molecule=qm,
+                reference=qm.conformers[0].m_as("angstrom"),
+                target=qm.conformers[0].m_as("angstrom"),
+            ).values()
+        ]
 
-        # calculate by hand, found to be 0.01664882645659995, although Chapin found
-        # a slightly different value of: 0.016649928941590085
-        assert 0.01664882645659995 == pytest.approx(numpy.sqrt(numpy.mean(numpy.square([(x -y) for x, y in geometric_bond_differences['Bond'].values()]))))
+        actual_shapes = [
+            len(value)
+            for value in get_internal_coordinates(
+                molecule=qm,
+                reference=qm.conformers[0].m_as("angstrom"),
+                target=mm.conformers[0].m_as("angstrom"),
+            ).values()
+        ]
+
+        assert expected_shapes == actual_shapes
