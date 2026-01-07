@@ -1,7 +1,9 @@
+"""Tests torsion minimization."""
+
 import pytest
 from openff.toolkit import Molecule
-from yammbs.analysis import get_rmsd
 
+from yammbs.analysis import get_rmsd
 from yammbs.torsion._minimize import (
     ConstrainedMinimizationInput,
     ConstrainedMinimizationResult,
@@ -58,7 +60,7 @@ def pentane_restrained_minimization_result(
 
 
 def test_minimization_basic(pentane_restrained_minimization_result):
-
+    """Test basic functionality of constrained minimization, only inspecting fixture."""
     # these models don't track the (MM) energy before the (constrained) minimization
     # is there any reason to?
 

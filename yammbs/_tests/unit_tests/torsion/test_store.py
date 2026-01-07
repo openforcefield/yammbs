@@ -1,6 +1,8 @@
-import numpy
+"""Test TorsionStore."""
+
 import os
 
+import numpy
 import pytest
 from openff.qcsubmit.results import TorsionDriveResultCollection
 from openff.utilities import get_data_file_path
@@ -9,7 +11,10 @@ from yammbs.torsion._store import TorsionStore
 
 
 class TestTorsionStore:
+    """Test TorsionStore methods."""
+
     def test_from_qcsubmit_collection(self, tmp_path):
+        """Test TorsionStore.from_qcsubmit_collection()."""
         store = TorsionStore.from_qcsubmit_collection(
             TorsionDriveResultCollection.parse_file(
                 get_data_file_path(
@@ -23,6 +28,7 @@ class TestTorsionStore:
         assert len(store) == 20
 
     def test_from_torsion_dataset(self, torsion_dataset, tmp_path):
+        """Test TorsionStore.from_torsion_dataset()."""
         store = TorsionStore.from_torsion_dataset(
             torsion_dataset,
             database_name=tmp_path / "tmp.sqlite",
@@ -31,7 +37,7 @@ class TestTorsionStore:
         assert len(store) == 20
 
     def test_torsions_with_same_smiles_and_indices(self, tmp_path):
-        """Reproduce Issue #131"""
+        """Reproduce Issue #131."""
         store = TorsionStore.from_qcsubmit_collection(
             TorsionDriveResultCollection.parse_file(
                 get_data_file_path(
@@ -57,6 +63,7 @@ class TestTorsionStore:
         ) == store.get_smiles_by_torsion_id(120098113)
 
     def test_get_torsion_ids_by_smiles(self, torsion_dataset, tmp_path):
+        """Test basic behavior of TorsionStore.get_torsion_ids_by_smiles()."""
         store = TorsionStore.from_torsion_dataset(
             torsion_dataset,
             database_name=tmp_path / "tmp.sqlite",
@@ -76,6 +83,7 @@ class TestTorsionStore:
 
 
 def test_minimize_basic(single_torsion_dataset, tmp_path):
+    """Test basic behavior of TorsionStore.optimize_mm()."""
     store = TorsionStore.from_torsion_dataset(
         single_torsion_dataset,
         database_name=tmp_path / "test.sqlite",
@@ -120,6 +128,7 @@ def test_minimize_basic(single_torsion_dataset, tmp_path):
 
 
 def test_get_summary(single_torsion_dataset, tmp_path):
+    """Test basic behavior of TorsionStore.get_summary()."""
     store = TorsionStore.from_torsion_dataset(
         single_torsion_dataset,
         database_name=tmp_path / "test.sqlite",

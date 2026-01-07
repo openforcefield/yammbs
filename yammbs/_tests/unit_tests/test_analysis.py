@@ -1,10 +1,16 @@
 import numpy
 import pandas
-from openff.utilities import get_data_file_path
 import pytest
 from openff.toolkit import ForceField, Molecule
+from openff.utilities import get_data_file_path
 
-from yammbs.analysis import get_internal_coordinate_differences, get_internal_coordinate_rmsds, get_rmsd, get_tfd, get_internal_coordinates
+from yammbs.analysis import (
+    get_internal_coordinate_differences,
+    get_internal_coordinate_rmsds,
+    get_internal_coordinates,
+    get_rmsd,
+    get_tfd,
+)
 
 
 class TestAnalysis:
@@ -76,6 +82,7 @@ class TestAnalysis:
 
         assert last_first == first_last
 
+
 class TestgeomeTRICEdgeCases:
     def test_linear_angles_not_missed(self):
         carbon_dioxide = Molecule.from_smiles("O=C=O")
@@ -89,7 +96,6 @@ class TestgeomeTRICEdgeCases:
             target=carbon_dioxide.conformers[0],
         )
 
-
         assert "Angle" in internal_coordinates
         assert len(internal_coordinates["Angle"]) == 1
 
@@ -98,6 +104,7 @@ class TestgeomeTRICEdgeCases:
             # the measured angles should be the same
             assert (val[0] == val[1]) == (carbon_dioxide.n_conformers == 1)
 
+
 class TestInternalCoordinateRMSD:
     def test_missing_type(self, ligand):
         with pytest.raises(ValueError, match="Urey"):
@@ -105,7 +112,7 @@ class TestInternalCoordinateRMSD:
                 molecule=ligand,
                 reference=ligand.conformers[0],
                 target=ligand.conformers[-1],
-                _types=["Bond", "Angle", "Dihedral", "Urey-Bradley"] ,
+                _types=["Bond", "Angle", "Dihedral", "Urey-Bradley"],
             )
 
     def test_rmsds_between_conformers(self, ligand):
@@ -250,8 +257,7 @@ class TestInternalCoordinateRMSD:
 
     @pytest.mark.parametrize("qcarchive_id", [36966569, 36966572, 36966574])
     def test_bad_mm_same_icrmsd_shape(self, qcarchive_id):
-        """
-        Essure that bad MM geometries don't cause the number of ICRMSDs to change.
+        """Essure that bad MM geometries don't cause the number of ICRMSDs to change.
 
         For context, see https://github.com/openforcefield/yammbs/issues/174
         """
@@ -270,7 +276,8 @@ class TestInternalCoordinateRMSD:
         )
 
         expected_shapes = [
-            len(value) for value in get_internal_coordinates(
+            len(value)
+            for value in get_internal_coordinates(
                 molecule=qm,
                 reference=qm.conformers[0].m_as("angstrom"),
                 target=qm.conformers[0].m_as("angstrom"),
@@ -278,7 +285,8 @@ class TestInternalCoordinateRMSD:
         ]
 
         actual_shapes = [
-            len(value) for value in get_internal_coordinates(
+            len(value)
+            for value in get_internal_coordinates(
                 molecule=qm,
                 reference=qm.conformers[0].m_as("angstrom"),
                 target=mm.conformers[0].m_as("angstrom"),

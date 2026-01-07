@@ -9,11 +9,12 @@ from openff.toolkit import Molecule
 from openff.utilities import get_data_file_path, has_executable, temporary_cd
 
 from yammbs import MoleculeStore
+from yammbs.analysis import ICRMSD
 from yammbs.checkmol import ChemicalEnvironment
 from yammbs.exceptions import DatabaseExistsError
 from yammbs.inputs import QCArchiveDataset, QCArchiveMolecule
 from yammbs.models import MMConformerRecord, QMConformerRecord
-from yammbs.analysis import ICRMSD
+
 
 def test_from_qcsubmit(small_qcsubmit_collection):
     db = "foo.sqlite"
