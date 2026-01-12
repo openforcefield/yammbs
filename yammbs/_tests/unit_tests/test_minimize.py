@@ -71,9 +71,7 @@ def test_minimization_basic(perturbed_input):
 
 
 def test_minimization_unassigned_torsion(caplog):
-    """Test that ``_run_openmm`` returns None and logs a warning when there are
-    unassigned valence terms.
-    """
+    """Test that ``_run_openmm`` returns None and logs a warning when there are unassigned valence terms."""
     smiles = (
         "[H:6][C@@:5]([C:16](=[O:17])[O:18][F:19])([C@:4]([H:31])([C:2]"
         "([H:27])([C:1]([H:24])([H:25])[H:26])[C:3]([H:28])([H:29])[H:30])"
