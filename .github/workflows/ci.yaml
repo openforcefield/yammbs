@@ -70,8 +70,6 @@ jobs:
 
     - name: Run tests
       run: |
-        python -m "from openff.toolkit import *"
-
         pytest -r fEx -n logical --durations=10 \
           --cov=yammbs/ --cov-report=xml --cov-config=pyproject.toml \
           yammbs/
