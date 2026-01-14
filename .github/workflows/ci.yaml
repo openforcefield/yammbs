@@ -68,11 +68,15 @@ jobs:
       env:
         SECRET_OE_LICENSE: ${{ secrets.OE_LICENSE }}
 
-    - name: Run tests
+    - name: Run unit tests
       run: |
-        pytest -r fEx -n logical --durations=10 \
+        pytest yammbs/_tests/unit_tests -r fEx -n logical --durations=10 \
           --cov=yammbs/ --cov-report=xml --cov-config=pyproject.toml \
           yammbs/
+
+    - name: Run integration tests
+      run: |
+        pytest yammbs/_tests/integration_tests -r fEx
 
     - name: Run mypy
       # RDKit packages have bad stubs on Linux for some reason

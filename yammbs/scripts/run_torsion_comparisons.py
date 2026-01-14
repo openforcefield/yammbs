@@ -240,16 +240,16 @@ def plot_cdfs(force_fields: list[str], metrics_file: str, plot_dir: str):
     """Plot the cumulative distribution functions for the RMSD, RMSE, and Jensen-Shannon distance."""
     metrics = MetricCollection.parse_file(metrics_file)
 
-    x_ranges = {"rmsd": (0, 0.14), "rmse": (-0.3, 5), "js_distance": (None, None)}
+    x_ranges = {"rms_rmsd": (0, 0.14), "rmse": (-0.3, 5), "js_distance": (None, None)}
 
     units = {
-        "rmsd": r"$\mathrm{\AA}$",
+        "rms_rmsd": r"$\mathrm{\AA}$",
         "rmse": r"kcal mol$^{-1}$",
         "js_distance": "",
     }
 
-    rmsds = {
-        force_field: {key: val.rmsd for key, val in metrics.metrics[force_field].items()}
+    rms_rmsds = {
+        force_field: {key: val.rms_rmsd for key, val in metrics.metrics[force_field].items()}
         for force_field in metrics.metrics.keys()
     }
 
@@ -266,11 +266,11 @@ def plot_cdfs(force_fields: list[str], metrics_file: str, plot_dir: str):
     js_div_temp = list(list(metrics.metrics.values())[0].values())[0].js_distance[1]
 
     data = {
-        "rmsd": rmsds,
+        "rms_rmsd": rms_rmsds,
         "rmse": rmses,
         "js_distance": js_dists,
     }
-    for key in ["rmsd", "rmse", "js_distance"]:
+    for key in ["rms_rmsd", "rmse", "js_distance"]:
         figure, axis = pyplot.subplots()
 
         for force_field in force_fields:
@@ -329,7 +329,7 @@ def plot_rms_stats(
     metrics = MetricCollection.parse_file(metrics_file)
 
     units = {
-        "rmsd": r"$\mathrm{\AA}$",
+        "rms_rmsd": r"$\mathrm{\AA}$",
         "rmse": r"kcal mol$^{-1}$",
     }
 
@@ -338,13 +338,13 @@ def plot_rms_stats(
         for force_field in force_fields
     }
 
-    rms_rmsds = {
-        force_field: get_rms(np.array([val.rmsd for val in metrics.metrics[force_field].values()]))
+    rms_rms_rmsds = {
+        force_field: get_rms(np.array([val.rms_rmsd for val in metrics.metrics[force_field].values()]))
         for force_field in force_fields
     }
 
     # Plot RMS values
-    for key, data in zip(["rmsd", "rmse"], [rms_rmsds, rms_rmses]):
+    for key, data in zip(["rms_rmsd", "rmse"], [rms_rms_rmsds, rms_rmses]):
         figure, axis = pyplot.subplots()
 
         # Use different colors for each bar - the same as for the CDFs
