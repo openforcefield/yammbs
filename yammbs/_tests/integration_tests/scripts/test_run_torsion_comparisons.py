@@ -8,6 +8,7 @@ from click.testing import CliRunner
 from openff.utilities import get_data_file_path
 
 from yammbs.scripts.run_torsion_comparisons import main
+from yammbs.torsion.analysis import get_all_metric_collections
 
 # Set to True to keep generated figures for manual inspection
 _KEEP_FIGURES = os.environ.get("YAMMBS_KEEP_TEST_FIGURES", "").lower() in (
@@ -89,6 +90,8 @@ def test_run_torsion_comparisons_integration(test_database, torsion_input_file, 
             str(minimized_file),
             "--plot-dir",
             str(plot_dir),
+            "--metrics-csv-output-dir",
+            str(plot_dir),
         ],
     )
 
@@ -114,6 +117,11 @@ def test_run_torsion_comparisons_integration(test_database, torsion_input_file, 
     for plot_name in expected_plots:
         plot_path = plot_dir / plot_name
         assert plot_path.exists(), f"Expected plot file {plot_name} was not created"
+
+    for ff in ["openff-1.0.0", "openff-2.2.1"]:
+        for metric in get_all_metric_collections():
+            csv_file = plot_dir / f"{ff}_{metric.__name__}.csv"
+            assert csv_file.exists(), f"Expected CSV file {csv_file} was not created"
 
     # Basic sanity checks on file sizes (should not be empty)
     assert db_file.stat().st_size > 0, "Database file is empty"

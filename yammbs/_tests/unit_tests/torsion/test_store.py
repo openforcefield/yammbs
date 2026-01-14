@@ -10,6 +10,27 @@ from openff.utilities import get_data_file_path
 from yammbs.torsion._store import TorsionStore
 
 
+@pytest.fixture
+def optimized_store(single_torsion_dataset, tmp_path):
+    """Fixture providing a TorsionStore with pre-optimized MM data.
+
+    This fixture reduces test time by running the expensive optimize_mm
+    operation once and reusing the result across multiple tests.
+    """
+    store = TorsionStore.from_torsion_dataset(
+        single_torsion_dataset,
+        database_name=tmp_path / "test.sqlite",
+    )
+
+    store.optimize_mm(
+        force_field="openff-2.2.0",
+        n_processes=os.cpu_count(),
+        restraint_k=1.0,
+    )
+
+    return store
+
+
 class TestTorsionStore:
     """Test TorsionStore methods."""
 
@@ -82,18 +103,9 @@ class TestTorsionStore:
             assert torsion_id in torsion_ids
 
 
-def test_minimize_basic(single_torsion_dataset, tmp_path):
+def test_minimize_basic(optimized_store):
     """Test basic behavior of TorsionStore.optimize_mm()."""
-    store = TorsionStore.from_torsion_dataset(
-        single_torsion_dataset,
-        database_name=tmp_path / "test.sqlite",
-    )
-
-    store.optimize_mm(
-        force_field="openff-2.2.0",
-        n_processes=os.cpu_count(),
-        restraint_k=1.0,
-    )
+    store = optimized_store
 
     assert store.get_force_fields() == ["openff-2.2.0"]
 
@@ -132,14 +144,40 @@ def test_minimize_basic(single_torsion_dataset, tmp_path):
         )
 
 
-def test_get_summary(single_torsion_dataset, tmp_path):
-    """Test basic behavior of TorsionStore.get_summary()."""
-    store = TorsionStore.from_torsion_dataset(
-        single_torsion_dataset,
-        database_name=tmp_path / "test.sqlite",
-    )
+def test_get_metrics_csv_output(optimized_store, tmp_path):
+    """Test TorsionStore.get_metrics() with csv_output_dir argument."""
+    store = optimized_store
 
-    store.optimize_mm(force_field="openff-2.2.0", n_processes=os.cpu_count())
+    # Create a directory for CSV outputs
+    csv_dir = tmp_path / "csv_outputs"
+    csv_dir.mkdir()
+
+    # Call get_metrics with csv_output_dir
+    metrics = store.get_metrics(csv_output_dir=str(csv_dir))
+
+    # Verify the metrics object is returned correctly
+    assert len(metrics.metrics) == 1
+    assert "openff-2.2.0" in metrics.metrics
+
+    # Verify CSV files are created
+    csv_files = list(csv_dir.glob("*.csv"))
+    assert len(csv_files) > 0, "No CSV files were created"
+
+    # Check that at least one CSV file has content
+    for csv_file in csv_files:
+        assert csv_file.stat().st_size > 0, f"{csv_file.name} is empty"
+
+    # Verify the CSV files can be read and has some content
+    import pandas as pd
+
+    for csv_file in csv_files:
+        df = pd.read_csv(csv_file)
+        assert len(df) > 0, f"{csv_file.name} has no data rows"
+
+
+def test_get_summary(optimized_store, tmp_path):
+    """Test basic behavior of TorsionStore.get_summary()."""
+    store = optimized_store
 
     output_name = tmp_path / "summary.html"
     store.get_summary(output_name, ["openff-2.2.0"], show_parameters=True)

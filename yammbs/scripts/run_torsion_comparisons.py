@@ -65,7 +65,13 @@ pyplot.style.use("ggplot")
     "--plot-dir",
     "-p",
     default=".",
-    help="Directory to save the generated plots.",
+    help="Directory to save the generated plots to.",
+)
+@click.option(
+    "--metrics-csv-output-dir",
+    "-c",
+    default=None,
+    help="Directory to save per-metric CSV output files to.",
 )
 def main(
     base_force_fields: list[str],
@@ -75,6 +81,7 @@ def main(
     output_metrics: str,
     output_minimized: str,
     plot_dir: str,
+    metrics_csv_output_dir: str | None = None,
 ) -> None:
     """Run torsion drive comparisons using specified force fields and input data."""
     force_fields = base_force_fields + extra_force_fields
@@ -97,16 +104,21 @@ def main(
         with open(output_minimized, "w") as f:
             f.write(store.get_outputs().model_dump_json())
 
-    if not pathlib.Path(output_metrics).exists():
+    # Load or compute metrics. If metrics file exists, read it; otherwise compute and write it.
+    if pathlib.Path(output_metrics).exists():
+        metrics = MetricCollection.parse_file(output_metrics)
+    else:
+        metrics = store.get_metrics(force_fields=force_fields, csv_output_dir=metrics_csv_output_dir)
+        # Write metrics to disk for reproducibility
         with open(output_metrics, "w") as f:
-            f.write(store.get_metrics().model_dump_json())
+            f.write(metrics.model_dump_json())
 
     # Plot!
     plot_torsions(plot_dir, force_fields, store)
-    plot_cdfs(force_fields, output_metrics, plot_dir)
-    plot_rms_stats(force_fields, output_metrics, plot_dir)
-    plot_mean_error_distribution(force_fields, output_metrics, plot_dir)
-    plot_rms_js_distance(force_fields, output_metrics, plot_dir)
+    plot_cdfs(force_fields, metrics, plot_dir)
+    plot_rms_stats(force_fields, metrics, plot_dir)
+    plot_mean_error_distribution(force_fields, metrics, plot_dir)
+    plot_rms_js_distance(force_fields, metrics, plot_dir)
 
 
 def get_torsion_image(torsion_id: int, store: TorsionStore) -> pyplot.Figure:
@@ -236,10 +248,19 @@ def plot_torsions(plot_dir: str, force_fields: list[str], store: TorsionStore) -
     fig.savefig(f"{plot_dir}/torsions.png", dpi=300, bbox_inches="tight")
 
 
-def plot_cdfs(force_fields: list[str], metrics_file: str, plot_dir: str):
-    """Plot the cumulative distribution functions for the RMSD, RMSE, and Jensen-Shannon distance."""
-    metrics = MetricCollection.parse_file(metrics_file)
+def plot_cdfs(force_fields: list[str], metrics: MetricCollection, plot_dir: str):
+    """Plot the cumulative distribution functions for the RMS RMSD, RMSE, and Jensen-Shannon distance.
 
+    Parameters
+    ----------
+    force_fields : list[str]
+        The force fields to include in the plots.
+    metrics : MetricCollection
+        Precomputed metrics object (not a file path).
+    plot_dir : str
+        Directory to write plot files to.
+
+    """
     x_ranges = {"rms_rmsd": (0, 0.14), "rmse": (-0.3, 5), "js_distance": (None, None)}
 
     units = {
@@ -322,12 +343,21 @@ def get_rms(array: np.ndarray) -> float:
 
 def plot_rms_stats(
     force_fields: list[str],
-    metrics_file: str,
+    metrics: MetricCollection,
     plot_dir: str,
 ) -> None:
-    """Plot the RMS values for the RMSD and RMSE."""
-    metrics = MetricCollection.parse_file(metrics_file)
+    """Plot the RMS values for the RMSD and RMSE.
 
+    Parameters
+    ----------
+    force_fields : list[str]
+        The force fields to include in the plots.
+    metrics : MetricCollection
+        Precomputed metrics object.
+    plot_dir : str
+        Directory to write plot files to.
+
+    """
     units = {
         "rms_rmsd": r"$\mathrm{\AA}$",
         "rmse": r"kcal mol$^{-1}$",
@@ -361,12 +391,21 @@ def plot_rms_stats(
 
 def plot_rms_js_distance(
     force_fields: list[str],
-    metrics_file: str,
+    metrics: MetricCollection,
     plot_dir: str,
 ) -> None:
-    """Plot the RMS JS distance for each force field."""
-    metrics = MetricCollection.parse_file(metrics_file)
+    """Plot the RMS JS distance for each force field.
 
+    Parameters
+    ----------
+    force_fields : list[str]
+        The force fields to include in the plots.
+    metrics : MetricCollection
+        Precomputed metrics object.
+    plot_dir : str
+        Directory to write plot files to.
+
+    """
     rms_js_distance = {
         force_field: get_rms(np.array([val.js_distance[0] for val in metrics.metrics[force_field].values()]))
         for force_field in force_fields
@@ -390,12 +429,21 @@ def plot_rms_js_distance(
 
 def plot_mean_error_distribution(
     force_fields: list[str],
-    metrics_file: str,
+    metrics: MetricCollection,
     plot_dir: str,
 ) -> None:
-    """Plot the distribution of mean errors for each force field."""
-    metrics = MetricCollection.parse_file(metrics_file)
+    """Plot the distribution of mean errors for each force field.
 
+    Parameters
+    ----------
+    force_fields : list[str]
+        The force fields to include in the plots.
+    metrics : MetricCollection
+        Precomputed metrics object.
+    plot_dir : str
+        Directory to write plot files to.
+
+    """
     units = {
         "mean_error": r"kcal mol$^{-1}$",
     }

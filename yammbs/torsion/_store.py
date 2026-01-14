@@ -505,6 +505,7 @@ class TorsionStore:
         js_temperature: float = 500.0,
         restraint_k: float = 0.0,
         skip_check: bool = True,
+        csv_output_dir: Pathlike | None = None,
     ) -> MetricCollection:
         """Automatically compute all registered metrics for all force fields.
 
@@ -520,6 +521,8 @@ class TorsionStore:
         skip_check : bool
             If True, skip the internal call to optimize_mm (assumes that the optimization has
             already been performed and ignores restraint_k).
+        csv_output_dir : Pathlike | None
+            If provided, path to output directory for CSV files for metrics. If None, no CSV files are written.
 
         Returns
         -------
@@ -562,6 +565,12 @@ class TorsionStore:
                     skip_check=True,
                     **kwargs,
                 )
+                metric_dataframe = metric_data.to_dataframe()
+                if csv_output_dir is not None:
+                    csv_output_path = pathlib.Path(csv_output_dir) / f"{force_field}_{collection_type.__name__}.csv"
+                    metric_dataframe.to_csv(csv_output_path)
+                    LOGGER.info(f"Wrote metric data to CSV file at {csv_output_path}")
+
                 dataframes.append(metric_data.to_dataframe())
 
             # Join all dataframes
