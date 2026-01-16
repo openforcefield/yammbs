@@ -570,7 +570,9 @@ class TorsionStore:
                 if csv_output_dir is not None:
                     # Remove path and .offxml suffix for filename
                     # TODO: Do this in general for display names?
-                    force_field_name = pathlib.Path(force_field).stem
+                    force_field_name = (
+                        pathlib.Path(force_field).stem if force_field.endswith(".offxml") else force_field
+                    )
                     csv_output_path = (
                         pathlib.Path(csv_output_dir) / f"{force_field_name}_{collection_type.__name__}.csv"
                     )
