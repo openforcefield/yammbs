@@ -27,6 +27,7 @@ def analyse_torsions(
     output_minimized: str = "minimized.json",
     plot_dir: str = ".",
     metrics_csv_output_dir: str | None = None,
+    n_processes: int = 24,
 ) -> None:
     """Run torsion drive comparisons using specified force fields and input data.
 
@@ -46,6 +47,8 @@ def analyse_torsions(
         Directory to save the generated plots to.
     metrics_csv_output_dir : str | None
         Directory to save per-metric CSV output files to.
+    n_processes : int
+        Number of processes to use for MM optimization.
 
     """
     if force_fields is None:
@@ -69,7 +72,7 @@ def analyse_torsions(
         )
 
     for force_field in force_fields:
-        store.optimize_mm(force_field=force_field, n_processes=24)
+        store.optimize_mm(force_field=force_field, n_processes=n_processes)
 
     if not pathlib.Path(output_minimized).exists():
         with open(output_minimized, "w") as f:
@@ -507,6 +510,14 @@ def main(
             help="Directory to save per-metric CSV output files to.",
         ),
     ] = None,
+    n_processes: Annotated[
+        int,
+        typer.Option(
+            "--n-processes",
+            "-n",
+            help="Number of processes to use for MM optimization.",
+        ),
+    ] = 24,
 ) -> None:
     """Run torsion drive comparisons using specified force fields and input data."""
     analyse_torsions(
@@ -517,6 +528,7 @@ def main(
         output_minimized=output_minimized,
         plot_dir=plot_dir,
         metrics_csv_output_dir=metrics_csv_output_dir,
+        n_processes=n_processes,
     )
 
 
