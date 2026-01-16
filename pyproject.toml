@@ -59,7 +59,7 @@ ignore = ["D105", "D107"]
 select = ["D", "F", "E", "W", "NPY", "UP", "I", "RUF027"]
 
 [project.scripts]
-yammbs_analyse_torsions = "yammbs.scripts.run_torsion_comparisons:main"
+yammbs_analyse_torsions = "yammbs.scripts.run_torsion_comparisons:app"
 [tool.coverage.run]
 omit = [ "yammbs/_tests/*", "setup.py",]
 

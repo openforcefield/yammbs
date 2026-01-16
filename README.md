@@ -193,14 +193,14 @@ Then, to run the benchmark with `openff-1.0.0.offxml` and `openff-2.2.1.offxml`:
 
 ```bash
 yammbs_analyse_torsions --qcarchive-torsion-data input.json \
-    --base-force-fields openff-1.0.0 \
-    --base-force-fields openff-2.2.1
+    --force-fields openff-1.0.0 \
+    --force-fields openff-2.2.1
 ```
 This takes a bit over 10 minutes on a 32-core machine with 125 GB RAM. Note that when supplying your own force fields, make sure that these are the unconstrained versions (this is done automatically for e.g. `openff-1.0.0`), for example:
 
 ```bash
 yammbs_analyse_torsions --qcarchive-torsion-data input.json \
-    --extra-force-fields my_unconstrained_ff.offxml
+    --force-fields my_unconstrained_ff.offxml
 ```
 A range of OpenFF force fields will be run for comparison if no `--base-force-fields` are specified.
 

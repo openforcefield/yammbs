@@ -40,3 +40,38 @@ Taken from a YAMMBS-dataset-submission (re-)run of Sage 2.1.0. The QCArchive ID 
 * [YDS run](https://github.com/openforcefield/yammbs-dataset-submission/issues/68)
 * [Files from YDS run](https://zenodo.org/records/17404618)
 * [Bug reported in Issue #174](https://github.com/openforcefield/yammbs/issues/174)
+
+# yammbs/rowley-biaryl-torsiondrive-data
+
+This was created from the "OpenFF Rowley Biaryl v1.0" dataset, keeping only the first 10 entries for speed. The input json was generated with:
+```
+import json
+
+from openff.qcsubmit.results import TorsionDriveResultCollection
+from qcportal import PortalClient
+
+from yammbs.torsion.inputs import QCArchiveTorsionDataset
+
+client = PortalClient("https://api.qcarchive.molssi.org:443", cache_dir=".")
+
+rowley_torsion_dataset = TorsionDriveResultCollection.from_server(
+    client=client,
+    datasets="OpenFF Rowley Biaryl v1.0",
+    spec_name="default",
+)
+
+dataset = QCArchiveTorsionDataset.from_qcsubmit_collection(rowley_torsion_dataset)
+
+# Select only the first 10 entries for testing
+# Mutate json as the QCArchiveTorsionDataset is frozen
+json_data = dataset.model_dump()
+json_data["entries"] = json_data["entries"][:10]
+
+with open("input.json", "w") as f:
+    f.write(json.dumps(json_data, indent=2))
+```
+Then, the torsion analysis CLI command was run to generate the database file:
+```
+yammbs_analyse_torsions --qcarchive-torsion-data input.json --base-force-fields openff-1.0.0  --base-force-fields openff-2.2.1
+```
+The relevant input and database files were then renamed `rowley-biaryl-torsiondrive-data*`.

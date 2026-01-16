@@ -17,6 +17,7 @@ from yammbs._minimize import _lazy_load_force_field
 from yammbs._molecule import _smiles_to_inchi_key
 from yammbs._types import Pathlike
 from yammbs.exceptions import DatabaseExistsError
+from yammbs.torsion import analysis
 from yammbs.torsion._db import (
     DBBase,
     DBMMTorsionPointRecord,
@@ -24,15 +25,6 @@ from yammbs.torsion._db import (
     DBTorsionRecord,
 )
 from yammbs.torsion._session import TorsionDBSessionManager
-from yammbs.torsion.analysis import (
-    RMSD,
-    AnalysisMetricCollectionTypeVar,
-    JSDistanceCollection,
-    MeanErrorCollection,
-    RMSDCollection,
-    RMSECollection,
-    _normalize,
-)
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 from yammbs.torsion.models import (
     MMTorsionPointRecord,
@@ -363,6 +355,7 @@ class TorsionStore:
             data=data,
             force_field=force_field,
             n_processes=n_processes,
+            chunksize=chunksize,
             restraint_k=restraint_k,
         )
 
@@ -380,125 +373,92 @@ class TorsionStore:
                     ),
                 )
 
-    def get_rmsd(
+    def get_metric(
         self,
         force_field: str,
+        metric_collection_type: type[analysis.AnalysisMetricCollectionTypeVar],
         torsion_ids: list[int] | None = None,
         skip_check: bool = False,
         restraint_k: float = 0.0,
-    ) -> RMSDCollection:
-        """Get the RMSD summed over the torsion profile."""
-        if not torsion_ids:
-            torsion_ids = self.get_torsion_ids()
+        **kwargs,
+    ) -> analysis.AnalysisMetricCollectionTypeVar:
+        """Calculate any metric for the supplied collection type.
 
-        if not skip_check:
-            # TODO: Copy this into each get_* method?
-            LOGGER.info("Calling optimize_mm from inside of get_log_sse.")
-            self.optimize_mm(force_field=force_field, restraint_k=restraint_k)
+        Args:
+            force_field: The force field to use for MM calculations.
+            metric_collection_type: The collection class (e.g., RMSECollection).
+            torsion_ids: Optional list of specific torsion IDs to process.
+            skip_check: Skip the optimize_mm check if True.
+            restraint_k: Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.
+            **kwargs: Additional keyword arguments to pass to the metric's from_data method.
 
-        rmsds = RMSDCollection()
+        Returns:
+            A collection of the requested metric type.
 
-        for torsion_id in torsion_ids:
-            qm_points = self.get_qm_points_by_torsion_id(torsion_id=torsion_id)
-            mm_points = self.get_mm_points_by_torsion_id(torsion_id=torsion_id, force_field=force_field)
-
-            molecule = Molecule.from_mapped_smiles(
-                self.get_smiles_by_torsion_id(torsion_id),
-                allow_undefined_stereo=True,
-            )
-
-            rmsds.append(RMSD.from_data(torsion_id, molecule, qm_points, mm_points))
-
-        return rmsds
-
-    def _get_energy_based_metric(
-        self,
-        force_field: str,
-        analysis_metric_collection: type[AnalysisMetricCollectionTypeVar],
-        torsion_ids: list[int] | None = None,
-        skip_check: bool = False,
-        restraint_k: float = 0.0,
-        kwargs: dict | None = None,
-    ) -> AnalysisMetricCollectionTypeVar:
-        """Calculate energy-based metrics for the supplied analysis metric collection."""
-        kwargs = kwargs if kwargs else dict()
-
+        """
         if not torsion_ids:
             torsion_ids = self.get_torsion_ids()
 
         if not skip_check:
             self.optimize_mm(force_field=force_field, restraint_k=restraint_k)
 
-        collection = analysis_metric_collection()
+        collection = metric_collection_type()
+        item_type = collection.get_item_type()
 
-        for torsion_id in torsion_ids:
-            qm, mm = (
-                numpy.fromiter(dct.values(), dtype=float)
-                for dct in _normalize(
-                    self.get_qm_energies_by_torsion_id(torsion_id=torsion_id),
-                    self.get_mm_energies_by_torsion_id(torsion_id=torsion_id, force_field=force_field),
-                )
-            )
-
-            if len(mm) * len(qm) == 0:
-                LOGGER.warning(
-                    "Missing QM OR MM data for this no mm data, returning empty dicts; \n\t"
-                    f"{torsion_id=}, {force_field=}, {len(qm)=}, {len(mm)=}",
-                )
-
-            collection.append(
-                collection.get_item_type().from_data(
+        # Check metric type using the explicit enum
+        if item_type.metric_type == analysis.MetricType.COORDINATE_BASED:
+            for torsion_id in torsion_ids:
+                qm_points = self.get_qm_points_by_torsion_id(torsion_id=torsion_id)
+                mm_points = self.get_mm_points_by_torsion_id(
                     torsion_id=torsion_id,
-                    qm_energies=qm,
-                    mm_energies=mm,
-                    **kwargs,
-                ),
-            )
+                    force_field=force_field,
+                )
+                molecule = Molecule.from_mapped_smiles(
+                    self.get_smiles_by_torsion_id(torsion_id),
+                    allow_undefined_stereo=True,
+                )
+
+                collection.append(
+                    item_type.from_data(  # type: ignore[attr-defined]
+                        torsion_id=torsion_id,
+                        molecule=molecule,
+                        qm_points=qm_points,
+                        mm_points=mm_points,
+                        **kwargs,
+                    ),
+                )
+
+        elif item_type.metric_type == analysis.MetricType.ENERGY_BASED:
+            for torsion_id in torsion_ids:
+                qm, mm = (
+                    numpy.fromiter(dct.values(), dtype=float)
+                    for dct in analysis._normalize(
+                        self.get_qm_energies_by_torsion_id(torsion_id=torsion_id),
+                        self.get_mm_energies_by_torsion_id(
+                            torsion_id=torsion_id,
+                            force_field=force_field,
+                        ),
+                    )
+                )
+
+                if len(mm) * len(qm) == 0:
+                    LOGGER.warning(
+                        f"Missing QM OR MM data; \n\t{torsion_id=}, {force_field=}, {len(qm)=}, {len(mm)=}",
+                    )
+
+                collection.append(
+                    item_type.from_data(  # type: ignore[attr-defined]
+                        torsion_id=torsion_id,
+                        qm_energies=qm,
+                        mm_energies=mm,
+                        **kwargs,
+                    ),
+                )
+
+        else:
+            raise ValueError(f"Unknown metric type {item_type.metric_type} for {item_type.__name__}")
 
         return collection
-
-    def get_rmse(
-        self,
-        force_field: str,
-        torsion_ids: list[int] | None = None,
-        skip_check: bool = False,
-    ) -> RMSECollection:
-        """Get the RMS RMSD over the torsion profile."""
-        return self._get_energy_based_metric(
-            force_field=force_field,
-            analysis_metric_collection=RMSECollection,
-            torsion_ids=torsion_ids,
-            skip_check=skip_check,
-        )
-
-    def get_mean_error(
-        self,
-        force_field: str,
-        torsion_ids: list[int] | None = None,
-        skip_check: bool = False,
-    ) -> MeanErrorCollection:
-        return self._get_energy_based_metric(
-            force_field=force_field,
-            analysis_metric_collection=MeanErrorCollection,
-            torsion_ids=torsion_ids,
-            skip_check=skip_check,
-        )
-
-    def get_js_distance(
-        self,
-        force_field: str,
-        torsion_ids: list[int] | None = None,
-        skip_check: bool = False,
-        temperature: float = 500.0,
-    ) -> JSDistanceCollection:
-        """Get the RMS RMSD over the torsion profile."""
-        return self._get_energy_based_metric(
-            force_field=force_field,
-            analysis_metric_collection=JSDistanceCollection,
-            torsion_ids=torsion_ids,
-            skip_check=skip_check,
-            kwargs={"temperature": temperature},
-        )
 
     def get_outputs(self) -> MinimizedTorsionDataset:
         from yammbs.torsion.outputs import MinimizedTorsionProfile
@@ -545,6 +505,7 @@ class TorsionStore:
         js_temperature: float = 500.0,
         restraint_k: float = 0.0,
         skip_check: bool = True,
+        csv_output_dir: Pathlike | None = None,
     ) -> MetricCollection:
         """Automatically compute all registered metrics for all force fields.
 
@@ -560,6 +521,8 @@ class TorsionStore:
         skip_check : bool
             If True, skip the internal call to optimize_mm (assumes that the optimization has
             already been performed and ignores restraint_k).
+        csv_output_dir : Pathlike | None
+            If provided, path to output directory for CSV files for metrics. If None, no CSV files are written.
 
         Returns
         -------
@@ -573,6 +536,9 @@ class TorsionStore:
 
         metrics = MetricCollection()
 
+        # Get all registered metric collection types
+        metric_collections = analysis.get_all_metric_collections()
+
         force_fields = force_fields if force_fields else self.get_force_fields()
 
         if not skip_check:
@@ -582,28 +548,59 @@ class TorsionStore:
 
         # TODO: Optimize this for speed
         for force_field in force_fields:
-            rmses = self.get_rmse(force_field=force_field, skip_check=True).to_dataframe()
-            rmsds = self.get_rmsd(force_field=force_field, skip_check=True).to_dataframe()
-            mean_errors = self.get_mean_error(force_field=force_field, skip_check=True).to_dataframe()
-            js_distances = self.get_js_distance(
-                force_field=force_field,
-                skip_check=True,
-                temperature=js_temperature,
-            ).to_dataframe()
+            dataframes = []
 
-            dataframe = rmses.join(rmsds).join(mean_errors).join(js_distances)
+            # Compute each metric
+            for collection_type in metric_collections:
+                # Special handling for JSDistance which needs temperature parameter
+                if collection_type == analysis.JSDistanceCollection:
+                    kwargs = {"temperature": js_temperature}
+                else:
+                    kwargs = {}
 
-            dataframe = dataframe.replace({pandas.NA: numpy.nan})
-
-            metrics.metrics[force_field] = {
-                id: Metric(  # type: ignore[misc]
-                    rmsd=row["rmsd"],
-                    rmse=row["rmse"],
-                    mean_error=row["mean_error"],
-                    js_distance=(row["js_distance"], row["js_temperature"]),
+                metric_data = self.get_metric(
+                    force_field=force_field,
+                    metric_collection_type=collection_type,
+                    torsion_ids=self.get_torsion_ids(),
+                    skip_check=True,
+                    **kwargs,
                 )
-                for id, row in dataframe.iterrows()
-            }
+                metric_dataframe = metric_data.to_dataframe()
+
+                if csv_output_dir is not None:
+                    # Remove path and .offxml suffix for filename
+                    # TODO: Do this in general for display names?
+                    force_field_name = (
+                        pathlib.Path(force_field).stem if force_field.endswith(".offxml") else force_field
+                    )
+                    csv_output_path = (
+                        pathlib.Path(csv_output_dir) / f"{force_field_name}_{collection_type.__name__}.csv"
+                    )
+                    metric_dataframe.to_csv(csv_output_path)
+                    LOGGER.info(f"Wrote metric data to CSV file at {csv_output_path}")
+
+                dataframes.append(metric_data.to_dataframe())
+
+            # Join all dataframes
+            if dataframes:
+                dataframe = dataframes[0]
+                for df in dataframes[1:]:
+                    dataframe = dataframe.join(df)
+
+                dataframe = dataframe.replace({pandas.NA: numpy.nan})
+
+                metrics.metrics[force_field] = {
+                    id: Metric(  # type: ignore[misc]
+                        # Handle js_distance specially as it's composed of two fields
+                        js_distance=(row["js_distance"], row["js_temperature"]),
+                        **{
+                            key: row[key]
+                            for key in dataframe.columns
+                            if key != "js_distance" and key != "js_temperature"
+                        },
+                    )
+                    for id, row in dataframe.iterrows()
+                }
 
         return metrics
 
@@ -751,12 +748,12 @@ class TorsionStore:
                     qm_coords = qm_points[angle]
                     mm_coords = mm_points[angle]
                     # Calculate RMSD for this point
-                    rmsd_value = RMSD.from_data(
+                    rmsd_value = analysis.RMSRMSD.from_data(
                         torsion_id=torsion_id,
                         molecule=molecule,
                         qm_points={angle: qm_coords},
                         mm_points={angle: mm_coords},
-                    ).rmsd
+                    ).rms_rmsd
                     angles.append(angle)
                     rmsds.append(rmsd_value)
 
@@ -829,7 +826,7 @@ class TorsionStore:
         rows = []
         metrics = self.get_metrics().metrics
         metrics_to_plot = {
-            "RMSD / A": lambda x: x.rmsd,
+            "RMSD / A": lambda x: x.rms_rmsd,
             "RMSE / kcal mol-1": lambda x: x.rmse,
             "Mean Error / kcal mol-1": lambda x: x.mean_error,
             "JS Distance": lambda x: x.js_distance[0],
