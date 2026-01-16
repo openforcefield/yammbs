@@ -2,9 +2,10 @@
 
 import pathlib
 from multiprocessing import freeze_support
+from typing import Annotated
 
-import click
 import numpy as np
+import typer
 from matplotlib import pyplot
 from openff.toolkit import Molecule
 from rdkit.Chem import AllChem, Draw
@@ -15,76 +16,46 @@ from yammbs.torsion.outputs import MetricCollection
 
 pyplot.style.use("ggplot")
 
+app = typer.Typer()
 
-@click.command()
-@click.option(
-    "--base-force-fields",
-    "-bf",
-    multiple=True,
-    default=[
-        "openff-1.0.0",
-        "openff-2.0.0",
-        "openff-2.1.0",
-        "openff-2.2.0",
-        "openff-2.2.1",
-    ],
-    help="List of force fields to use for optimization.",
-)
-@click.option(
-    "--extra-force-fields",
-    "-ef",
-    multiple=True,
-    default=[],
-    help="Extra (local) force fields to use for optimization.",
-)
-@click.option(
-    "--qcarchive-torsion-data",
-    "-i",
-    default="qca-torsion-data.json",
-    help="Input file containing torsion drive data in QCArchive json format.",
-)
-@click.option(
-    "--database-file",
-    "-d",
-    default="torsion-data.sqlite",
-    help="SQLite database file to store torsion data.",
-)
-@click.option(
-    "--output-metrics",
-    "-m",
-    default="metrics.json",
-    help="Output file for metrics.",
-)
-@click.option(
-    "--output-minimized",
-    "-o",
-    default="minimized.json",
-    help="Output file for minimized data.",
-)
-@click.option(
-    "--plot-dir",
-    "-p",
-    default=".",
-    help="Directory to save the generated plots to.",
-)
-@click.option(
-    "--metrics-csv-output-dir",
-    "-c",
-    default=None,
-    help="Directory to save per-metric CSV output files to.",
-)
-def main(
-    base_force_fields: list[str],
-    extra_force_fields: list[str],
-    qcarchive_torsion_data: str,
-    database_file: str,
-    output_metrics: str,
-    output_minimized: str,
-    plot_dir: str,
+
+def analyse_torsions(
+    force_fields: list[str] = None,
+    qcarchive_torsion_data: str = "qca-torsion-data.json",
+    database_file: str = "torsion-data.sqlite",
+    output_metrics: str = "metrics.json",
+    output_minimized: str = "minimized.json",
+    plot_dir: str = ".",
     metrics_csv_output_dir: str | None = None,
 ) -> None:
-    """Run torsion drive comparisons using specified force fields and input data."""
-    force_fields = base_force_fields + extra_force_fields
+    """Run torsion drive comparisons using specified force fields and input data.
+
+    Parameters
+    ----------
+    force_fields : list[str]
+        List of force fields to use for optimization.
+    qcarchive_torsion_data : str
+        Input file containing torsion drive data in QCArchive json format.
+    database_file : str
+        SQLite database file to store torsion data.
+    output_metrics : str
+        Output file for metrics.
+    output_minimized : str
+        Output file for minimized data.
+    plot_dir : str
+        Directory to save the generated plots to.
+    metrics_csv_output_dir : str | None
+        Directory to save per-metric CSV output files to.
+
+    """
+    if force_fields is None:
+        force_fields = [
+            "openff-1.0.0",
+            "openff-2.0.0",
+            "openff-2.1.0",
+            "openff-2.2.0",
+            "openff-2.2.1",
+        ]
 
     with open(qcarchive_torsion_data) as f:
         dataset = QCArchiveTorsionDataset.model_validate_json(f.read())
@@ -471,9 +442,87 @@ def plot_mean_error_distribution(
     figure.savefig(f"{plot_dir}/mean_error_distribution.png", dpi=300, bbox_inches="tight")
 
 
+@app.command()
+def main(
+    force_fields: Annotated[
+        list[str],
+        typer.Option(
+            "--force-fields",
+            "-f",
+            help="List of force fields to use for optimization.",
+        ),
+    ] = [
+        "openff-1.0.0",
+        "openff-2.0.0",
+        "openff-2.1.0",
+        "openff-2.2.0",
+        "openff-2.2.1",
+        "openff-2.3.0",
+    ],
+    qcarchive_torsion_data: Annotated[
+        str,
+        typer.Option(
+            "--qcarchive-torsion-data",
+            "-i",
+            help="Input file containing torsion drive data in QCArchive json format.",
+        ),
+    ] = "qca-torsion-data.json",
+    database_file: Annotated[
+        str,
+        typer.Option(
+            "--database-file",
+            "-d",
+            help="SQLite database file to store torsion data.",
+        ),
+    ] = "torsion-data.sqlite",
+    output_metrics: Annotated[
+        str,
+        typer.Option(
+            "--output-metrics",
+            "-m",
+            help="Output file for metrics.",
+        ),
+    ] = "metrics.json",
+    output_minimized: Annotated[
+        str,
+        typer.Option(
+            "--output-minimized",
+            "-o",
+            help="Output file for minimized data.",
+        ),
+    ] = "minimized.json",
+    plot_dir: Annotated[
+        str,
+        typer.Option(
+            "--plot-dir",
+            "-p",
+            help="Directory to save the generated plots to.",
+        ),
+    ] = ".",
+    metrics_csv_output_dir: Annotated[
+        str | None,
+        typer.Option(
+            "--metrics-csv-output-dir",
+            "-c",
+            help="Directory to save per-metric CSV output files to.",
+        ),
+    ] = None,
+) -> None:
+    """Run torsion drive comparisons using specified force fields and input data."""
+    analyse_torsions(
+        force_fields=force_fields,
+        qcarchive_torsion_data=qcarchive_torsion_data,
+        database_file=database_file,
+        output_metrics=output_metrics,
+        output_minimized=output_minimized,
+        plot_dir=plot_dir,
+        metrics_csv_output_dir=metrics_csv_output_dir,
+    )
+
+
 if __name__ == "__main__":
     # This setup is necessary for reasons that confused me - both setting it up in the __main__ block and calling
     # freeze_support(). This is probably not necessary after MoleculeStore.optimize_mm() is called, so you can load up
     # the same database for later analysis once the MM conformers are stored
     freeze_support()
-    main()
+    app()

@@ -4,10 +4,9 @@ import os
 import pathlib
 
 import pytest
-from click.testing import CliRunner
 from openff.utilities import get_data_file_path
 
-from yammbs.scripts.run_torsion_comparisons import main
+from yammbs.scripts.run_torsion_comparisons import analyse_torsions
 from yammbs.torsion.analysis import get_all_metric_collections
 
 # Set to True to keep generated figures for manual inspection
@@ -71,33 +70,16 @@ def test_run_torsion_comparisons_integration(test_database, torsion_input_file, 
         plot_dir = tmp_path / "plots"
         plot_dir.mkdir()
 
-    # Run the CLI command - since we have pre-minimized data, this should be fast
-    runner = CliRunner()
-    result = runner.invoke(
-        main,
-        [
-            "--qcarchive-torsion-data",
-            torsion_input_file,
-            "--base-force-fields",
-            "openff-1.0.0",  # Use two pre-minimized force fields
-            "--base-force-fields",
-            "openff-2.2.1",
-            "--database-file",
-            str(db_file),
-            "--output-metrics",
-            str(metrics_file),
-            "--output-minimized",
-            str(minimized_file),
-            "--plot-dir",
-            str(plot_dir),
-            "--metrics-csv-output-dir",
-            str(plot_dir),
-        ],
+    # Call programmatic API directly - this avoids needing the CLI runner
+    analyse_torsions(
+        force_fields=["openff-1.0.0", "openff-2.2.1"],
+        qcarchive_torsion_data=str(torsion_input_file),
+        database_file=str(db_file),
+        output_metrics=str(metrics_file),
+        output_minimized=str(minimized_file),
+        plot_dir=str(plot_dir),
+        metrics_csv_output_dir=str(plot_dir),
     )
-
-    # Check that the command completed successfully
-    assert result.exit_code == 0, f"Command failed with output: {result.output}"
-
     # Verify that expected output files were created
     assert db_file.exists(), "Database file was not created"
     assert metrics_file.exists(), "Metrics file was not created"
