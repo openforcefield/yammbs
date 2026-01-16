@@ -171,7 +171,7 @@ def test_plugin_not_needed_to_use_mainline_force_field(monkeypatch, ethane):
     )
 
 
-@pytest.mark.timeout(100 if platform.system() == "Darwin" else 600)
+@pytest.mark.timeout(100 if platform.system() == "Darwin" else 60)
 def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
     """Test that minimizing with one force field produces expected results.
 
