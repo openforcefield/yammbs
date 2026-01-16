@@ -566,8 +566,14 @@ class TorsionStore:
                     **kwargs,
                 )
                 metric_dataframe = metric_data.to_dataframe()
+
                 if csv_output_dir is not None:
-                    csv_output_path = pathlib.Path(csv_output_dir) / f"{force_field}_{collection_type.__name__}.csv"
+                    # Remove path and .offxml suffix for filename
+                    # TODO: Do this in general for display names?
+                    force_field_name = pathlib.Path(force_field).stem
+                    csv_output_path = (
+                        pathlib.Path(csv_output_dir) / f"{force_field_name}_{collection_type.__name__}.csv"
+                    )
                     metric_dataframe.to_csv(csv_output_path)
                     LOGGER.info(f"Wrote metric data to CSV file at {csv_output_path}")
 
