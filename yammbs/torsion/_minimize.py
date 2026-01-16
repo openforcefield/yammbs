@@ -125,6 +125,7 @@ def _minimize_constrained(
     """
     import openmm
     import openmm.unit
+    from openff.interchange.exceptions import UnassignedValenceError
     from openff.interchange.operations.minimize import (
         _DEFAULT_ENERGY_MINIMIZATION_TOLERANCE,
     )
@@ -148,7 +149,15 @@ def _minimize_constrained(
     molecule.add_conformer(Quantity(input.coordinates, "angstrom"))
 
     LOGGER.debug("Creating interchange object")
-    interchange = force_field.create_interchange(molecule.to_topology())
+    try:
+        interchange = force_field.create_interchange(molecule.to_topology())
+    # TODO: The same code in yammbs/_minimize.py logs these cases as warnings
+    except UnassignedValenceError:
+        LOGGER.warning(f"Skipping record {input.torsion_id} with unassigned valence terms")
+        return None
+    except ValueError as e:  # charging error
+        LOGGER.warning(f"Skipping record {input.torsion_id} with a value error (probably a charge failure): {e}")
+        return None
 
     restraint_force = openmm.CustomExternalForce("0.5*k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
     restraint_force.addGlobalParameter(
