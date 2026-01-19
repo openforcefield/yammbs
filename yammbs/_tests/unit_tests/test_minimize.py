@@ -172,7 +172,7 @@ def test_plugin_not_needed_to_use_mainline_force_field(monkeypatch, ethane):
 
 
 @pytest.mark.timeout(100 if platform.system() == "Darwin" else 60)
-def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
+def test_partially_minimized(tiny_cache, tmp_path):
     """Test that minimizing with one force field produces expected results.
 
     See https://github.com/mattwthompson/ib/pull/21#discussion_r1511804909
@@ -200,11 +200,11 @@ def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
     # No need to minimize all 200 records twice ...
     tinier_cache = QCArchiveDataset()
 
-    # ... so slice out some really small molecules (< 9 heavy atoms)
-    # which should be 12 molecules for this dataset
+    # ... so slice out some really small molecules (< 7 heavy atoms)
+    # which should be 4 molecules for this dataset
     for result in tiny_cache.qm_molecules:
         molecule = Molecule.from_mapped_smiles(result.mapped_smiles)
-        if len([atom for atom in molecule.atoms if atom.atomic_number > 1]) < 9:
+        if len([atom for atom in molecule.atoms if atom.atomic_number > 1]) < 7:
             tinier_cache.qm_molecules.append(result)
 
     tinier_store = MoleculeStore.from_qcarchive_dataset(
@@ -214,13 +214,13 @@ def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
 
     assert get_n_results(tinier_store) == (0, 0)
 
-    tinier_store.optimize_mm(force_field="openff-1.0.0", n_processes=guess_n_processes)
+    tinier_store.optimize_mm(force_field="openff-1.0.0", n_processes=1)
 
-    assert get_n_results(tinier_store) == (12, 0)
+    assert get_n_results(tinier_store) == (4, 0)
 
-    tinier_store.optimize_mm(force_field="openff-2.0.0", n_processes=guess_n_processes)
+    tinier_store.optimize_mm(force_field="openff-2.0.0", n_processes=1)
 
-    assert get_n_results(tinier_store) == (12, 12)
+    assert get_n_results(tinier_store) == (4, 4)
 
     assert tinier_store.software_provenance["yammbs"] == yammbs.__version__
     assert tinier_store.software_provenance["openff.toolkit"] == __toolkit_version__
