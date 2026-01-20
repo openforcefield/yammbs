@@ -32,7 +32,7 @@ jobs:
       OE_LICENSE: ${{ github.workspace }}/oe_license.txt
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
@@ -70,9 +70,7 @@ jobs:
 
     - name: Run tests
       run: |
-        python -m "from openff.toolkit import *"
-
-        pytest -r fEx -n logical --durations=10 \
+        pytest -v -n logical --durations=20 \
           --cov=yammbs/ --cov-report=xml --cov-config=pyproject.toml \
           yammbs/
 
