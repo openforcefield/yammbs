@@ -54,7 +54,7 @@ class TorsionProfile(ImmutableModel):
 class QCArchiveTorsionProfile(TorsionProfile):
     """A single QCArchive torsion profile."""
 
-    id: int = Field(..., description="The attribute TorsiondriveRecord.id")
+    qcarchive_id: int = Field(..., description="The attribute TorsiondriveRecord.id")
 
 
 class QCArchiveTorsionDataset(TorsionDataset):

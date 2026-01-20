@@ -11,7 +11,7 @@ from openff.toolkit import Molecule
 from rdkit.Chem import AllChem, Draw
 
 from yammbs.torsion import TorsionStore
-from yammbs.torsion.inputs import QCArchiveTorsionDataset
+from yammbs.torsion.inputs import QCArchiveTorsionDataset, TorsionDataset
 from yammbs.torsion.outputs import MetricCollection
 
 pyplot.style.use("ggplot")
