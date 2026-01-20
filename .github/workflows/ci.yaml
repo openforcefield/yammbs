@@ -70,7 +70,7 @@ jobs:
 
     - name: Run unit tests
       run: |
-        pytest yammbs/_tests/unit_tests -r fEx -n logical --durations=10 \
+        pytest -v -n logical --durations=20 \
           --cov=yammbs/ --cov-report=xml --cov-config=pyproject.toml \
           yammbs/
 
