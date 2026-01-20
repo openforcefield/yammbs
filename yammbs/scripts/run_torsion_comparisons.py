@@ -179,11 +179,11 @@ def plot_torsions(plot_dir: str, force_fields: list[str], store: TorsionStore) -
         qm = {key: _qm[key] - _qm[qm_minimum_index] for key in _qm}
 
         # Assume a default grid spacing of 15 degrees (BespokeFit default)
-        angles = np.arange(-165, 195, 15)
-        assert len(angles) == len(qm), "QM data and angles should match in length"
+        qm_angles = np.array([*qm.keys()])
+        assert np.all(np.unique(np.diff(qm_angles))), "Points should be separated by 15.0 deg"
 
         torsion_axis.plot(
-            angles,
+            qm_angles,
             qm.values(),
             "k.-",
             label="QM",
@@ -195,7 +195,7 @@ def plot_torsions(plot_dir: str, force_fields: list[str], store: TorsionStore) -
                 continue
 
             torsion_axis.plot(
-                angles,
+                qm_angles,
                 [val - mm[qm_minimum_index] for val in mm.values()],
                 "o--",
                 label=force_field,
