@@ -155,7 +155,7 @@ def _minimize_constrained(
     except UnassignedValenceError:
         LOGGER.warning(f"Skipping record {input.torsion_id} with unassigned valence terms")
         return None
-    except ValueError as e:  # charging error
+    except (RuntimeError, ValueError) as e:  # charging error
         LOGGER.warning(f"Skipping record {input.torsion_id} with a value error (probably a charge failure): {e}")
         return None
 
