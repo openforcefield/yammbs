@@ -105,7 +105,7 @@ openff-qcsubmit = "0.57.*"
 qcportal = "~=0.55"
 openeye-toolkits = "*"
 openmmforcefields = "*"
-rdkit = ">=2024"
+rdkit = ">=2024,!=2024.03.6,!=2024.09.1"
 openmm = "8.4.*"
 MDAnalysis = "*"
 # add back when merged https://github.com/openforcefield/smirnoff-plugins/pull/76
