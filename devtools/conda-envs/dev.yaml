@@ -16,6 +16,7 @@ dependencies:
   # add back when merged https://github.com/openforcefield/smirnoff-plugins/pull/76
   # smirnoff-plugins
   # de-forcefields ~=1.0.3
+  - geometric =1
 
   - openeye::openeye-toolkits
 
