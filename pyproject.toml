@@ -21,8 +21,7 @@ classifiers = [
 ]
 dynamic = [ "version" ]
 
-[project.scripts]
-yammbs_analyse_torsions = "yammbs.scripts.run_torsion_comparisons:main"
+scripts.yammbs_analyse_torsions = "yammbs.scripts.run_torsion_comparisons:main"
 
 [tool.setuptools]
 packages.find = {}
