@@ -11,6 +11,7 @@ description = "A tool for benchmarking force fields."
 readme = "README.md"
 license = { text = "MIT" }
 authors = [ { name = "Open Force Field Initiative", email = "info@openforcefield.org" } ]
+requires-python = ">=3.11"
 classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.10",
