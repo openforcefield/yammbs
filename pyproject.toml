@@ -42,9 +42,9 @@ module = [
     "openmmforcefields.generators",
     "sqlalchemy",
     "sqlalchemy.org",
-    "geometric.*",
     "qcelemental",
     "openff.qcsubmit.results",
+    "MDAnalysis",
     "bokeh",
     "panel",
 ]
@@ -52,7 +52,6 @@ ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 119
-exclude = ["yammbs/_tests/**/*.py"]
 
 [tool.ruff.lint]
 preview = true

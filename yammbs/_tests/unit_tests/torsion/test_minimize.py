@@ -1,15 +1,20 @@
-import pytest
-from openff.toolkit import Molecule
-import numpy as np
-import openmm
-from yammbs.analysis import get_rmsd
+"""Tests torsion minimization."""
+
 import copy
 
+import numpy
+import openmm.unit
+import pytest
+from openff.toolkit import ForceField, Molecule
+
+from yammbs.analysis import get_rmsd
 from yammbs.torsion._minimize import (
     ConstrainedMinimizationInput,
     ConstrainedMinimizationResult,
     _run_minimization_constrained,
 )
+from yammbs.torsion._store import TorsionStore
+from yammbs.torsion.inputs import QCArchiveTorsionDataset, QCArchiveTorsionProfile
 
 
 @pytest.fixture
@@ -19,8 +24,8 @@ def pentane_molecule() -> Molecule:
         "[C:1]([H:6])([H:7])([H:8])[C:2]([H:9])([H:10])[C:3]([H:11])([H:12])[C:4]([H:13])([H:14])[C:5]([H:15])([H:16])[H:17]",
     )
 
-    positions = (
-        np.array(
+    positions = openmm.unit.Quantity(
+        numpy.array(
             [
                 [-0.91508573, 0.29544935, -2.34612298],
                 [-0.71728516, -0.49414062, -1.06152344],
@@ -40,8 +45,8 @@ def pentane_molecule() -> Molecule:
                 [0.6256721, 1.18306684, 2.50701475],
                 [2.11578083, 0.49720106, 1.83249044],
             ],
-        )
-        * openmm.unit.angstrom
+        ),
+        openmm.unit.angstrom,
     )
 
     pentane.add_conformer(positions)
@@ -51,6 +56,7 @@ def pentane_molecule() -> Molecule:
 
 @pytest.fixture
 def base_minimization_input(pentane_molecule) -> ConstrainedMinimizationInput:
+    """Fixture for different pentane minimizations."""
     return ConstrainedMinimizationInput(
         torsion_id=100,  # Arbitrary
         mapped_smiles=pentane_molecule.to_smiles(mapped=True),
@@ -64,17 +70,17 @@ def base_minimization_input(pentane_molecule) -> ConstrainedMinimizationInput:
 
 @pytest.fixture
 def pentane_openmm_unrestrained_result(
-    pentane_molecule, base_minimization_input,
+    base_minimization_input,
 ) -> ConstrainedMinimizationResult:
-
+    """Fixture of unrestrained minimization with OpenMM."""
     return _run_minimization_constrained(base_minimization_input)
 
 
 @pytest.fixture
 def pentane_geometric_unrestrained_result(
-    pentane_molecule, base_minimization_input,
+    base_minimization_input,
 ) -> ConstrainedMinimizationResult:
-
+    """Fixture of unrestrained minimization with geomeTRIC."""
     min_input_dict = base_minimization_input.model_dump()
     min_input_dict["method"] = "geometric"
 
@@ -83,11 +89,11 @@ def pentane_geometric_unrestrained_result(
 
 @pytest.fixture
 def pentane_openmm_restrained_result(
-    pentane_molecule, base_minimization_input,
+    base_minimization_input,
 ) -> ConstrainedMinimizationResult:
-
+    """Fixture of restrained minimization with OpenMM."""
     min_input = copy.deepcopy(base_minimization_input)
-    min_input_dict = base_minimization_input.model_dump()
+    min_input_dict = min_input.model_dump()
     min_input_dict["restraint_k"] = 1.0  # apply restraints
 
     return _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
@@ -95,26 +101,14 @@ def pentane_openmm_restrained_result(
 
 @pytest.fixture
 def pentane_geometric_restrained_result(
-    pentane_molecule, base_minimization_input,
+    base_minimization_input,
 ) -> ConstrainedMinimizationResult:
-
+    """Fixture of restrained minimization with geomeTRIC."""
     min_input_dict = base_minimization_input.model_dump()
     min_input_dict["method"] = "geometric"
     min_input_dict["restraint_k"] = 1.0  # apply restraints
 
     return _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
-
-
-def test_minimization_basic_openmm(pentane_openmm_unrestrained_result):
-    # these models don't track the (MM) energy before the (constrained) minimization
-    # is there any reason to?
-
-    # just check the minimization succeeded and produced non-NaN
-    assert isinstance(pentane_openmm_unrestrained_result.energy, float)
-
-
-def test_minimization_basic_geometric(pentane_geometric_unrestrained_result):
-    assert isinstance(pentane_geometric_unrestrained_result.energy, float)
 
 
 def test_minimizations_similar_results(
@@ -123,8 +117,7 @@ def test_minimizations_similar_results(
 ):
     """Check that the two minimization methods give similar results."""
     energy_diff = abs(
-        pentane_openmm_unrestrained_result.energy
-        - pentane_geometric_unrestrained_result.energy,
+        pentane_openmm_unrestrained_result.energy - pentane_geometric_unrestrained_result.energy,
     )
     assert energy_diff < 0.1  # kcal/mol
 
@@ -162,3 +155,65 @@ def test_restraining_reduces_rmsd(
     print(
         f"Unrestrained RMSD: {unrestrained_rmsd:.4f} Å, Restrained RMSD: {restrained_rmsd:.4f} Å",
     )
+
+
+@pytest.mark.parametrize("failure_case", ["valence", "charge"])
+def test_failed_minimizations(tmp_path, capsys, failure_case):
+    """Test that failed MM minimizations in a torsion store are handled gracefully."""
+    SMILES = "[H:5][C:1]([H:6])([H:7])[C:2]([H:8])([H:9])[C:3]([H:10])([H:11])[O:4][H:12]"
+    FORCE_FIELD = (tmp_path / f"sage_missing_{failure_case}.offxml").as_posix()
+
+    propanol = Molecule.from_mapped_smiles(SMILES)
+
+    propanol.generate_conformers(n_conformers=1)
+
+    profile = QCArchiveTorsionProfile(
+        mapped_smiles=SMILES,
+        dihedral_indices=[0, 1, 2, 3],
+        qcarchive_id=12345,
+        id=12345,
+        coordinates={  # meaningless numbers, this test should fail before seeing coordinates
+            -15.0: propanol.conformers[0].m_as("angstrom"),
+            0.0: propanol.conformers[0].m_as("angstrom"),
+            15.0: propanol.conformers[0].m_as("angstrom"),
+        },
+        energies={
+            -15.0: -100.0,
+            0.0: -110.0,
+            15.0: -105.0,
+        },
+    )
+
+    store = TorsionStore.from_torsion_dataset(
+        dataset=QCArchiveTorsionDataset(
+            tag="failed minimizations test",
+            version=1,
+            qm_torsions=[profile],
+        ),
+        database_name=(tmp_path / "failed_minimizations.sqlite").as_posix(),
+    )
+
+    assert len(store.get_qm_points_by_torsion_id(12345)) == 3
+    assert store.get_qm_energies_by_torsion_id(12345) == {-15.0: -100.0, 0.0: -110.0, 15.0: -105.0}
+
+    sage = ForceField("openff-2.0.0.offxml")
+
+    match failure_case:
+        case "valence":
+            sage.deregister_parameter_handler("ProperTorsions")
+            sage.get_parameter_handler("ProperTorsions")
+        case "charge":
+            sage.deregister_parameter_handler("ToolkitAM1BCC")
+
+    sage.to_file(FORCE_FIELD)
+
+    store.optimize_mm(force_field=FORCE_FIELD)
+
+    # if some molecules fail in a force field, it probably shows up here, but for our dataset
+    # all (one) molecule(s) fail so it doesn't
+    assert len(store.get_force_fields()) == 0
+
+    assert len(store.get_mm_energies_by_torsion_id(12345, force_field=FORCE_FIELD)) == 0
+
+    # caplog fixture is supposed to handle this, but capsys is more reliable
+    assert failure_case in capsys.readouterr().err, capsys.readouterr().err

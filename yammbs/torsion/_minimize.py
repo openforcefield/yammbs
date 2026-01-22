@@ -227,6 +227,7 @@ def _run_minimization_constrained(
 
     https://github.com/lilyminium/openff-strike-team/blob/a6ccd2821ed627064529f5c4a22b47c1fa36efe2/torsions/datasets/mm/minimize-torsion-constrained.py#L35-L106
     """
+    from openff.interchange.exceptions import UnassignedValenceError
     from openff.toolkit import Molecule
 
     logger.info(f"############ Method: {input.method} ############")
@@ -239,10 +240,17 @@ def _run_minimization_constrained(
 
     logger.debug(f"Creating OpenMM system with force field {input.force_field=}")
     # TODO: Add same error handling as in _run_minimization?
-    system = build_omm_system(
-        force_field=input.force_field,
-        molecule=molecule,
-    )
+    try:
+        system = build_omm_system(
+            force_field=input.force_field,
+            molecule=molecule,
+        )
+    except UnassignedValenceError:
+        logger.warning(f"Skipping record {input.torsion_id} with unassigned valence terms")
+        return None
+    except (RuntimeError, ValueError) as e:  # charging error
+        logger.warning(f"Skipping record {input.torsion_id} with a value error (probably a charge failure): {e}")
+        return None
 
     atom_indices = list(range(len(molecule.atoms)))
     atom_indices = sorted(set(atom_indices))  # - set([index - 0 for index in input.dihedral_indices]))

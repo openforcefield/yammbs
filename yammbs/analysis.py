@@ -155,8 +155,8 @@ def get_internal_coordinates(
     reference: Array,
     target: Array,
     _types: tuple[str, ...] = ("Bond", "Angle", "Dihedral", "Improper"),
-) -> dict[str, dict[tuple[int, ...], tuple[int, int]]]:
-    """Get internal coordinates of two conformers of the same molecule using geomeTRIC.
+) -> dict[str, dict[tuple[int, ...], tuple[float, float]]]:
+    """Get internal coordinates of two conformers of the same molecule using MDAnalysis.
 
     The return value is keyed by valence type (Bond, Angle, Dihedral, Improper). Each
     value is itself a dictionary containing key-val pairs of relevant atom indices and a
@@ -189,106 +189,43 @@ def get_internal_coordinates(
         second to the "target" conformer.
 
     """
-    from geometric.internal import (
-        Angle,
-        Dihedral,
-        Distance,
-        LinearAngle,
-        OutOfPlane,
-        PrimitiveInternalCoordinates,
-    )
+    from yammbs._mdanalysis import get_angles, get_bonds, get_improper_torsions, get_proper_torsions
 
-    from yammbs._molecule import _to_geometric_molecule
+    reference_molecule = Molecule(molecule)
+    target_molecule = Molecule(molecule)
 
-    if isinstance(reference, Quantity):
-        reference = reference.m_as("angstrom")
+    reference_molecule.clear_conformers()
+    target_molecule.clear_conformers()
 
-    if isinstance(target, Quantity):
-        target = target.m_as("angstrom")
+    reference_molecule.add_conformer(Quantity(reference, "angstrom"))
+    target_molecule.add_conformer(Quantity(target, "angstrom"))
 
-    _generator = PrimitiveInternalCoordinates(
-        _to_geometric_molecule(molecule=molecule, coordinates=target),
-    )
+    internal_coordinates: dict[str, dict[tuple[int, ...], tuple[float, float]]] = dict()
 
-    _mapping: dict[str, tuple[type, ...]] = {
-        "Bond": (Distance,),
-        "Angle": (
-            Angle,
-            LinearAngle,
-        ),
-        "Dihedral": (Dihedral,),
-        "Improper": (OutOfPlane,),
+    key_func_mapping = {
+        "Bond": get_bonds,
+        "Angle": get_angles,
+        "Dihedral": get_proper_torsions,
+        "Improper": get_improper_torsions,
     }
-    types: dict[str, tuple[type, ...]] = {_type: _mapping[_type] for _type in _types}
 
-    internal_coordinates: dict[str, dict[tuple[int, ...], tuple[int, int]]] = dict()
+    for _type in _types:
+        try:
+            reference_values: dict = key_func_mapping[_type](reference_molecule)  # type: ignore[assignment]
+            target_values: dict = key_func_mapping[_type](target_molecule)  # type: ignore[assignment]
 
-    # TODO: Expand this out for angles and torsions as well?
-    openff_bonds = [(bond.atom1_index, bond.atom2_index) for bond in molecule.bonds]
+            assert reference_values.keys() == target_values.keys()
 
-    for label, internal_coordinate_class in types.items():
-        internal_coordinates[label] = dict()
+            internal_coordinates[_type] = dict()
 
-        for internal_coordinate in _generator.Internals:
-            if not isinstance(internal_coordinate, internal_coordinate_class):
-                continue
-
-            elif isinstance(internal_coordinate, Distance):
-                key = tuple(
-                    sorted(
-                        (
-                            internal_coordinate.a,
-                            int(internal_coordinate.b),  # geomeTRIC somehow makes this np.int32
-                        ),
-                    ),
+            for key in reference_values:
+                internal_coordinates[_type][key] = (
+                    reference_values[key],
+                    target_values[key],
                 )
 
-                if key not in openff_bonds:
-                    continue
-
-            elif isinstance(internal_coordinate, (Angle, LinearAngle)):
-                key = tuple(
-                    (
-                        internal_coordinate.a,
-                        internal_coordinate.b,
-                        int(internal_coordinate.c),  # geomeTRIC somehow makes this np.int32
-                    ),
-                )
-
-            elif isinstance(internal_coordinate, Dihedral):
-                key = tuple(
-                    (
-                        internal_coordinate.a,
-                        internal_coordinate.b,
-                        internal_coordinate.c,
-                        internal_coordinate.d,
-                    ),
-                )
-
-            elif isinstance(internal_coordinate, OutOfPlane):
-                # geomeTRIC lists the central atom FIRST, but SMIRNOFF force fields list
-                # the central atom SECOND. Re-ordering here to be consistent with SMIRNOFF
-                # see PR #109 for more
-
-                key = tuple(
-                    (
-                        internal_coordinate.b,  # NOTE!
-                        internal_coordinate.a,  # NOTE!
-                        internal_coordinate.c,
-                        internal_coordinate.d,
-                    ),
-                )
-
-            key = tuple(int(index) for index in key)
-
-            internal_coordinates[label].update(
-                {
-                    key: (
-                        internal_coordinate.value(reference),  # type: ignore[attr-defined]
-                        internal_coordinate.value(target),  # type: ignore[attr-defined]
-                    ),
-                },
-            )
+        except KeyError:
+            raise ValueError(f"Unknown internal coordinate type: {_type}")
 
     return internal_coordinates
 
