@@ -99,7 +99,7 @@ run_tests = { cmd = "python -m pytest yammbs/ -x --durations=20 -n logical", dep
 pip = "*"
 numpy = "2.2.*"
 setuptools_scm = "*"
-pydantic = "=2"
+pydantic = "2.*"
 openff-toolkit-base = "0.18.*"
 openff-qcsubmit = "0.57.*"
 qcportal = "~=0.55"
