@@ -17,3 +17,7 @@ repos:
   rev: v4.0.0
   hooks:
   - id: add-trailing-comma
+- repo: https://github.com/tox-dev/pyproject-fmt
+  rev: v2.11.1
+  hooks:
+    - id: pyproject-fmt

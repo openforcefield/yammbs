@@ -1,28 +1,64 @@
 [build-system]
-requires = ["setuptools>=61.2", "versioningit"]
 build-backend = "setuptools.build_meta"
+requires = [
+  "setuptools>=61.2",
+  "setuptools-scm>=8",
+]
 
 [project]
 name = "yammbs"
 description = "A tool for benchmarking force fields."
 readme = "README.md"
-authors = [{name = "Open Force Field Initiative", email = "info@openforcefield.org"}]
-license = {text = "MIT"}
-dynamic = ["version"]
+license = { text = "MIT" }
+authors = [ { name = "Open Force Field Initiative", email = "info@openforcefield.org" } ]
+requires-python = ">=3.11"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+dynamic = [ "version" ]
+
+scripts.yammbs_analyse_torsions = "yammbs.scripts.run_torsion_comparisons:main"
 
 [tool.setuptools]
 packages.find = {}
 
-[tool.versioningit]
+[tool.setuptools_scm]
+fallback_version = "0.0.0"
+
+[tool.ruff]
+line-length = 119
+
+lint.select = [ "D", "E", "F", "I", "NPY", "RUF027", "UP", "W" ]
+lint.ignore = [ "D105", "D107" ]
+lint.preview = true
+
+[tool.pytest.ini_options]
+addopts = "--cov=yammbs/ --cov-report=xml --cov-config=pyproject.toml"
+
+[tool.coverage.run]
+omit = [
+  "yammbs/_tests/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+]
 
 [tool.mypy]
 exclude = [
-    "scripts/",
-    "yammbs/_tests",
-    "yammbs/scripts",
+  "scripts/",
+  "yammbs/_tests",
+  "yammbs/scripts",
 ]
 python_version = "3.12"
-plugins = [ "pydantic.mypy", "sqlmypy",]
+plugins = [ "pydantic.mypy", "sqlmypy" ]
 warn_unused_configs = true
 warn_unused_ignores = true
 warn_incomplete_stub = true
@@ -30,38 +66,92 @@ show_error_codes = true
 
 [[tool.mypy.overrides]]
 module = [
-    "openeye",
-    "rdkit.Chem",
-    "rdkit.Chem.Draw",
-    "openff.toolkit.*",
-    "openff.nagl.toolkits.openff",
-    "espaloma",
-    "openmm.*",
-    "openmm.app",
-    "openmm.unit",
-    "openmmforcefields.generators",
-    "sqlalchemy",
-    "sqlalchemy.org",
-    "qcelemental",
-    "openff.qcsubmit.results",
-    "MDAnalysis",
-    "bokeh",
-    "panel",
+  "openeye",
+  "rdkit.Chem",
+  "rdkit.Chem.Draw",
+  "openff.toolkit.*",
+  "openff.nagl.toolkits.openff",
+  "espaloma",
+  "openmm.*",
+  "openmm.app",
+  "openmm.unit",
+  "openmmforcefields.generators",
+  "sqlalchemy",
+  "sqlalchemy.org",
+  "qcelemental",
+  "openff.qcsubmit.results",
+  "MDAnalysis",
+  "bokeh",
+  "panel",
 ]
 ignore_missing_imports = true
 
-[tool.ruff]
-line-length = 119
+[tool.pixi.workspace]
+channels = [ "conda-forge", "openeye" ]
+platforms = [ "linux-64", "osx-arm64" ]
 
-[tool.ruff.lint]
-preview = true
-ignore = ["D105", "D107"]
-select = ["D", "F", "E", "W", "NPY", "UP", "I", "RUF027"]
+[tool.pixi.tasks]
+postinstall = "pip install -e ."
+run_mypy = { cmd = "python -m mypy -p yammbs", depends-on = "postinstall" }
+run_tests = { cmd = "python -m pytest yammbs/ -x --durations=20 -n logical", depends-on = "postinstall" }
 
-[project.scripts]
-yammbs_analyse_torsions = "yammbs.scripts.run_torsion_comparisons:main"
-[tool.coverage.run]
-omit = [ "yammbs/_tests/*", "setup.py",]
+[tool.pixi.dependencies]
+pip = "*"
+numpy = "2.2.*"
+setuptools_scm = "*"
+pydantic = "2.*"
+openff-toolkit-base = "0.18.*"
+openff-qcsubmit = "0.57.*"
+qcportal = "~=0.55"
+openeye-toolkits = "*"
+openmmforcefields = "*"
+rdkit = ">=2024,!=2024.03.6,!=2024.09.1"
+openmm = "8.4.*"
+MDAnalysis = "*"
+# add back when merged https://github.com/openforcefield/smirnoff-plugins/pull/76
+# smirnoff-plugins
+# de-forcefields ~=1.0.3
+click = "*"
+scipy = "*"
+seaborn = "*"
+bokeh = "*"
+panel = "*"
 
-[tool.coverage.report]
-exclude_lines = [ "pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError",]
+[tool.pixi.feature.test.dependencies]
+pytest = "*"
+pytest-cov = "*"
+pytest-xdist = "*"
+pytest-randomly = "*"
+pytest-timeout = "*"
+
+[tool.pixi.feature.typing.dependencies]
+mypy = "*"
+typing-extensions = "*"
+types-cffi = "*"
+types-click = "*"
+types-colorama = "*"
+types-docutils = "*"
+types-Pygments = "*"
+types-python-dateutil = "*"
+types-pytz = "*"
+types-pywin32 = "*"
+types-setuptools = "*"
+types-tqdm = "*"
+sqlalchemy-stubs = "*"
+pandas-stubs = "*"
+scipy-stubs = "*"
+
+[tool.pixi.feature.dev.dependencies]
+pre-commit = "*"
+ipython = "*"
+ipdb = "*"
+
+[tool.pixi.feature.py311.dependencies]
+python = "3.11.*"
+[tool.pixi.feature.py312.dependencies]
+python = "3.12.*"
+
+[tool.pixi.environments]
+py311 = [ "py311", "test", "typing" ]
+py312 = [ "py312", "test", "typing" ]
+dev = [ "py312", "test", "typing", "dev" ]
