@@ -36,11 +36,20 @@ lint.select = [ "D", "E", "F", "I", "NPY", "RUF027", "UP", "W" ]
 lint.ignore = [ "D105", "D107" ]
 lint.preview = true
 
+[tool.pytest.ini_options]
+addopts = "--cov=yammbs/ --cov-report=xml --cov-config=pyproject.toml"
+
 [tool.coverage.run]
-omit = [ "yammbs/_tests/*", "setup.py" ]
+omit = [
+  "yammbs/_tests/*",
+]
 
 [tool.coverage.report]
-exclude_lines = [ "pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError" ]
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+]
 
 [tool.mypy]
 exclude = [
