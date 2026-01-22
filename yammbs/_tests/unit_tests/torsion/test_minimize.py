@@ -123,7 +123,7 @@ def test_failed_minimizations(tmp_path, capsys, failure_case):
 
     store = TorsionStore.from_torsion_dataset(
         dataset=QCArchiveTorsionDataset(
-            tag="failed minimizaitons test",
+            tag="failed minimizations test",
             version=1,
             qm_torsions=[profile],
         ),
