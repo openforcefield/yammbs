@@ -208,6 +208,10 @@ A range of OpenFF force fields will be run for comparison if no `--base-force-fi
 
 See [examples.ipynb](examples.ipynb) for some examples of interacting with benchmarking results and a starting point for custom analyses.
 
+## How to cite
+
+Please cite YAMMBS using the [Zenodo record](https://doi.org/10.5281/zenodo.18350609) of the [latest release](https://doi.org/10.5281/zenodo.18350609) or the version that was used. The BibTeX reference of the latest release can be found at [this link](https://zenodo.org/records/18350609/export/bibtex).
+
 ### License
 
 YAMMBS is open-source software distrubuted under the MIT license (see LICENSE). It derives from
