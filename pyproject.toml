@@ -83,6 +83,7 @@ module = [
   "MDAnalysis",
   "bokeh",
   "panel",
+  "geometric.*",
 ]
 ignore_missing_imports = true
 

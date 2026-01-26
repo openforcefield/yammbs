@@ -222,7 +222,7 @@ def _minimize_geometric_constrained(
 
 def _run_minimization_constrained(
     input: ConstrainedMinimizationInput,
-) -> ConstrainedMinimizationResult:
+) -> ConstrainedMinimizationResult | None:
     """Taken from openff-strike-team 10/31/24.
 
     https://github.com/lilyminium/openff-strike-team/blob/a6ccd2821ed627064529f5c4a22b47c1fa36efe2/torsions/datasets/mm/minimize-torsion-constrained.py#L35-L106
@@ -239,7 +239,6 @@ def _run_minimization_constrained(
     # molecule.add_conformer(Quantity(input.coordinates, "angstrom"))
 
     logger.debug(f"Creating OpenMM system with force field {input.force_field=}")
-    # TODO: Add same error handling as in _run_minimization?
     try:
         system = build_omm_system(
             force_field=input.force_field,
