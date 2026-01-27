@@ -13415,8 +13415,8 @@ packages:
   timestamp: 1753484079473
 - pypi: ./
   name: yammbs
-  version: 0.3.2.dev2+g15bdd2378.d20260127
-  sha256: 326f67fe06923c61868955f56a7d270aa5c06fd28db593490269516e89c1715f
+  version: 0.3.2.dev3+ge5f145938
+  sha256: 9e2f29fd5c2e3452b2f3eb3a1571c50f50c034cedff2bc6c4028dc70234eb907
   requires_python: '>=3.11'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/yarl-1.22.0-py311h3778330_0.conda
   sha256: 6cddfbe838aab2d374a22f0c202f473a1d81c43e8fda25c5aa18fdcbc4f61679
