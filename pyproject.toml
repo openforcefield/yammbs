@@ -114,6 +114,7 @@ click = "*"
 scipy = "*"
 seaborn = "*"
 bokeh = "*"
+panel = "*"
 
 [tool.pixi.pypi-dependencies]
 yammbs = { path = ".", editable = true }
