@@ -2,6 +2,7 @@ import logging
 import pathlib
 from collections.abc import Generator, Iterable
 from contextlib import contextmanager
+from typing import Self
 
 import numpy
 import pandas as pd
@@ -11,7 +12,6 @@ from openff.toolkit import Molecule
 from openff.toolkit.typing.engines.smirnoff.parameters import ProperTorsionHandler
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from typing_extensions import Self
 
 from yammbs._minimize import _lazy_load_force_field
 from yammbs._molecule import _smiles_to_inchi_key

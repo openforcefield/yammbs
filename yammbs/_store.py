@@ -3,6 +3,7 @@ import pathlib
 from collections import defaultdict
 from collections.abc import Generator, Iterable
 from contextlib import contextmanager
+from typing import Self
 
 import numpy
 from numpy.typing import NDArray
@@ -10,7 +11,6 @@ from openff.qcsubmit.results import OptimizationResultCollection
 from openff.toolkit import Molecule
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from typing_extensions import Self
 
 from yammbs._db import (
     DBBase,
