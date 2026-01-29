@@ -7,7 +7,14 @@ YAMMBS is currently developed for internal use at Open Force Field. It is not cu
 
 ## Installation
 
-Use the file `./devtools/conda-envs/dev.yaml` and also install `yammbs` with something like `python -m pip install -e .`.
+Clone the repo and install with `pixi`:
+```
+git clone https://github.com/openforcefield/yammbs.githttps://github.com/openforcefield/yammbs.git
+cd yammbs
+pixi install
+```
+
+To start a subshell with the environment activated, run `pixi shell`.
 
 ## Getting started
 
