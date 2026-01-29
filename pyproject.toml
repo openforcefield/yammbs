@@ -37,7 +37,7 @@ lint.ignore = [ "D105", "D107" ]
 lint.preview = true
 
 [tool.pytest.ini_options]
-addopts = "--cov=yammbs/ --cov-report=xml --cov-config=pyproject.toml"
+addopts = "--durations=20 --cov=yammbs/ --cov-report=xml --cov-config=pyproject.toml"
 
 [tool.coverage.run]
 omit = [
@@ -92,7 +92,8 @@ platforms = [ "linux-64", "osx-arm64" ]
 
 [tool.pixi.tasks]
 run_mypy = { cmd = "python -m mypy -p yammbs" }
-run_tests = { cmd = "python -m pytest yammbs -x --durations=20 -n logical" }
+run_unit_tests = { cmd = "python -m pytest yammbs/_tests/unit_tests/ -x" }
+run_integration_tests = { cmd = "python -m pytest yammbs/_tests/integration_tests/" }
 
 [tool.pixi.dependencies]
 pip = "*"
@@ -110,7 +111,7 @@ MDAnalysis = "*"
 # add back when merged https://github.com/openforcefield/smirnoff-plugins/pull/76
 # smirnoff-plugins
 # de-forcefields ~=1.0.3
-click = "*"
+typer = "*"
 scipy = "*"
 seaborn = "*"
 bokeh = "*"
@@ -130,7 +131,7 @@ pytest-timeout = "*"
 mypy = "*"
 typing-extensions = "*"
 types-cffi = "*"
-types-click = "*"
+# types-click = "*"
 types-colorama = "*"
 types-docutils = "*"
 types-Pygments = "*"

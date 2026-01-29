@@ -48,10 +48,15 @@ class MinimizedTorsionDataset(ImmutableModel):
 class Metric(ImmutableModel):
     """Summary metrics for a given force field and QM reference."""
 
-    rmsd: float
     rmse: float
     mean_error: float
+    mean_absolute_error: float
+    absolute_barrier_height_error: float
     js_distance: tuple[float, float]
+    rms_rmsd: float
+    mean_rmsd: float
+    rms_tfd: float
+    mean_tfd: float
 
 
 class MetricCollection(ImmutableModel):

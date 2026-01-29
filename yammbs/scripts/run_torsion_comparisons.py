@@ -2,9 +2,10 @@
 
 import pathlib
 from multiprocessing import freeze_support
+from typing import Annotated
 
-import click
 import numpy as np
+import typer
 from matplotlib import pyplot
 from openff.toolkit import Molecule
 from rdkit.Chem import AllChem, Draw
@@ -15,69 +16,49 @@ from yammbs.torsion.outputs import MetricCollection
 
 pyplot.style.use("ggplot")
 
+app = typer.Typer()
 
-@click.command()
-@click.option(
-    "--base-force-fields",
-    "-bf",
-    multiple=True,
-    default=[
-        "openff-1.0.0",
-        "openff-2.0.0",
-        "openff-2.1.0",
-        "openff-2.2.0",
-        "openff-2.2.1",
-    ],
-    help="List of force fields to use for optimization.",
-)
-@click.option(
-    "--extra-force-fields",
-    "-ef",
-    multiple=True,
-    default=[],
-    help="Extra (local) force fields to use for optimization.",
-)
-@click.option(
-    "--qcarchive-torsion-data",
-    "-i",
-    default="qca-torsion-data.json",
-    help="Input file containing torsion drive data in QCArchive json format.",
-)
-@click.option(
-    "--database-file",
-    "-d",
-    default="torsion-data.sqlite",
-    help="SQLite database file to store torsion data.",
-)
-@click.option(
-    "--output-metrics",
-    "-m",
-    default="metrics.json",
-    help="Output file for metrics.",
-)
-@click.option(
-    "--output-minimized",
-    "-o",
-    default="minimized.json",
-    help="Output file for minimized data.",
-)
-@click.option(
-    "--plot-dir",
-    "-p",
-    default=".",
-    help="Directory to save the generated plots.",
-)
-def main(
-    base_force_fields: list[str],
-    extra_force_fields: list[str],
-    qcarchive_torsion_data: str,
-    database_file: str,
-    output_metrics: str,
-    output_minimized: str,
-    plot_dir: str,
+
+def analyse_torsions(
+    force_fields: list[str] = None,
+    qcarchive_torsion_data: str = "qca-torsion-data.json",
+    database_file: str = "torsion-data.sqlite",
+    output_metrics: str = "metrics.json",
+    output_minimized: str = "minimized.json",
+    plot_dir: str = ".",
+    metrics_csv_output_dir: str | None = None,
+    n_processes: int = 24,
 ) -> None:
-    """Run torsion drive comparisons using specified force fields and input data."""
-    force_fields = base_force_fields + extra_force_fields
+    """Run torsion drive comparisons using specified force fields and input data.
+
+    Parameters
+    ----------
+    force_fields : list[str]
+        List of force fields to use for optimization.
+    qcarchive_torsion_data : str
+        Input file containing torsion drive data in QCArchive json format.
+    database_file : str
+        SQLite database file to store torsion data.
+    output_metrics : str
+        Output file for metrics.
+    output_minimized : str
+        Output file for minimized data.
+    plot_dir : str
+        Directory to save the generated plots to.
+    metrics_csv_output_dir : str | None
+        Directory to save per-metric CSV output files to.
+    n_processes : int
+        Number of processes to use for MM optimization.
+
+    """
+    if force_fields is None:
+        force_fields = [
+            "openff-1.0.0",
+            "openff-2.0.0",
+            "openff-2.1.0",
+            "openff-2.2.0",
+            "openff-2.2.1",
+        ]
 
     with open(qcarchive_torsion_data) as f:
         dataset = QCArchiveTorsionDataset.model_validate_json(f.read())
@@ -91,22 +72,27 @@ def main(
         )
 
     for force_field in force_fields:
-        store.optimize_mm(force_field=force_field, n_processes=24)
+        store.optimize_mm(force_field=force_field, n_processes=n_processes)
 
     if not pathlib.Path(output_minimized).exists():
         with open(output_minimized, "w") as f:
             f.write(store.get_outputs().model_dump_json())
 
-    if not pathlib.Path(output_metrics).exists():
+    # Load or compute metrics. If metrics file exists, read it; otherwise compute and write it.
+    if pathlib.Path(output_metrics).exists():
+        metrics = MetricCollection.parse_file(output_metrics)
+    else:
+        metrics = store.get_metrics(force_fields=force_fields, csv_output_dir=metrics_csv_output_dir)
+        # Write metrics to disk for reproducibility
         with open(output_metrics, "w") as f:
-            f.write(store.get_metrics().model_dump_json())
+            f.write(metrics.model_dump_json())
 
     # Plot!
     plot_torsions(plot_dir, force_fields, store)
-    plot_cdfs(force_fields, output_metrics, plot_dir)
-    plot_rms_stats(force_fields, output_metrics, plot_dir)
-    plot_mean_error_distribution(force_fields, output_metrics, plot_dir)
-    plot_rms_js_distance(force_fields, output_metrics, plot_dir)
+    plot_cdfs(force_fields, metrics, plot_dir)
+    plot_rms_stats(force_fields, metrics, plot_dir)
+    plot_mean_error_distribution(force_fields, metrics, plot_dir)
+    plot_rms_js_distance(force_fields, metrics, plot_dir)
 
 
 def get_torsion_image(torsion_id: int, store: TorsionStore) -> pyplot.Figure:
@@ -193,11 +179,11 @@ def plot_torsions(plot_dir: str, force_fields: list[str], store: TorsionStore) -
         qm = {key: _qm[key] - _qm[qm_minimum_index] for key in _qm}
 
         # Assume a default grid spacing of 15 degrees (BespokeFit default)
-        angles = np.arange(-165, 195, 15)
-        assert len(angles) == len(qm), "QM data and angles should match in length"
+        qm_angles = np.array([*qm.keys()])
+        assert np.all(np.unique(np.diff(qm_angles))), "Points should be separated by 15.0 deg"
 
         torsion_axis.plot(
-            angles,
+            qm_angles,
             qm.values(),
             "k.-",
             label="QM",
@@ -209,7 +195,7 @@ def plot_torsions(plot_dir: str, force_fields: list[str], store: TorsionStore) -
                 continue
 
             torsion_axis.plot(
-                angles,
+                qm_angles,
                 [val - mm[qm_minimum_index] for val in mm.values()],
                 "o--",
                 label=force_field,
@@ -236,20 +222,29 @@ def plot_torsions(plot_dir: str, force_fields: list[str], store: TorsionStore) -
     fig.savefig(f"{plot_dir}/torsions.png", dpi=300, bbox_inches="tight")
 
 
-def plot_cdfs(force_fields: list[str], metrics_file: str, plot_dir: str):
-    """Plot the cumulative distribution functions for the RMSD, RMSE, and Jensen-Shannon distance."""
-    metrics = MetricCollection.parse_file(metrics_file)
+def plot_cdfs(force_fields: list[str], metrics: MetricCollection, plot_dir: str):
+    """Plot the cumulative distribution functions for the RMS RMSD, RMSE, and Jensen-Shannon distance.
 
-    x_ranges = {"rmsd": (0, 0.14), "rmse": (-0.3, 5), "js_distance": (None, None)}
+    Parameters
+    ----------
+    force_fields : list[str]
+        The force fields to include in the plots.
+    metrics : MetricCollection
+        Precomputed metrics object (not a file path).
+    plot_dir : str
+        Directory to write plot files to.
+
+    """
+    x_ranges = {"rms_rmsd": (0, 0.14), "rmse": (-0.3, 5), "js_distance": (None, None)}
 
     units = {
-        "rmsd": r"$\mathrm{\AA}$",
+        "rms_rmsd": r"$\mathrm{\AA}$",
         "rmse": r"kcal mol$^{-1}$",
         "js_distance": "",
     }
 
-    rmsds = {
-        force_field: {key: val.rmsd for key, val in metrics.metrics[force_field].items()}
+    rms_rmsds = {
+        force_field: {key: val.rms_rmsd for key, val in metrics.metrics[force_field].items()}
         for force_field in metrics.metrics.keys()
     }
 
@@ -266,11 +261,11 @@ def plot_cdfs(force_fields: list[str], metrics_file: str, plot_dir: str):
     js_div_temp = list(list(metrics.metrics.values())[0].values())[0].js_distance[1]
 
     data = {
-        "rmsd": rmsds,
+        "rms_rmsd": rms_rmsds,
         "rmse": rmses,
         "js_distance": js_dists,
     }
-    for key in ["rmsd", "rmse", "js_distance"]:
+    for key in ["rms_rmsd", "rmse", "js_distance"]:
         figure, axis = pyplot.subplots()
 
         for force_field in force_fields:
@@ -322,14 +317,23 @@ def get_rms(array: np.ndarray) -> float:
 
 def plot_rms_stats(
     force_fields: list[str],
-    metrics_file: str,
+    metrics: MetricCollection,
     plot_dir: str,
 ) -> None:
-    """Plot the RMS values for the RMSD and RMSE."""
-    metrics = MetricCollection.parse_file(metrics_file)
+    """Plot the RMS values for the RMSD and RMSE.
 
+    Parameters
+    ----------
+    force_fields : list[str]
+        The force fields to include in the plots.
+    metrics : MetricCollection
+        Precomputed metrics object.
+    plot_dir : str
+        Directory to write plot files to.
+
+    """
     units = {
-        "rmsd": r"$\mathrm{\AA}$",
+        "rms_rmsd": r"$\mathrm{\AA}$",
         "rmse": r"kcal mol$^{-1}$",
     }
 
@@ -338,13 +342,13 @@ def plot_rms_stats(
         for force_field in force_fields
     }
 
-    rms_rmsds = {
-        force_field: get_rms(np.array([val.rmsd for val in metrics.metrics[force_field].values()]))
+    rms_rms_rmsds = {
+        force_field: get_rms(np.array([val.rms_rmsd for val in metrics.metrics[force_field].values()]))
         for force_field in force_fields
     }
 
     # Plot RMS values
-    for key, data in zip(["rmsd", "rmse"], [rms_rmsds, rms_rmses]):
+    for key, data in zip(["rms_rmsd", "rmse"], [rms_rms_rmsds, rms_rmses]):
         figure, axis = pyplot.subplots()
 
         # Use different colors for each bar - the same as for the CDFs
@@ -361,12 +365,21 @@ def plot_rms_stats(
 
 def plot_rms_js_distance(
     force_fields: list[str],
-    metrics_file: str,
+    metrics: MetricCollection,
     plot_dir: str,
 ) -> None:
-    """Plot the RMS JS distance for each force field."""
-    metrics = MetricCollection.parse_file(metrics_file)
+    """Plot the RMS JS distance for each force field.
 
+    Parameters
+    ----------
+    force_fields : list[str]
+        The force fields to include in the plots.
+    metrics : MetricCollection
+        Precomputed metrics object.
+    plot_dir : str
+        Directory to write plot files to.
+
+    """
     rms_js_distance = {
         force_field: get_rms(np.array([val.js_distance[0] for val in metrics.metrics[force_field].values()]))
         for force_field in force_fields
@@ -390,12 +403,21 @@ def plot_rms_js_distance(
 
 def plot_mean_error_distribution(
     force_fields: list[str],
-    metrics_file: str,
+    metrics: MetricCollection,
     plot_dir: str,
 ) -> None:
-    """Plot the distribution of mean errors for each force field."""
-    metrics = MetricCollection.parse_file(metrics_file)
+    """Plot the distribution of mean errors for each force field.
 
+    Parameters
+    ----------
+    force_fields : list[str]
+        The force fields to include in the plots.
+    metrics : MetricCollection
+        Precomputed metrics object.
+    plot_dir : str
+        Directory to write plot files to.
+
+    """
     units = {
         "mean_error": r"kcal mol$^{-1}$",
     }
@@ -423,9 +445,96 @@ def plot_mean_error_distribution(
     figure.savefig(f"{plot_dir}/mean_error_distribution.png", dpi=300, bbox_inches="tight")
 
 
+@app.command()
+def main(
+    force_fields: Annotated[
+        list[str],
+        typer.Option(
+            "--force-fields",
+            "-f",
+            help="List of force fields to use for optimization.",
+        ),
+    ] = [
+        "openff-1.0.0",
+        "openff-2.0.0",
+        "openff-2.1.0",
+        "openff-2.2.0",
+        "openff-2.2.1",
+        "openff-2.3.0",
+    ],
+    qcarchive_torsion_data: Annotated[
+        str,
+        typer.Option(
+            "--qcarchive-torsion-data",
+            "-i",
+            help="Input file containing torsion drive data in QCArchive json format.",
+        ),
+    ] = "qca-torsion-data.json",
+    database_file: Annotated[
+        str,
+        typer.Option(
+            "--database-file",
+            "-d",
+            help="SQLite database file to store torsion data.",
+        ),
+    ] = "torsion-data.sqlite",
+    output_metrics: Annotated[
+        str,
+        typer.Option(
+            "--output-metrics",
+            "-m",
+            help="Output file for metrics.",
+        ),
+    ] = "metrics.json",
+    output_minimized: Annotated[
+        str,
+        typer.Option(
+            "--output-minimized",
+            "-o",
+            help="Output file for minimized data.",
+        ),
+    ] = "minimized.json",
+    plot_dir: Annotated[
+        str,
+        typer.Option(
+            "--plot-dir",
+            "-p",
+            help="Directory to save the generated plots to.",
+        ),
+    ] = ".",
+    metrics_csv_output_dir: Annotated[
+        str | None,
+        typer.Option(
+            "--metrics-csv-output-dir",
+            "-c",
+            help="Directory to save per-metric CSV output files to.",
+        ),
+    ] = None,
+    n_processes: Annotated[
+        int,
+        typer.Option(
+            "--n-processes",
+            "-n",
+            help="Number of processes to use for MM optimization.",
+        ),
+    ] = 24,
+) -> None:
+    """Run torsion drive comparisons using specified force fields and input data."""
+    analyse_torsions(
+        force_fields=force_fields,
+        qcarchive_torsion_data=qcarchive_torsion_data,
+        database_file=database_file,
+        output_metrics=output_metrics,
+        output_minimized=output_minimized,
+        plot_dir=plot_dir,
+        metrics_csv_output_dir=metrics_csv_output_dir,
+        n_processes=n_processes,
+    )
+
+
 if __name__ == "__main__":
     # This setup is necessary for reasons that confused me - both setting it up in the __main__ block and calling
     # freeze_support(). This is probably not necessary after MoleculeStore.optimize_mm() is called, so you can load up
     # the same database for later analysis once the MM conformers are stored
     freeze_support()
-    main()
+    app()

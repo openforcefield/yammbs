@@ -65,8 +65,11 @@ jobs:
     - name: Run mypy
       run: pixi run -e ${{ matrix.environment }} run_mypy
 
-    - name: Run tests
-      run: pixi run -e ${{ matrix.environment }} run_tests
+    - name: Run unit tests
+      run: pixi run -e ${{ matrix.environment }} run_unit_tests
+
+    - name: Run integration tests
+      run: pixi run -e ${{ matrix.environment }} run_integration_tests
 
     - name: CodeCov
       uses: codecov/codecov-action@v5
