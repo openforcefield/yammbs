@@ -32,6 +32,7 @@ from yammbs.torsion.analysis import (
     RMSDCollection,
     RMSECollection,
     _normalize,
+    get_rmsd,
 )
 from yammbs.torsion.inputs import QCArchiveTorsionDataset
 from yammbs.torsion.models import (
@@ -385,13 +386,16 @@ class TorsionStore:
         force_field: str,
         torsion_ids: list[int] | None = None,
         skip_check: bool = False,
+        include_hydrogens: bool = False,
         restraint_k: float = 0.0,
     ) -> RMSDCollection:
         """Get the RMSD summed over the torsion profile."""
+        from openff.toolkit import Molecule
+
         if not torsion_ids:
             torsion_ids = self.get_torsion_ids()
 
-        if not skip_check:
+        if skip_check is None:
             # TODO: Copy this into each get_* method?
             LOGGER.info("Calling optimize_mm from inside of get_log_sse.")
             self.optimize_mm(force_field=force_field, restraint_k=restraint_k)
@@ -407,7 +411,21 @@ class TorsionStore:
                 allow_undefined_stereo=True,
             )
 
-            rmsds.append(RMSD.from_data(torsion_id, molecule, qm_points, mm_points))
+            rmsds.append(
+                RMSD(
+                    id=torsion_id,
+                    rmsd=sum(
+                        get_rmsd(
+                            molecule,
+                            qm_points[key],
+                            mm_points[key],
+                            include_hydrogens=include_hydrogens,
+                        )
+                        for key in qm_points
+                    )
+                    / len(qm_points),
+                ),
+            )
 
         return rmsds
 
@@ -541,6 +559,7 @@ class TorsionStore:
 
     def get_metrics(
         self,
+        include_hydrogens: bool = False,
         force_fields: Iterable[str] | None = None,
         js_temperature: float = 500.0,
         restraint_k: float = 0.0,
@@ -550,6 +569,8 @@ class TorsionStore:
 
         Parameters
         ----------
+        include_hydrogens
+            Whether RMSDs should include hydrogens (all-atom) or not (heavy atom)
         force_fields : Iterable[str] | None
             Iterable of force fields to compute metrics for. If None, compute for all available.
         js_temperature : float
@@ -583,7 +604,6 @@ class TorsionStore:
         # TODO: Optimize this for speed
         for force_field in force_fields:
             rmses = self.get_rmse(force_field=force_field, skip_check=True).to_dataframe()
-            rmsds = self.get_rmsd(force_field=force_field, skip_check=True).to_dataframe()
             mean_errors = self.get_mean_error(force_field=force_field, skip_check=True).to_dataframe()
             js_distances = self.get_js_distance(
                 force_field=force_field,
@@ -591,13 +611,12 @@ class TorsionStore:
                 temperature=js_temperature,
             ).to_dataframe()
 
-            dataframe = rmses.join(rmsds).join(mean_errors).join(js_distances)
+            dataframe = rmses.join(mean_errors).join(js_distances)
 
             dataframe = dataframe.replace({pandas.NA: numpy.nan})
 
             metrics.metrics[force_field] = {
                 id: Metric(  # type: ignore[misc]
-                    rmsd=row["rmsd"],
                     rmse=row["rmse"],
                     mean_error=row["mean_error"],
                     js_distance=(row["js_distance"], row["js_temperature"]),
@@ -829,7 +848,6 @@ class TorsionStore:
         rows = []
         metrics = self.get_metrics().metrics
         metrics_to_plot = {
-            "RMSD / A": lambda x: x.rmsd,
             "RMSE / kcal mol-1": lambda x: x.rmse,
             "Mean Error / kcal mol-1": lambda x: x.mean_error,
             "JS Distance": lambda x: x.js_distance[0],

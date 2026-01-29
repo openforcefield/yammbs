@@ -124,6 +124,7 @@ def get_rmsd(
     molecule: Molecule,
     reference: Array,
     target: Array,
+    include_hydrogens: bool = False,
 ) -> float:
     """Compute the RMSD between two sets of coordinates."""
     from openeye import oechem
@@ -144,9 +145,9 @@ def get_rmsd(
     return oechem.OERMSD(
         molecule1.to_openeye(),
         molecule2.to_openeye(),
-        True,
-        True,
-        True,
+        True,  # automorph
+        not include_hydrogens,  # heavyOnly
+        True,  # overlay
     )
 
 
