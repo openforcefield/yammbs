@@ -39,16 +39,16 @@ lint.preview = true
 [tool.pytest.ini_options]
 addopts = "--cov=yammbs/ --cov-report=xml --cov-config=pyproject.toml"
 
-[tool.coverage.run]
-omit = [
-  "yammbs/_tests/*",
-]
-
 [tool.coverage.report]
 exclude_lines = [
   "pragma: no cover",
   "if TYPE_CHECKING:",
   "raise NotImplementedError",
+]
+
+[tool.coverage.run]
+omit = [
+  "yammbs/_tests/*",
 ]
 
 [tool.mypy]
@@ -86,14 +86,6 @@ module = [
 ]
 ignore_missing_imports = true
 
-[tool.pixi.workspace]
-channels = [ "conda-forge", "openeye" ]
-platforms = [ "linux-64", "osx-arm64" ]
-
-[tool.pixi.tasks]
-run_mypy = { cmd = "python -m mypy -p yammbs" }
-run_tests = { cmd = "python -m pytest yammbs -x --durations=20 -n logical" }
-
 [tool.pixi.dependencies]
 pip = "*"
 numpy = "2.2.*"
@@ -116,8 +108,19 @@ seaborn = "*"
 bokeh = "*"
 panel = "*"
 
-[tool.pixi.pypi-dependencies]
-yammbs = { path = ".", editable = true }
+[tool.pixi.environments]
+py311 = [ "py311", "test", "typing" ]
+py312 = [ "py312", "test", "typing" ]
+dev = [ "py312", "test", "typing", "dev" ]
+[tool.pixi.feature.dev.dependencies]
+pre-commit = "*"
+ipython = "*"
+ipdb = "*"
+
+[tool.pixi.feature.py311.dependencies]
+python = "3.11.*"
+[tool.pixi.feature.py312.dependencies]
+python = "3.12.*"
 
 [tool.pixi.feature.test.dependencies]
 pytest = "*"
@@ -143,17 +146,13 @@ sqlalchemy-stubs = "*"
 pandas-stubs = "*"
 scipy-stubs = "*"
 
-[tool.pixi.feature.dev.dependencies]
-pre-commit = "*"
-ipython = "*"
-ipdb = "*"
+[tool.pixi.pypi-dependencies]
+yammbs = { path = ".", editable = true }
 
-[tool.pixi.feature.py311.dependencies]
-python = "3.11.*"
-[tool.pixi.feature.py312.dependencies]
-python = "3.12.*"
+[tool.pixi.tasks]
+run_mypy = { cmd = "python -m mypy -p yammbs" }
+run_tests = { cmd = "python -m pytest yammbs -x --durations=20 -n logical" }
 
-[tool.pixi.environments]
-py311 = [ "py311", "test", "typing" ]
-py312 = [ "py312", "test", "typing" ]
-dev = [ "py312", "test", "typing", "dev" ]
+[tool.pixi.workspace]
+channels = [ "conda-forge", "openeye" ]
+platforms = [ "linux-64", "osx-arm64" ]

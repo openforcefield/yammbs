@@ -39,6 +39,7 @@ jobs:
       with:
         pixi-version: v0.63.2
         environments: ${{ matrix.environment }}
+        frozen: true
 
     - name: Install PASCAL Compiler (MacOS)
       if: startsWith(matrix.os, 'mac')
