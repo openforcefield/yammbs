@@ -1,5 +1,6 @@
 import json
 import random
+import sqlite3
 import tempfile
 
 import numpy
@@ -384,3 +385,13 @@ def test_get_metrics(small_store):
     assert this_metric.icrmsd["Angle"] < 2
     assert this_metric.icrmsd["Dihedral"] < 15
     assert this_metric.icrmsd["Improper"] < 1
+
+
+def test_metrics_existing_mm_conformers():
+    """See :ssue #225."""
+    store = MoleculeStore(get_data_file_path("_tests/data/cho.sqlite", "yammbs"))
+
+    with pytest.raises(sqlite3.IntegrityError):
+        store.get_metrics()
+
+    store.get_metrics(skip_check=True)
