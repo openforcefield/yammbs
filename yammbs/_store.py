@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from typing import Self
 
 import numpy
+import pandas as pd
 from numpy.typing import NDArray
 from openff.qcsubmit.results import OptimizationResultCollection
 from openff.toolkit import Molecule
@@ -937,3 +938,153 @@ class MoleculeStore:
                 smiles=self.get_smiles_by_molecule_id(id),
             )
         ]
+
+    def get_molecule_image(self, molecule_id: int) -> str:
+        """Get an image of the molecule."""
+        # TODO: Refactor some of this with yammbs.torsion._store.TorsionStore.get_torsion_image
+        import base64
+
+        from rdkit.Chem import AllChem
+        from rdkit.Chem.Draw import rdMolDraw2D
+
+        smiles = self.get_smiles_by_molecule_id(molecule_id)
+
+        mol = Molecule.from_mapped_smiles(smiles, allow_undefined_stereo=True)
+        if mol is None:
+            raise ValueError(f"Could not convert SMILES to molecule: {smiles}")
+
+        rdmol = mol.to_rdkit()
+
+        # Draw in 2D - compute 2D coordinates
+        AllChem.Compute2DCoords(rdmol)  # type: ignore[attr-defined, unused-ignore]
+
+        drawer = rdMolDraw2D.MolDraw2DSVG(200, 200)  # Set the size of the image (width x height)
+        drawer.SetFontSize(0.8)  # Optional: Adjust font size for better readability
+
+        # Prepare the molecule for drawing
+        rdMolDraw2D.PrepareAndDrawMolecule(
+            drawer,
+            rdmol,
+            highlightAtoms=None,  # atom_indices,
+            highlightBonds=None,  # bond_indices,
+        )
+
+        # Finish the drawing and get the SVG text
+        drawer.FinishDrawing()
+        svg = drawer.GetDrawingText()
+
+        svg_base64 = base64.b64encode(svg.encode()).decode()
+        img_tag = f'<img src="data:image/svg+xml;base64,{svg_base64}" alt="Molecule Image" />'
+
+        return img_tag
+
+    def get_summary_df(
+        self,
+        force_fields: list[str],
+        show_parameters: bool = False,
+    ) -> pd.DataFrame:
+        """Get a summary dataframe of the metrics for a given force field.
+
+        This is intended to be used for generating HTML reports.
+
+        Parameters
+        ----------
+        force_fields : list[str]
+            The force fields to include in the summary dataframe.
+
+        show_parameters : bool
+            Whether to include the dihedral parameters in the summary dataframe.
+
+        Returns
+        -------
+        pd.DataFrame
+            A dataframe containing the summary of the metrics for the given force fields.
+
+        """
+        """
+            ddes = self.get_dde(force_field=force_field).to_dataframe()
+            rmsds = self.get_rmsd(force_field=force_field).to_dataframe()
+            tfds = self.get_tfd(force_field=force_field).to_dataframe()
+            icrmsds = self.get_internal_coordinate_rmsd(
+                force_field=force_field,
+            ).to_dataframe()
+        """
+        metrics = self.get_metrics().metrics
+        metrics_to_plot = {
+            "RMSD / A": lambda x: x.rmsd,
+            "RMSE / kcal mol-1": lambda x: x.rmse,
+            "Mean Error / kcal mol-1": lambda x: x.mean_error,
+            "JS Distance": lambda x: x.js_distance[0],
+        }
+
+        metrics, metrics_to_plot
+
+    def get_summary(
+        self,
+        file_name: str,
+        force_fields: list[str] | None = None,
+    ) -> None:
+        """Create a html summary table of the metrics for a given force field.
+
+        Parameters
+        ----------
+        file_name : str
+            The name of the file to save the summary to.
+        force_fields : list[str] | None, optional
+            The force fields to include in the summary. If None, include all force fields.
+        show_parameters : bool, optional
+            Whether to include the dihedral parameters in the summary. This is False by default
+            as it substantially slows down the generation of the summary.
+
+        Returns
+        -------
+        None
+
+        """
+        import bokeh
+        import panel
+
+        force_fields = force_fields if force_fields else self.get_force_fields()
+
+        df = self.get_summary_df(force_fields)
+
+        number_format = bokeh.models.widgets.tables.NumberFormatter(format="0.0000")
+        string_format = {"type": "textarea", "whiteSpace": "pre-wrap"}
+
+        formatters: dict[str, bokeh.models.widgets.tables.NumberFormatter | dict[str, str] | str] = {}
+        for col in df.columns:
+            if "Image" in col:
+                formatters[col] = "html"
+            elif "Proper Torsion" in col:
+                # drop this clause?
+                formatters[col] = string_format
+            else:
+                formatters[col] = number_format
+
+        frozen_colums = ["ID", "Molecule Image", "Scan Image"]
+
+        # Scale up the row height depending on the number of force fields shown
+        row_height = max(300, 25 * len(force_fields))
+        n_rows = 800 // row_height
+
+        tabulator = panel.widgets.Tabulator(
+            df,
+            show_index=False,
+            selectable=False,
+            disabled=True,
+            formatters=formatters,
+            configuration={"rowHeight": row_height},
+            sizing_mode="stretch_width",
+            frozen_columns=frozen_colums,
+            page_size=n_rows,
+            pagination="local",
+        )
+
+        # TODO: Colour scale the metrics
+
+        layout = panel.Column(
+            None,
+            tabulator,
+        )
+
+        layout.save(file_name, title="MetricsSummary", embed=True)
