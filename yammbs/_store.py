@@ -857,18 +857,27 @@ class MoleculeStore:
 
     def get_metrics(
         self,
+        skip_check: bool = False,
     ) -> MetricCollection:
         metrics = MetricCollection()
         import pandas
 
         # TODO: Optimize this for speed
         for force_field in self.get_force_fields():
-            ddes = self.get_dde(force_field=force_field).to_dataframe()
-            rmsds = self.get_rmsd(force_field=force_field).to_dataframe()
-            tfds = self.get_tfd(force_field=force_field).to_dataframe()
-            icrmsds = self.get_internal_coordinate_rmsd(
-                force_field=force_field,
-            ).to_dataframe()
+            (
+                ddes,
+                rmsds,
+                tfds,
+                icrmsds,
+            ) = (
+                getattr(self, func)(force_field=force_field, skip_check=skip_check).to_dataframe()
+                for func in (
+                    "get_dde",
+                    "get_rmsd",
+                    "get_tfd",
+                    "get_internal_coordinate_rmsd",
+                )
+            )
 
             dataframe = ddes.join(rmsds).join(tfds).join(icrmsds)
 
