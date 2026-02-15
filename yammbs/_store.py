@@ -704,6 +704,7 @@ class MoleculeStore:
         force_field: str,
         molecule_ids: list[int] | None = None,
         skip_check: bool = False,
+        include_hydrogens: bool = False,
     ) -> RMSDCollection:
         if not molecule_ids:
             molecule_ids = self.get_molecule_ids()
@@ -737,7 +738,12 @@ class MoleculeStore:
                 rmsds.append(
                     RMSD(
                         qcarchive_id=id,
-                        rmsd=get_rmsd(molecule, qm, mm),
+                        rmsd=get_rmsd(
+                            molecule,
+                            qm,
+                            mm,
+                            include_hydrogens=include_hydrogens,
+                        ),
                     ),
                 )
 
@@ -857,6 +863,7 @@ class MoleculeStore:
 
     def get_metrics(
         self,
+        include_hydrogens: bool = False,
     ) -> MetricCollection:
         metrics = MetricCollection()
         import pandas
@@ -864,7 +871,10 @@ class MoleculeStore:
         # TODO: Optimize this for speed
         for force_field in self.get_force_fields():
             ddes = self.get_dde(force_field=force_field).to_dataframe()
-            rmsds = self.get_rmsd(force_field=force_field).to_dataframe()
+            rmsds = self.get_rmsd(
+                force_field=force_field,
+                include_hydrogens=include_hydrogens,
+            ).to_dataframe()
             tfds = self.get_tfd(force_field=force_field).to_dataframe()
             icrmsds = self.get_internal_coordinate_rmsd(
                 force_field=force_field,
