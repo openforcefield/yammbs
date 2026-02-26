@@ -5,8 +5,8 @@ from openff.toolkit import ForceField, Molecule, Quantity
 from openff.utilities import get_data_file_path
 
 from yammbs.analysis import (
-    _get_rmsd_rdkit,
     _get_rmsd_openeye,
+    _get_rmsd_rdkit,
     get_internal_coordinate_differences,
     get_internal_coordinate_rmsds,
     get_internal_coordinates,
