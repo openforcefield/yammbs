@@ -126,8 +126,6 @@ def get_rmsd(
     target: Array,
 ) -> float:
     """Compute the RMSD between two sets of coordinates."""
-    import importlib.util
-
     molecule1 = Molecule(molecule)
     molecule2 = Molecule(molecule)
 
