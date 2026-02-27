@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy
 from openff.toolkit import Molecule, Quantity
+from openff.toolkit.utils import LicenseError
 
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
@@ -141,9 +142,6 @@ def get_rmsd(
         return _get_rmsd_openeye(molecule1, molecule2)
     except (ImportError, LicenseError):
         return _get_rmsd_rdkit(molecule1, molecule2)
-
-    else:
-        return _get_rmsd_openeye(molecule1, molecule2)
 
 
 def _get_rmsd_openeye(
