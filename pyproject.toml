@@ -69,6 +69,8 @@ module = [
   "openeye",
   "rdkit.Chem",
   "rdkit.Chem.Draw",
+  "rdkit.Chem.rdMolAlign",
+  "rdkit.Chem.rdmolops",
   "openff.toolkit.*",
   "openff.nagl.toolkits.openff",
   "espaloma",

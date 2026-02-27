@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy
 from openff.toolkit import Molecule, Quantity
+from openff.toolkit.utils import LicenseError
 
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
@@ -126,8 +127,6 @@ def get_rmsd(
     target: Array,
 ) -> float:
     """Compute the RMSD between two sets of coordinates."""
-    from openeye import oechem
-
     molecule1 = Molecule(molecule)
     molecule2 = Molecule(molecule)
 
@@ -139,6 +138,19 @@ def get_rmsd(
 
     molecule2.add_conformer(Quantity(target, "angstrom"))
 
+    try:
+        return _get_rmsd_openeye(molecule1, molecule2)
+    except (ImportError, LicenseError):
+        return _get_rmsd_rdkit(molecule1, molecule2)
+
+
+def _get_rmsd_openeye(
+    molecule1: Molecule,
+    molecule2: Molecule,
+) -> float:
+    """Compute the RMSD between two molecules with OpenEye."""
+    from openeye import oechem
+
     # oechem appears to not support named arguments, but it's hard to tell
     # since the Python API is not documented
     return oechem.OERMSD(
@@ -148,6 +160,20 @@ def get_rmsd(
         True,
         True,
     )
+
+
+def _get_rmsd_rdkit(
+    molecule1: Molecule,
+    molecule2: Molecule,
+) -> float:
+    """Compute the RMSD between two molecules with RDKit."""
+    from rdkit.Chem.rdMolAlign import GetBestRMS
+    from rdkit.Chem.rdmolops import RemoveHs
+
+    rdmol1 = RemoveHs(molecule1.to_rdkit(), updateExplicitCount=True)
+    rdmol2 = RemoveHs(molecule2.to_rdkit(), updateExplicitCount=True)
+
+    return GetBestRMS(rdmol1, rdmol2)
 
 
 def get_internal_coordinates(

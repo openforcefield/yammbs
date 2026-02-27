@@ -1,10 +1,12 @@
 import numpy
 import pandas
 import pytest
-from openff.toolkit import ForceField, Molecule
+from openff.toolkit import ForceField, Molecule, Quantity
 from openff.utilities import get_data_file_path
 
 from yammbs.analysis import (
+    _get_rmsd_openeye,
+    _get_rmsd_rdkit,
     get_internal_coordinate_differences,
     get_internal_coordinate_rmsds,
     get_internal_coordinates,
@@ -47,6 +49,40 @@ class TestAnalysis:
         )
 
         assert last_first == pytest.approx(first_last)
+
+    def test_rmsd_rdkit(self, allicin, conformers):
+        allicin_0 = Molecule(allicin)
+        allicin_0.clear_conformers()
+        allicin_0.add_conformer(Quantity(conformers[0], "angstrom"))
+
+        allicin_1 = Molecule(allicin)
+        allicin_1.clear_conformers()
+        allicin_1.add_conformer(Quantity(conformers[1], "angstrom"))
+
+        allicin_last = Molecule(allicin)
+        allicin_last.clear_conformers()
+        allicin_last.add_conformer(Quantity(conformers[-1], "angstrom"))
+
+        last_last = _get_rmsd_rdkit(allicin_last, allicin_last)
+        first_last = _get_rmsd_rdkit(allicin_0, allicin_last)
+        first_second = _get_rmsd_rdkit(allicin_0, allicin_1)
+        last_first = _get_rmsd_rdkit(allicin_last, allicin_0)
+
+        # Passing the same conformers should return 0.0
+        assert last_last == 0.0
+
+        # Should give a float
+        assert isinstance(first_last, float)
+
+        # Should be different for different conformer pairs
+        assert first_second != pytest.approx(first_last)
+
+        # Should be insensitive to order
+        assert last_first == pytest.approx(first_last)
+
+        # Rdkit and OpenEye should give similar numbers
+        first_last_openeye = _get_rmsd_openeye(allicin_0, allicin_last)
+        assert first_last_openeye == pytest.approx(first_last)
 
     def test_tfd(self, allicin, conformers):
         # Passing the same conformers should return 0.0
