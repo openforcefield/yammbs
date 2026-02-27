@@ -138,11 +138,10 @@ def get_rmsd(
     molecule2.add_conformer(Quantity(target, "angstrom"))
 
     try:
-        # Ruff recommends importlib.util.find_spec, but this sometimes fails
-        # with ValueError. Simply attempting to import is more robust
-        import openeye as _  # noqa: F401,I001
-    except ImportError:
+        return _get_rmsd_openeye(molecule1, molecule2)
+    except (ImportError, LicenseError):
         return _get_rmsd_rdkit(molecule1, molecule2)
+
     else:
         return _get_rmsd_openeye(molecule1, molecule2)
 
