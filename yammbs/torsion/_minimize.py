@@ -21,6 +21,11 @@ from yammbs._minimize import (
 
 LOGGER = logging.getLogger(__name__)
 
+# Set high force group number to avoid conflicts.
+# TODO: More rigorously avoid adding forces to the
+# same group as any existing forces in the system
+_POSITIONAL_RESTRAINT_FORCE_GROUP = 31
+
 _ConstrainedMinimizationFn = Callable[
     [
         Molecule,
@@ -154,6 +159,7 @@ def _restrain_omm_system(
     positions: numpy.ndarray,
     dihedral_indices: tuple[int, int, int, int],
     restraint_k: float,
+    force_group: int = _POSITIONAL_RESTRAINT_FORCE_GROUP,
 ) -> None:
     """Add a restraint to all atoms except those in the dihedral."""
     restraint_force = openmm.CustomExternalForce("0.5*k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
@@ -176,6 +182,7 @@ def _restrain_omm_system(
             [(x * openmm.unit.angstrom).in_units_of(openmm.unit.nanometer) for x in positions[atom_index]],
         )
 
+    restraint_force.setForceGroup(force_group)
     system.addForce(restraint_force)
 
 
@@ -184,7 +191,7 @@ def _add_torsion_restraint_to_omm_system(
     dihedral_indices: tuple[int, int, int, int],
     target_angle: float,
     force_group: int = 1,
-) -> int:
+) -> None:
     """Add a harmonic torsion restraint to maintain the target dihedral angle.
 
     The restraint is added to a separate force group so it guides minimization
@@ -198,9 +205,6 @@ def _add_torsion_restraint_to_omm_system(
         dihedral_indices: The four atom indices defining the dihedral
         target_angle: Target dihedral angle in degrees
         force_group: Force group to assign the restraint to (default: 1)
-
-    Returns:
-        The force group number used for the restraint
 
     """
     # Create CustomTorsionForce with periodic harmonic potential
@@ -277,6 +281,7 @@ def _minimize_openmm_torsion_restrained(
     positions: numpy.ndarray,
     dihedral_indices: tuple[int, int, int, int],
     angle: float,
+    restraint_force_group: int = _POSITIONAL_RESTRAINT_FORCE_GROUP,
 ) -> tuple[numpy.ndarray, float]:
     """Minimize a molecule with OpenMM with a strong harmonic restraint on a dihedral.
 
@@ -292,10 +297,11 @@ def _minimize_openmm_torsion_restrained(
     from MDAnalysis.analysis.dihedrals import Dihedral
 
     # Add the torsion restraint to maintain the target angle
-    restraint_force_group = _add_torsion_restraint_to_omm_system(
+    _add_torsion_restraint_to_omm_system(
         system=system,
         dihedral_indices=dihedral_indices,
         target_angle=angle,
+        force_group=restraint_force_group,
     )
 
     # Perform minimization with custom energy evaluation

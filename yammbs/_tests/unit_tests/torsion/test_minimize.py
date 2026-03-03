@@ -3,15 +3,19 @@
 import copy
 
 import numpy
+import openmm
 import openmm.unit
 import pytest
 from openff.toolkit import ForceField, Molecule
 
+from yammbs._forcefields import build_omm_system
 from yammbs.analysis import get_rmsd
 from yammbs.torsion._minimize import (
     _CONSTRAINED_MINIMIZATION_REGISTRY,
+    _POSITIONAL_RESTRAINT_FORCE_GROUP,
     ConstrainedMinimizationInput,
     ConstrainedMinimizationResult,
+    _restrain_omm_system,
     _run_minimization_constrained,
 )
 from yammbs.torsion._store import TorsionStore
@@ -257,3 +261,85 @@ def test_method_with_positional_restraints(
     result = _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
 
     assert result is not None
+
+
+def test_positional_restraint_not_included_in_energy(base_minimization_input):
+    """Test that positional restraint forces are excluded from the reported energy.
+
+    A massive positional restraint contributes an enormous energy when atoms are
+    displaced from their reference positions. The groups_mask must exclude
+    _POSITIONAL_RESTRAINT_FORCE_GROUP so the reported energy reflects only the
+    MM force field, not the restraint.
+    """
+    from openff.toolkit import Molecule
+
+    mol = Molecule.from_mapped_smiles(base_minimization_input.mapped_smiles, allow_undefined_stereo=True)
+
+    # Use the input coordinates as the restraint reference positions, then
+    # perturb slightly so the restraint has non-zero energy when evaluated.
+    reference_positions = base_minimization_input.coordinates
+    eval_positions = reference_positions * 1.05  # 5% displacement — restraint is non-zero
+
+    system = build_omm_system(
+        force_field=base_minimization_input.force_field,
+        molecule=mol,
+    )
+
+    # Add a massive positional restraint anchored at reference_positions
+    _restrain_omm_system(
+        mol=mol,
+        system=system,
+        positions=reference_positions,
+        dihedral_indices=base_minimization_input.dihedral_indices,
+        restraint_k=1e10,
+        force_group=_POSITIONAL_RESTRAINT_FORCE_GROUP,
+    )
+
+    context = openmm.Context(
+        system,
+        openmm.VerletIntegrator(0.1 * openmm.unit.femtoseconds),
+        openmm.Platform.getPlatformByName("Reference"),
+    )
+    context.setPositions((eval_positions * openmm.unit.angstrom).in_units_of(openmm.unit.nanometer))
+
+    # Energy including the restraint group — should be enormous
+    energy_all_groups = (
+        context.getState(getEnergy=True).getPotentialEnergy().value_in_unit(openmm.unit.kilocalorie_per_mole)
+    )
+
+    # Energy excluding the restraint group — should be the pure MM energy
+    groups_mask = sum(1 << group for group in range(32) if group != _POSITIONAL_RESTRAINT_FORCE_GROUP)
+    energy_excluding_restraint = (
+        context.getState(getEnergy=True, groups=groups_mask)
+        .getPotentialEnergy()
+        .value_in_unit(openmm.unit.kilocalorie_per_mole)
+    )
+
+    # The restraint must contribute non-negligible energy when atoms are displaced
+    assert abs(energy_all_groups - energy_excluding_restraint) > 1.0, (
+        "Massive positional restraint had no effect on energy — was it assigned to the correct force group?"
+    )
+
+    # The MM energy (excluding restraint) must equal the energy from a system
+    # with no positional restraint at the same positions
+    system_no_restraint = build_omm_system(
+        force_field=base_minimization_input.force_field,
+        molecule=mol,
+    )
+    context_no_restraint = openmm.Context(
+        system_no_restraint,
+        openmm.VerletIntegrator(0.1 * openmm.unit.femtoseconds),
+        openmm.Platform.getPlatformByName("Reference"),
+    )
+    context_no_restraint.setPositions((eval_positions * openmm.unit.angstrom).in_units_of(openmm.unit.nanometer))
+    energy_no_restraint = (
+        context_no_restraint.getState(getEnergy=True)
+        .getPotentialEnergy()
+        .value_in_unit(openmm.unit.kilocalorie_per_mole)
+    )
+
+    assert energy_excluding_restraint == pytest.approx(energy_no_restraint, rel=1e-10), (
+        f"Positional restraint leaked into reported energy: "
+        f"excluding_restraint={energy_excluding_restraint}, "
+        f"no_restraint={energy_no_restraint}"
+    )
