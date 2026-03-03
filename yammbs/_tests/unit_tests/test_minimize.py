@@ -109,18 +109,6 @@ def test_different_force_fields_different_results():
     assert energy1 != energy2
 
 
-def test_different_methods_similar_results():
-    """Test that OpenMM and Geometric minimization produce similar results.
-
-    They should only be similar as we're minimizing a very small molecule.
-    """
-    energy1 = _run_minimization(basic_input(method="openmm")).energy
-    energy2 = _run_minimization(basic_input(method="geometric")).energy
-
-    abs_difference = abs(energy1 - energy2)
-    assert abs_difference == pytest.approx(0.0, abs=1.0e-5)
-
-
 def test_plugin_loadable(ethane):
     pytest.importorskip("deforcefields.deforcefields")
 

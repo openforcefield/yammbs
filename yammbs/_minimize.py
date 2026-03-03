@@ -1,14 +1,8 @@
 import logging
-import tempfile
 from collections.abc import Callable, Iterator
 from multiprocessing import Pool
-from typing import Any, Literal
+from typing import Literal
 
-import geometric.engine
-import geometric.internal
-import geometric.molecule
-import geometric.prepare
-import geometric.run_json
 import numpy
 import openmm
 import openmm.unit
@@ -27,9 +21,6 @@ from yammbs._forcefields import build_omm_system
 
 _AVAILABLE_FORCE_FIELDS = get_available_force_fields()
 
-# Suppress verbose geometric output
-logging.getLogger("geometric.nifty").setLevel(logging.WARNING)
-
 logger = logging.getLogger(__name__)
 logging.basicConfig()
 
@@ -42,7 +33,7 @@ _MinimizationFn = Callable[
 def _minimize_blob(
     input: dict[str, list],
     force_field: str,
-    method: Literal["openmm", "geometric"] = "openmm",
+    method: Literal["openmm"] = "openmm",
     n_processes: int = 2,
     chunksize=32,
 ) -> Iterator["MinimizationResult"]:
@@ -94,14 +85,14 @@ class MinimizationInput(ImmutableModel):
         description="The coordinates [Angstrom] of this conformer with shape=(n_atoms, 3).",
     )
 
-    method: Literal["openmm", "geometric"] = Field(
+    method: Literal["openmm"] = Field(
         "openmm",
         description="The minimization method to use",
     )
 
     @property
     def minimization_function(self) -> _MinimizationFn:
-        return _minimize_openmm if self.method == "openmm" else _minimize_geometric
+        return _minimize_openmm
 
 
 class MinimizationResult(MinimizationInput):
@@ -170,97 +161,6 @@ def _minimize_openmm(
     )
 
     return final_positions, final_energy
-
-
-# Adapted from https://github.com/SimonBoothroyd/befit/blob/main/befit/sample.py
-class _OpenMMEngine(geometric.engine.Engine):
-    """A wrapper for GeomeTric that allows using an existing OpenMM system."""
-
-    def __init__(self, molecule, system: openmm.System):
-        self.context = openmm.Context(
-            system,
-            openmm.VerletIntegrator(0.1 * openmm.unit.femtoseconds),
-            openmm.Platform.getPlatformByName("Reference"),
-        )
-        super().__init__(molecule)
-
-    def calc_new(self, coords, dirname):
-        self.context.setPositions(coords.reshape(-1, 3) * openmm.unit.bohr)
-
-        state = self.context.getState(getEnergy=True, getForces=True)
-
-        energy = state.getPotentialEnergy() / openmm.unit.AVOGADRO_CONSTANT_NA
-        gradient = -state.getForces(asNumpy=True) / openmm.unit.AVOGADRO_CONSTANT_NA
-
-        return {
-            "energy": energy.value_in_unit(openmm.unit.hartree),
-            "gradient": gradient.value_in_unit(openmm.unit.hartree / openmm.unit.bohr).flatten(),
-        }
-
-
-# Adapted from https://github.com/SimonBoothroyd/befit/blob/main/befit/sample.py
-def _minimize_geometric(
-    mol: Molecule,
-    system: openmm.System,
-    positions: numpy.ndarray,
-    constraints: dict[str, Any] = {},
-) -> tuple[numpy.ndarray, float]:
-    """Minimize a system using GeomeTRIC."""
-    with tempfile.NamedTemporaryFile(suffix=".pdb") as file:
-        mol.to_file(file.name, "PDB")
-        mol_tric = geometric.molecule.Molecule(file.name, radii={}, fragment=False)
-        mol_tric.xyzs = [positions]
-
-    constraint_strings, constraint_values = geometric.prepare.parse_constraints(
-        mol_tric,
-        geometric.run_json.make_constraints_string(constraints),
-    )
-    assert len(constraint_strings) <= 1, "Max only one dihedral constraint supported"
-    assert len(constraint_values) <= 1, "Max only one dihedral constraint supported"
-    constraint_string = constraint_strings if len(constraint_strings) == 1 else None
-    constraint_value = constraint_values[0] if len(constraint_values) == 1 else None
-
-    # set the geometric keywords following the torsiondrive CLI defaults
-    params = geometric.optimize.OptParams(
-        coordsys="dlc",
-        maxiter=300,
-        enforce=0.1,
-        reset=True,
-        qccnv=True,
-        epsilon=0.0,
-    )
-
-    engine = _OpenMMEngine(mol_tric, system)
-
-    internal_coords = geometric.internal.DelocalizedInternalCoordinates(
-        mol_tric,
-        build=True,
-        connect=True,
-        addcart=False,
-        constraints=constraint_string,
-        cvals=constraint_value,
-    )
-
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        result = geometric.optimize.Optimize(
-            (positions.flatten() * openmm.unit.angstrom).value_in_unit(openmm.unit.bohr),
-            mol_tric,
-            internal_coords,
-            engine,
-            tmp_dir,
-            params,
-            False,
-        )
-
-    coords_final = result.xyzs[-1].flatten() * openmm.unit.angstrom
-    energy_final = result.qm_energies[-1] * openmm.unit.hartree
-
-    return (
-        coords_final.value_in_unit(openmm.unit.angstrom),
-        (energy_final * openmm.unit.AVOGADRO_CONSTANT_NA).value_in_unit(
-            openmm.unit.kilocalorie_per_mole,
-        ),
-    )
 
 
 def _run_minimization(

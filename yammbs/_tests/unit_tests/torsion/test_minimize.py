@@ -78,17 +78,6 @@ def pentane_openmm_unrestrained_result(
 
 
 @pytest.fixture
-def pentane_geometric_unrestrained_result(
-    base_minimization_input,
-) -> ConstrainedMinimizationResult:
-    """Fixture of unrestrained minimization with geomeTRIC."""
-    min_input_dict = base_minimization_input.model_dump()
-    min_input_dict["method"] = "geometric"
-
-    return _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
-
-
-@pytest.fixture
 def pentane_openmm_restrained_result(
     base_minimization_input,
 ) -> ConstrainedMinimizationResult:
@@ -100,57 +89,23 @@ def pentane_openmm_restrained_result(
     return _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
 
 
-@pytest.fixture
-def pentane_geometric_restrained_result(
-    base_minimization_input,
-) -> ConstrainedMinimizationResult:
-    """Fixture of restrained minimization with geomeTRIC."""
-    min_input_dict = base_minimization_input.model_dump()
-    min_input_dict["method"] = "geometric"
-    min_input_dict["restraint_k"] = 1.0  # apply restraints
-
-    return _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
-
-
-def test_minimizations_similar_results(
-    pentane_openmm_unrestrained_result,
-    pentane_geometric_unrestrained_result,
-):
-    """Check that the two minimization methods give similar results."""
-    energy_diff = abs(
-        pentane_openmm_unrestrained_result.energy - pentane_geometric_unrestrained_result.energy,
-    )
-    assert energy_diff < 0.1  # kcal/mol
-
-
-@pytest.mark.parametrize("method", ["openmm", "geometric"])
 def test_restraining_reduces_rmsd(
-    method,
     pentane_molecule,
     pentane_openmm_restrained_result,
-    pentane_geometric_restrained_result,
     pentane_openmm_unrestrained_result,
-    pentane_geometric_unrestrained_result,
 ):
     """Test that restraints reduce coordinate deviation from initial structure."""
     reference_coords = pentane_molecule.conformers[0].m_as("angstrom")
 
-    if method == "openmm":
-        pentane_restrained_minimization_result = pentane_openmm_restrained_result
-        pentane_unrestrained_minimization_result = pentane_openmm_unrestrained_result
-    else:
-        pentane_restrained_minimization_result = pentane_geometric_restrained_result
-        pentane_unrestrained_minimization_result = pentane_geometric_unrestrained_result
-
     unrestrained_rmsd = get_rmsd(
         pentane_molecule,
         reference=reference_coords,
-        target=pentane_unrestrained_minimization_result.coordinates,
+        target=pentane_openmm_unrestrained_result.coordinates,
     )
     restrained_rmsd = get_rmsd(
         pentane_molecule,
         reference=reference_coords,
-        target=pentane_restrained_minimization_result.coordinates,
+        target=pentane_openmm_restrained_result.coordinates,
     )
     assert restrained_rmsd < unrestrained_rmsd
     print(
@@ -222,7 +177,7 @@ def test_failed_minimizations(tmp_path, capsys, failure_case):
 
 def test_minimization_registry_complete():
     """Test that the minimization registry contains all expected methods."""
-    expected_methods = {"openmm", "openmm_restrained", "geometric"}
+    expected_methods = {"openmm", "openmm_restrained"}
     assert set(_CONSTRAINED_MINIMIZATION_REGISTRY.keys()) == expected_methods
 
     # Verify all values are callable
@@ -243,7 +198,7 @@ def pentane_openmm_torsion_restrained_result(
 
 @pytest.mark.parametrize(
     "method",
-    ["openmm", "geometric", "openmm_restrained"],
+    ["openmm", "openmm_restrained"],
 )
 def test_all_methods_complete_successfully(
     method,
@@ -264,23 +219,14 @@ def test_all_methods_complete_successfully(
 
 def test_openmm_restrained_similar_energy_to_others(
     pentane_openmm_unrestrained_result,
-    pentane_geometric_unrestrained_result,
     pentane_openmm_torsion_restrained_result,
 ):
     """Test that openmm_restrained gives similar energies to other methods."""
-    # Compare with standard openmm
     energy_diff_openmm = abs(
         pentane_openmm_torsion_restrained_result.energy - pentane_openmm_unrestrained_result.energy,
     )
 
-    # Compare with geometric
-    energy_diff_geometric = abs(
-        pentane_openmm_torsion_restrained_result.energy - pentane_geometric_unrestrained_result.energy,
-    )
-
-    # All methods should give energies within 1 kcal/mol
     assert energy_diff_openmm < 1.0, f"openmm_restrained vs openmm: {energy_diff_openmm:.3f} kcal/mol"
-    assert energy_diff_geometric < 1.0, f"openmm_restrained vs geometric: {energy_diff_geometric:.3f} kcal/mol"
 
 
 def test_openmm_restrained_maintains_dihedral_angle(
@@ -350,7 +296,7 @@ def test_openmm_restrained_allows_movement(
     )
 
 
-@pytest.mark.parametrize("method", ["openmm", "geometric", "openmm_restrained"])
+@pytest.mark.parametrize("method", ["openmm", "openmm_restrained"])
 def test_method_with_positional_restraints(
     method,
     base_minimization_input,

@@ -282,7 +282,7 @@ class TorsionStore:
     def optimize_mm(
         self,
         force_field: str,
-        method: Literal["openmm", "geometric"] = "openmm",
+        method: Literal["openmm", "openmm_restrained"] = "openmm_restrained",
         n_processes: int = 2,
         chunksize: int = 32,
         restraint_k: float = 0.0,
@@ -293,10 +293,9 @@ class TorsionStore:
         ----------
         force_field : str
             Force field to use for minimization.
-        method : Literal["openmm", "geometric"]
+        method : Literal["openmm", "openmm_restrained"]
             Minimization method to use. OpenMM constrains the positions of all
-            atoms which define the torsion, while geomeTRIC only constrains the dihedral angle.
-            The geomeTRIC approach is more rigorous but more expensive.
+            atoms which define the torsion.
         n_processes : int
             Number of parallel processes.
         chunksize : int

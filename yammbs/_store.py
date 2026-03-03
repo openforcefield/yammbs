@@ -561,7 +561,7 @@ class MoleculeStore:
     def optimize_mm(
         self,
         force_field: str,
-        method: Literal["openmm", "geometric"] = "openmm",
+        method: Literal["openmm"] = "openmm",
         n_processes: int = 2,
         chunksize=32,
     ):

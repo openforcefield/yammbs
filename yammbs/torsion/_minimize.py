@@ -15,7 +15,6 @@ from yammbs._base.base import ImmutableModel
 from yammbs._forcefields import build_omm_system
 from yammbs._minimize import (
     _DEFAULT_ENERGY_MINIMIZATION_TOLERANCE,
-    _minimize_geometric,
     _minimize_openmm,
 )
 
@@ -63,7 +62,7 @@ class ConstrainedMinimizationInput(ImmutableModel):
         description="Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.",
     )
 
-    method: Literal["openmm", "geometric", "openmm_restrained"] = Field(
+    method: Literal["openmm", "openmm_restrained"] = Field(
         "openmm",
         description="The minimization method to use.",
     )
@@ -95,7 +94,7 @@ def _minimize_torsions(
         None,
     ],
     force_field: str,
-    method: Literal["openmm", "geometric", "openmm_restrained"] = "openmm",
+    method: Literal["openmm", "openmm_restrained"] = "openmm",
     n_processes: int = 2,
     chunksize=32,
     restraint_k: float = 0.0,
@@ -379,29 +378,10 @@ def _minimize_openmm_torsion_restrained(
     return final_positions, final_energy
 
 
-def _minimize_geometric_constrained(
-    mol: Molecule,
-    system: openmm.System,
-    positions: numpy.ndarray,
-    dihedral_indices: tuple[int, int, int, int],
-    angle: float,
-) -> tuple[numpy.ndarray, float]:
-    """Minimize a molecule with Geometric with the specified dihedral constrained."""
-    constraints = {"set": [{"indices": dihedral_indices, "type": "dihedral", "value": angle}]}
-
-    return _minimize_geometric(
-        mol=mol,
-        system=system,
-        positions=positions,
-        constraints=constraints,
-    )
-
-
 # Registry mapping method names to their implementation functions
 _CONSTRAINED_MINIMIZATION_REGISTRY: dict[str, _ConstrainedMinimizationFn] = {
     "openmm": _minimize_openmm_constrained,
     "openmm_restrained": _minimize_openmm_torsion_restrained,
-    "geometric": _minimize_geometric_constrained,
 }
 
 

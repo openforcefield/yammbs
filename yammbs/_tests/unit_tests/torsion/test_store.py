@@ -82,12 +82,8 @@ class TestTorsionStore:
             assert torsion_id in torsion_ids
 
 
-@pytest.mark.parametrize(
-    "method",
-    ["openmm", "geometric"],
-)
-def test_minimize_basic(single_torsion_dataset, tmp_path, method):
-    """Test basic minimization behavior using either OpenMM or geomeTRIC."""
+def test_minimize_basic(single_torsion_dataset, tmp_path):
+    """Test basic minimization behavior using OpenMM."""
     store = TorsionStore.from_torsion_dataset(
         single_torsion_dataset,
         database_name=tmp_path / "test.sqlite",
@@ -96,7 +92,7 @@ def test_minimize_basic(single_torsion_dataset, tmp_path, method):
     store.optimize_mm(
         force_field="openff-2.2.0",
         n_processes=os.cpu_count(),
-        method=method,
+        method="openmm",
         restraint_k=1.0,
     )
 
@@ -106,8 +102,6 @@ def test_minimize_basic(single_torsion_dataset, tmp_path, method):
 
     # stored outputs include MM profiles for 1 molecule with 1 force field
     output = store.get_outputs().model_dump()
-
-    # store.optimize_mm(force_field="openff-2.2.0", method="geometric")
 
     assert len(output["mm_torsions"]) == 1
     assert len(output["mm_torsions"]["openff-2.2.0"]) == 1
@@ -119,28 +113,18 @@ def test_minimize_basic(single_torsion_dataset, tmp_path, method):
     assert len(metrics["metrics"]["openff-2.2.0"]) == 1
 
     EXPECTED_METRICS = {
-        "geometric": {
-            "rmsd": 0.06689874430201893,
-            "rmse": 0.8989534584791506,
-            "mean_error": -0.6367143539999467,
-            "js_distance": (0.3105777061431665, 500.0),
-        },
-        "openmm": {
-            "rmsd": 0.07475493617511018,
-            "rmse": 0.8193199571663233,
-            "mean_error": -0.35170719027937586,
-            "js_distance": (0.3168201337322116, 500.0),
-        },
+        "rmsd": 0.07475493617511018,
+        "rmse": 0.8193199571663233,
+        "mean_error": -0.35170719027937586,
+        "js_distance": (0.3168201337322116, 500.0),
     }
 
-    expected_metrics = EXPECTED_METRICS[method]
-
-    assert len(expected_metrics) == len(metrics["metrics"]["openff-2.2.0"][torsion_id])
+    assert len(EXPECTED_METRICS) == len(metrics["metrics"]["openff-2.2.0"][torsion_id])
 
     for metric in metrics["metrics"]["openff-2.2.0"][torsion_id]:
-        assert metric in expected_metrics
+        assert metric in EXPECTED_METRICS
         assert metrics["metrics"]["openff-2.2.0"][torsion_id][metric] == pytest.approx(
-            expected_metrics[metric],
+            EXPECTED_METRICS[metric],
             rel=5e-2,
         )
 
