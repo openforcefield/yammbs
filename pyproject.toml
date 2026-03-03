@@ -85,6 +85,7 @@ module = [
   "MDAnalysis",
   "bokeh",
   "panel",
+  "geometric.*",
 ]
 ignore_missing_imports = true
 
@@ -104,6 +105,7 @@ MDAnalysis = "*"
 # add back when merged https://github.com/openforcefield/smirnoff-plugins/pull/76
 # smirnoff-plugins
 # de-forcefields ~=1.0.3
+geometric = "1.*"
 click = "*"
 scipy = "*"
 seaborn = "*"

@@ -2,7 +2,7 @@ import logging
 import pathlib
 from collections.abc import Generator, Iterable
 from contextlib import contextmanager
-from typing import Self
+from typing import Literal, Self
 
 import numpy
 import pandas as pd
@@ -13,7 +13,7 @@ from openff.toolkit.typing.engines.smirnoff.parameters import ProperTorsionHandl
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from yammbs._minimize import _lazy_load_force_field
+from yammbs._forcefields import _lazy_load_force_field
 from yammbs._molecule import _smiles_to_inchi_key
 from yammbs._types import Pathlike
 from yammbs.exceptions import DatabaseExistsError
@@ -282,6 +282,7 @@ class TorsionStore:
     def optimize_mm(
         self,
         force_field: str,
+        method: Literal["openmm", "geometric"] = "openmm",
         n_processes: int = 2,
         chunksize: int = 32,
         restraint_k: float = 0.0,
@@ -292,6 +293,10 @@ class TorsionStore:
         ----------
         force_field : str
             Force field to use for minimization.
+        method : Literal["openmm", "geometric"]
+            Minimization method to use. OpenMM constrains the positions of all
+            atoms which define the torsion, while geomeTRIC only constrains the dihedral angle.
+            The geomeTRIC approach is more rigorous but more expensive.
         n_processes : int
             Number of parallel processes.
         chunksize : int
@@ -362,7 +367,9 @@ class TorsionStore:
         minimization_results = _minimize_torsions(
             data=data,
             force_field=force_field,
+            method=method,
             n_processes=n_processes,
+            chunksize=chunksize,
             restraint_k=restraint_k,
         )
 

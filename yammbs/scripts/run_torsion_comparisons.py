@@ -1,7 +1,9 @@
 """Analyse torsion drive data using different force fields."""
 
+import os
 import pathlib
 from multiprocessing import freeze_support
+from typing import Literal
 
 import click
 import numpy as np
@@ -67,6 +69,18 @@ pyplot.style.use("ggplot")
     default=".",
     help="Directory to save the generated plots.",
 )
+@click.option(
+    "--method",
+    default="openmm",
+    type=click.Choice(["openmm", "geometric"]),
+    help="Method to use for MM optimization.",
+)
+@click.option(
+    "--n-processes",
+    default=None,
+    type=int,
+    help="Number of processes to use for parallel optimization. Defaults to the number of CPU cores.",
+)
 def main(
     base_force_fields: list[str],
     extra_force_fields: list[str],
@@ -75,6 +89,8 @@ def main(
     output_metrics: str,
     output_minimized: str,
     plot_dir: str,
+    method: Literal["openmm", "geometric"] = "openmm",
+    n_processes: int | None = None,
 ) -> None:
     """Run torsion drive comparisons using specified force fields and input data."""
     force_fields = base_force_fields + extra_force_fields
@@ -91,7 +107,10 @@ def main(
         )
 
     for force_field in force_fields:
-        store.optimize_mm(force_field=force_field, n_processes=24)
+        # Profile a specific function
+        if n_processes is None:
+            n_processes = os.cpu_count() or 1
+        store.optimize_mm(force_field=force_field, n_processes=n_processes, method=method)
 
     if not pathlib.Path(output_minimized).exists():
         with open(output_minimized, "w") as f:
