@@ -92,7 +92,7 @@ def test_minimize_basic(single_torsion_dataset, tmp_path):
     store.optimize_mm(
         force_field="openff-2.2.0",
         n_processes=os.cpu_count(),
-        method="openmm",
+        method="openmm_torsion_atoms_frozen",
         restraint_k=1.0,
     )
 

@@ -62,8 +62,8 @@ class ConstrainedMinimizationInput(ImmutableModel):
         description="Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.",
     )
 
-    method: Literal["openmm", "openmm_restrained"] = Field(
-        "openmm",
+    method: Literal["openmm_torsion_atoms_frozen", "openmm_torsion_restrained"] = Field(
+        "openmm_torsion_restrained",
         description="The minimization method to use.",
     )
 
@@ -94,7 +94,7 @@ def _minimize_torsions(
         None,
     ],
     force_field: str,
-    method: Literal["openmm", "openmm_restrained"] = "openmm",
+    method: Literal["openmm_torsion_atoms_frozen", "openmm_torsion_restrained"] = "openmm_torsion_restrained",
     n_processes: int = 2,
     chunksize=32,
     restraint_k: float = 0.0,
@@ -209,8 +209,8 @@ def _add_torsion_restraint_to_omm_system(
         "0.5*k_torsion*dtheta^2; dtheta = atan2(sin(theta-theta0), cos(theta-theta0))",
     )
 
-    # Add force constant: 10000 kcal/(mol*rad^2)
-    # This strong force constant ensures the angle is maintained during minimization
+    # Add force constant: 100,000 kcal/(mol*rad^2) to ensure that the angle is
+    # ~ constrained during minimisation.
     torsion_restraint.addGlobalParameter(
         "k_torsion",
         100_000 * openmm.unit.kilocalorie_per_mole / openmm.unit.radian**2,
@@ -252,7 +252,7 @@ def _zero_masses_of_dihedral_atoms(
         system.setParticleMass(index, 0.0)
 
 
-def _minimize_openmm_constrained(
+def _minimize_openmm_atoms_frozen(
     mol: Molecule,
     system: openmm.System,
     positions: numpy.ndarray,
@@ -380,8 +380,8 @@ def _minimize_openmm_torsion_restrained(
 
 # Registry mapping method names to their implementation functions
 _CONSTRAINED_MINIMIZATION_REGISTRY: dict[str, _ConstrainedMinimizationFn] = {
-    "openmm": _minimize_openmm_constrained,
-    "openmm_restrained": _minimize_openmm_torsion_restrained,
+    "openmm_torsion_atoms_frozen": _minimize_openmm_atoms_frozen,
+    "openmm_torsion_restrained": _minimize_openmm_torsion_restrained,
 }
 
 

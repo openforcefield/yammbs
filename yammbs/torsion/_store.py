@@ -282,7 +282,7 @@ class TorsionStore:
     def optimize_mm(
         self,
         force_field: str,
-        method: Literal["openmm", "openmm_restrained"] = "openmm_restrained",
+        method: Literal["openmm_torsion_atoms_frozen", "openmm_torsion_restrained"] = "openmm_torsion_restrained",
         n_processes: int = 2,
         chunksize: int = 32,
         restraint_k: float = 0.0,
@@ -293,7 +293,7 @@ class TorsionStore:
         ----------
         force_field : str
             Force field to use for minimization.
-        method : Literal["openmm", "openmm_restrained"]
+        method : Literal["openmm_torsion_atoms_frozen", "openmm_torsion_restrained"]
             Minimization method to use. OpenMM constrains the positions of all
             atoms which define the torsion.
         n_processes : int

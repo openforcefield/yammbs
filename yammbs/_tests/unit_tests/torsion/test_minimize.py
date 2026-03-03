@@ -65,7 +65,7 @@ def base_minimization_input(pentane_molecule) -> ConstrainedMinimizationInput:
         force_field="openff-2.0.0",
         coordinates=pentane_molecule.conformers[0].m_as("angstrom"),
         grid_id=180.0,
-        method="openmm",
+        method="openmm_torsion_restrained",
     )
 
 
@@ -150,7 +150,11 @@ def test_failed_minimizations(tmp_path, capsys, failure_case):
     )
 
     assert len(store.get_qm_points_by_torsion_id(12345)) == 3
-    assert store.get_qm_energies_by_torsion_id(12345) == {-15.0: -100.0, 0.0: -110.0, 15.0: -105.0}
+    assert store.get_qm_energies_by_torsion_id(12345) == {
+        -15.0: -100.0,
+        0.0: -110.0,
+        15.0: -105.0,
+    }
 
     sage = ForceField("openff-2.0.0.offxml")
 
@@ -177,7 +181,7 @@ def test_failed_minimizations(tmp_path, capsys, failure_case):
 
 def test_minimization_registry_complete():
     """Test that the minimization registry contains all expected methods."""
-    expected_methods = {"openmm", "openmm_restrained"}
+    expected_methods = {"openmm_torsion_atoms_frozen", "openmm_torsion_restrained"}
     assert set(_CONSTRAINED_MINIMIZATION_REGISTRY.keys()) == expected_methods
 
     # Verify all values are callable
@@ -191,14 +195,14 @@ def pentane_openmm_torsion_restrained_result(
 ) -> ConstrainedMinimizationResult:
     """Fixture of torsion-restrained minimization with OpenMM."""
     min_input_dict = base_minimization_input.model_dump()
-    min_input_dict["method"] = "openmm_restrained"
+    min_input_dict["method"] = "openmm_torsion_restrained"
 
     return _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
 
 
 @pytest.mark.parametrize(
     "method",
-    ["openmm", "openmm_restrained"],
+    ["openmm_torsion_atoms_frozen", "openmm_torsion_restrained"],
 )
 def test_all_methods_complete_successfully(
     method,
@@ -240,7 +244,7 @@ def test_openmm_restrained_maintains_dihedral_angle(
     # Test at different angles
     for target_angle in [60.0, 120.0, 180.0, -120.0]:
         min_input_dict = base_minimization_input.model_dump()
-        min_input_dict["method"] = "openmm_restrained"
+        min_input_dict["method"] = "openmm_torsion_restrained"
         min_input_dict["grid_id"] = target_angle
 
         result = _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
@@ -296,7 +300,7 @@ def test_openmm_restrained_allows_movement(
     )
 
 
-@pytest.mark.parametrize("method", ["openmm", "openmm_restrained"])
+@pytest.mark.parametrize("method", ["openmm_torsion_atoms_frozen", "openmm_torsion_restrained"])
 def test_method_with_positional_restraints(
     method,
     base_minimization_input,
@@ -333,7 +337,7 @@ def test_openmm_restrained_sanity_check_logs(
     caplog.set_level(logging.INFO)
 
     min_input_dict = base_minimization_input.model_dump()
-    min_input_dict["method"] = "openmm_restrained"
+    min_input_dict["method"] = "openmm_torsion_restrained"
     min_input_dict["grid_id"] = 180.0
 
     result = _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
