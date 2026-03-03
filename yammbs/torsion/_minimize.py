@@ -244,8 +244,6 @@ def _add_torsion_restraint_to_omm_system(
     )
     system.addForce(torsion_restraint)
 
-    return force_group
-
 
 def _zero_masses_of_dihedral_atoms(
     system: openmm.System,
