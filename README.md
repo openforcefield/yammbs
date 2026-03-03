@@ -7,7 +7,14 @@ YAMMBS is currently developed for internal use at Open Force Field. It is not cu
 
 ## Installation
 
-Use the file `./devtools/conda-envs/dev.yaml` and also install `yammbs` with something like `python -m pip install -e .`.
+Clone the repo and install with `pixi`:
+```
+git clone https://github.com/openforcefield/yammbs.githttps://github.com/openforcefield/yammbs.git
+cd yammbs
+pixi install
+```
+
+To start a subshell with the environment activated, run `pixi shell`.
 
 ## Getting started
 
@@ -207,6 +214,10 @@ A range of OpenFF force fields will be run for comparison if no `--base-force-fi
 ## Custom analyses
 
 See [examples.ipynb](examples.ipynb) for some examples of interacting with benchmarking results and a starting point for custom analyses.
+
+## How to cite
+
+Please cite YAMMBS using the [Zenodo record](https://doi.org/10.5281/zenodo.18350609) of the [latest release](https://doi.org/10.5281/zenodo.18350609) or the version that was used. The BibTeX reference of the latest release can be found at [this link](https://zenodo.org/records/18350609/export/bibtex).
 
 ### License
 
