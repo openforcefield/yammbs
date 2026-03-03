@@ -19,7 +19,7 @@ from yammbs._minimize import (
     _minimize_openmm,
 )
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 _ConstrainedMinimizationFn = Callable[
     [
@@ -100,7 +100,7 @@ def _minimize_torsions(
     chunksize=32,
     restraint_k: float = 0.0,
 ) -> Generator[ConstrainedMinimizationResult, None, None]:
-    logger.info("Mapping `data` generator into `inputs` generator")
+    LOGGER.info("Mapping `data` generator into `inputs` generator")
 
     # It'd be smoother to skip this tranformation - just pass this generator
     # from inside of TorsionStore
@@ -125,7 +125,7 @@ def _minimize_torsions(
         ) in data
     )
 
-    logger.info("Setting up multiprocessing pool with generator (of unknown length)")
+    LOGGER.info("Setting up multiprocessing pool with generator (of unknown length)")
 
     # TODO: It'd be nice to have the `total` argument passed through, but that would require using
     #       a list-like iterable instead of a generator, which might cause problems at scale
@@ -164,7 +164,7 @@ def _restrain_omm_system(
     for parameter in ("x0", "y0", "z0"):
         restraint_force.addPerParticleParameter(parameter)
 
-    logger.debug(f"Adding restraint to particles not in {dihedral_indices=}")
+    LOGGER.debug(f"Adding restraint to particles not in {dihedral_indices=}")
     for atom_index in range(mol.n_atoms):
         if atom_index in dihedral_indices:
             continue
@@ -235,7 +235,7 @@ def _add_torsion_restraint_to_omm_system(
     # Assign to separate force group so it doesn't contribute to final energy
     torsion_restraint.setForceGroup(force_group)
 
-    logger.debug(
+    LOGGER.debug(
         f"Adding torsion restraint to {dihedral_indices=} with {target_angle=} degrees to force group {force_group}",
     )
     system.addForce(torsion_restraint)
@@ -248,7 +248,7 @@ def _zero_masses_of_dihedral_atoms(
     dihedral_indices: tuple[int, int, int, int],
 ) -> None:
     """Set the masses of the dihedral atoms to zero to 'constrain' them minimization."""
-    logger.debug(f"Adding restraint to particles not in {dihedral_indices=}")
+    LOGGER.debug(f"Adding restraint to particles not in {dihedral_indices=}")
     for index in dihedral_indices:
         system.setParticleMass(index, 0.0)
 
@@ -324,7 +324,7 @@ def _minimize_openmm_torsion_restrained(
     if initial_angle_diff > 180.0:
         initial_angle_diff = 360.0 - initial_angle_diff
 
-    logger.info(
+    LOGGER.info(
         f"Initial dihedral angle: {initial_angle:.2f}° (target: {angle:.2f}°, diff: {initial_angle_diff:.2f}°)",
     )
 
@@ -335,7 +335,7 @@ def _minimize_openmm_torsion_restrained(
         .getPotentialEnergy()
         .value_in_unit(openmm.unit.kilocalorie_per_mole)
     )
-    logger.info(f"Initial energy (excluding restraint): {initial_energy} kcal/mol")
+    LOGGER.info(f"Initial energy (excluding restraint): {initial_energy} kcal/mol")
 
     # Minimize (restraint is active during minimization)
     openmm.LocalEnergyMinimizer.minimize(
@@ -351,7 +351,7 @@ def _minimize_openmm_torsion_restrained(
 
     final_energy = final_state.getPotentialEnergy().value_in_unit(openmm.unit.kilocalorie_per_mole)
 
-    logger.info(f"Final energy (excluding restraint): {final_energy} kcal/mol")
+    LOGGER.info(f"Final energy (excluding restraint): {final_energy} kcal/mol")
 
     # Sanity check: verify the final dihedral angle matches the target
     u_final = mda.Universe.empty(n_atoms=len(final_positions), trajectory=True)
@@ -368,13 +368,13 @@ def _minimize_openmm_torsion_restrained(
 
     # Warn if restraint didn't maintain the angle within tolerance
     if final_angle_diff > 5.0:
-        logger.warning(
+        LOGGER.warning(
             f"Torsion restraint sanity check failed: "
             f"initial={initial_angle:.2f}°, target={angle:.2f}°, final={final_angle:.2f}°, "
             f"diff={final_angle_diff:.2f}° (tolerance: 5.0°)",
         )
     else:
-        logger.info(f"Final dihedral angle: {final_angle:.2f}° (target: {angle:.2f}°, diff: {final_angle_diff:.2f}°)")
+        LOGGER.info(f"Final dihedral angle: {final_angle:.2f}° (target: {angle:.2f}°, diff: {final_angle_diff:.2f}°)")
 
     return final_positions, final_energy
 
@@ -396,25 +396,25 @@ def _run_minimization_constrained(
     from openff.interchange.exceptions import UnassignedValenceError
     from openff.toolkit import Molecule
 
-    logger.info(f"############ Method: {input.method} ############")
+    LOGGER.info(f"############ Method: {input.method} ############")
 
-    logger.debug(f"Setting up constrained minimization for {input.model_dump()=}")
+    LOGGER.debug(f"Setting up constrained minimization for {input.model_dump()=}")
 
-    logger.debug(f"Creating molecule from {input.mapped_smiles=}")
+    LOGGER.debug(f"Creating molecule from {input.mapped_smiles=}")
     molecule = Molecule.from_mapped_smiles(input.mapped_smiles, allow_undefined_stereo=True)
     # molecule.add_conformer(Quantity(input.coordinates, "angstrom"))
 
-    logger.debug(f"Creating OpenMM system with force field {input.force_field=}")
+    LOGGER.debug(f"Creating OpenMM system with force field {input.force_field=}")
     try:
         system = build_omm_system(
             force_field=input.force_field,
             molecule=molecule,
         )
     except UnassignedValenceError:
-        logger.warning(f"Skipping record {input.torsion_id} with unassigned valence terms")
+        LOGGER.warning(f"Skipping record {input.torsion_id} with unassigned valence terms")
         return None
     except (RuntimeError, ValueError) as e:  # charging error
-        logger.warning(f"Skipping record {input.torsion_id} with a value error (probably a charge failure): {e}")
+        LOGGER.warning(f"Skipping record {input.torsion_id} with a value error (probably a charge failure): {e}")
         return None
 
     atom_indices = list(range(len(molecule.atoms)))
@@ -429,7 +429,7 @@ def _run_minimization_constrained(
         restraint_k=input.restraint_k,
     )
 
-    logger.debug("Trying to minimize energy")
+    LOGGER.debug("Trying to minimize energy")
     try:
         final_positions, final_energy = input.constrained_minimization_function(
             molecule,
@@ -441,7 +441,7 @@ def _run_minimization_constrained(
     except Exception as e:
         raise ConstrainedMinimizationError(f"Minimization failed for {input=} : {e}") from e
 
-    logger.debug("Returning result")
+    LOGGER.debug("Returning result")
     return ConstrainedMinimizationResult(
         torsion_id=input.torsion_id,
         mapped_smiles=input.mapped_smiles,
