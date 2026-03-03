@@ -1,4 +1,5 @@
 import logging
+from abc import ABC
 from collections.abc import Callable, Iterator
 from multiprocessing import Pool
 from typing import Literal
@@ -66,7 +67,7 @@ def _minimize_blob(
                 yield val
 
 
-class MinimizationInput(ImmutableModel):
+class MinimizationBase(ImmutableModel, ABC):
     inchi_key: str = Field(..., description="The InChI key of the molecule")
     qcarchive_id: int = Field(
         ...,
@@ -95,7 +96,11 @@ class MinimizationInput(ImmutableModel):
         return _minimize_openmm
 
 
-class MinimizationResult(MinimizationInput):
+class MinimizationInput(MinimizationBase):
+    pass
+
+
+class MinimizationResult(MinimizationBase):
     energy: float = Field(..., description="Minimized energy in kcal/mol")
 
 
