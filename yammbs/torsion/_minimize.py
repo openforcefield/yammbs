@@ -13,7 +13,11 @@ from tqdm import tqdm
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
 from yammbs._forcefields import build_omm_system
-from yammbs._minimize import _minimize_geometric, _minimize_openmm
+from yammbs._minimize import (
+    _DEFAULT_ENERGY_MINIMIZATION_TOLERANCE,
+    _minimize_geometric,
+    _minimize_openmm,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,14 +63,15 @@ class ConstrainedMinimizationInput(ImmutableModel):
         description="Restraint force constant in kcal/(mol*Angstrom^2) for atoms not in dihedral.",
     )
 
-    method: Literal["openmm", "geometric"] = Field(
+    method: Literal["openmm", "geometric", "openmm_restrained"] = Field(
         "openmm",
         description="The minimization method to use.",
     )
 
     @property
     def constrained_minimization_function(self) -> _ConstrainedMinimizationFn:
-        return _minimize_openmm_constrained if self.method == "openmm" else _minimize_geometric_constrained
+        """Get the minimization function from the registry."""
+        return _CONSTRAINED_MINIMIZATION_REGISTRY[self.method]
 
 
 class ConstrainedMinimizationResult(ConstrainedMinimizationInput):
@@ -90,7 +95,7 @@ def _minimize_torsions(
         None,
     ],
     force_field: str,
-    method: Literal["openmm", "geometric"] = "openmm",
+    method: Literal["openmm", "geometric", "openmm_restrained"] = "openmm",
     n_processes: int = 2,
     chunksize=32,
     restraint_k: float = 0.0,
@@ -174,6 +179,70 @@ def _restrain_omm_system(
     system.addForce(restraint_force)
 
 
+def _add_torsion_restraint_to_omm_system(
+    system: openmm.System,
+    dihedral_indices: tuple[int, int, int, int],
+    target_angle: float,
+    force_group: int = 1,
+) -> int:
+    """Add a harmonic torsion restraint to maintain the target dihedral angle.
+
+    The restraint is added to a separate force group so it guides minimization
+    but doesn't contribute to the final reported energy.
+
+    Uses a periodic-aware potential to properly handle angle wrapping
+    (e.g., -180° and 180° are treated as the same angle).
+
+    Args:
+        system: The OpenMM system to modify
+        dihedral_indices: The four atom indices defining the dihedral
+        target_angle: Target dihedral angle in degrees
+        force_group: Force group to assign the restraint to (default: 1)
+
+    Returns:
+        The force group number used for the restraint
+
+    """
+    # Create CustomTorsionForce with periodic harmonic potential
+    # dtheta is the shortest angular distance between theta and theta0
+    # This ensures -180° and 180° are treated as equivalent
+    torsion_restraint = openmm.CustomTorsionForce(
+        "0.5*k_torsion*dtheta^2; dtheta = atan2(sin(theta-theta0), cos(theta-theta0))",
+    )
+
+    # Add force constant: 10000 kcal/(mol*rad^2)
+    # This strong force constant ensures the angle is maintained during minimization
+    torsion_restraint.addGlobalParameter(
+        "k_torsion",
+        100_000 * openmm.unit.kilocalorie_per_mole / openmm.unit.radian**2,
+    )
+
+    # Add per-torsion parameter for target angle
+    torsion_restraint.addPerTorsionParameter("theta0")
+
+    # Convert target angle from degrees to radians
+    target_angle_rad = target_angle * numpy.pi / 180.0
+
+    # Add the torsion with its target angle
+    torsion_restraint.addTorsion(
+        int(dihedral_indices[0]),
+        int(dihedral_indices[1]),
+        int(dihedral_indices[2]),
+        int(dihedral_indices[3]),
+        [target_angle_rad],
+    )
+
+    # Assign to separate force group so it doesn't contribute to final energy
+    torsion_restraint.setForceGroup(force_group)
+
+    logger.debug(
+        f"Adding torsion restraint to {dihedral_indices=} with {target_angle=} degrees to force group {force_group}",
+    )
+    system.addForce(torsion_restraint)
+
+    return force_group
+
+
 def _zero_masses_of_dihedral_atoms(
     system: openmm.System,
     dihedral_indices: tuple[int, int, int, int],
@@ -202,6 +271,114 @@ def _minimize_openmm_constrained(
     )
 
 
+def _minimize_openmm_torsion_restrained(
+    mol: Molecule,
+    system: openmm.System,
+    positions: numpy.ndarray,
+    dihedral_indices: tuple[int, int, int, int],
+    angle: float,
+) -> tuple[numpy.ndarray, float]:
+    """Minimize a molecule with OpenMM with a strong harmonic restraint on a dihedral.
+
+    Unlike _minimize_openmm_constrained which zeros masses (preventing movement),
+    this method uses a CustomTorsionForce to apply a strong harmonic restraint
+    on the dihedral angle, allowing atoms to move while maintaining the target angle.
+
+    The restraint is added to a separate force group and excluded from the final
+    energy calculation, so the reported energy is the actual molecular mechanics
+    energy without the artificial restraint contribution.
+    """
+    import MDAnalysis as mda
+    from MDAnalysis.analysis.dihedrals import Dihedral
+
+    # Add the torsion restraint to maintain the target angle
+    restraint_force_group = _add_torsion_restraint_to_omm_system(
+        system=system,
+        dihedral_indices=dihedral_indices,
+        target_angle=angle,
+    )
+
+    # Perform minimization with custom energy evaluation
+    # that excludes the restraint force group
+    context = openmm.Context(
+        system,
+        openmm.VerletIntegrator(0.1 * openmm.unit.femtoseconds),
+        openmm.Platform.getPlatformByName("Reference"),
+    )
+
+    context.setPositions(
+        (positions * openmm.unit.angstrom).in_units_of(openmm.unit.nanometer),
+    )
+    context.computeVirtualSites()
+
+    # Sanity check: verify the initial dihedral angle
+    u_initial = mda.Universe.empty(n_atoms=len(positions), trajectory=True)
+    u_initial.load_new(positions, order="fac")
+
+    dihedral_calc_initial = Dihedral([u_initial.atoms[list(dihedral_indices)]])
+    dihedral_calc_initial.run()
+    initial_angle = dihedral_calc_initial.results.angles[0][0]
+
+    # Calculate initial angle difference accounting for periodicity
+    initial_angle_diff = abs(initial_angle - angle)
+    if initial_angle_diff > 180.0:
+        initial_angle_diff = 360.0 - initial_angle_diff
+
+    logger.info(
+        f"Initial dihedral angle: {initial_angle:.2f}° (target: {angle:.2f}°, diff: {initial_angle_diff:.2f}°)",
+    )
+
+    # Log initial energy (excluding restraint)
+    groups_mask = sum(1 << group for group in range(32) if group != restraint_force_group)
+    initial_energy = (
+        context.getState(getEnergy=True, groups=groups_mask)
+        .getPotentialEnergy()
+        .value_in_unit(openmm.unit.kilocalorie_per_mole)
+    )
+    logger.info(f"Initial energy (excluding restraint): {initial_energy} kcal/mol")
+
+    # Minimize (restraint is active during minimization)
+    openmm.LocalEnergyMinimizer.minimize(
+        context=context,
+        tolerance=_DEFAULT_ENERGY_MINIMIZATION_TOLERANCE.to_openmm(),
+        maxIterations=10_000,
+    )
+
+    # Get final state excluding restraint force group
+    final_state = context.getState(getPositions=True, getEnergy=True, groups=groups_mask)
+
+    final_positions = final_state.getPositions(asNumpy=True).value_in_unit(openmm.unit.angstrom)
+
+    final_energy = final_state.getPotentialEnergy().value_in_unit(openmm.unit.kilocalorie_per_mole)
+
+    logger.info(f"Final energy (excluding restraint): {final_energy} kcal/mol")
+
+    # Sanity check: verify the final dihedral angle matches the target
+    u_final = mda.Universe.empty(n_atoms=len(final_positions), trajectory=True)
+    u_final.load_new(final_positions, order="fac")
+
+    dihedral_calc_final = Dihedral([u_final.atoms[list(dihedral_indices)]])
+    dihedral_calc_final.run()
+    final_angle = dihedral_calc_final.results.angles[0][0]
+
+    # Calculate angle difference accounting for periodicity
+    final_angle_diff = abs(final_angle - angle)
+    if final_angle_diff > 180.0:
+        final_angle_diff = 360.0 - final_angle_diff
+
+    # Warn if restraint didn't maintain the angle within tolerance
+    if final_angle_diff > 5.0:
+        logger.warning(
+            f"Torsion restraint sanity check failed: "
+            f"initial={initial_angle:.2f}°, target={angle:.2f}°, final={final_angle:.2f}°, "
+            f"diff={final_angle_diff:.2f}° (tolerance: 5.0°)",
+        )
+    else:
+        logger.info(f"Final dihedral angle: {final_angle:.2f}° (target: {angle:.2f}°, diff: {final_angle_diff:.2f}°)")
+
+    return final_positions, final_energy
+
+
 def _minimize_geometric_constrained(
     mol: Molecule,
     system: openmm.System,
@@ -218,6 +395,14 @@ def _minimize_geometric_constrained(
         positions=positions,
         constraints=constraints,
     )
+
+
+# Registry mapping method names to their implementation functions
+_CONSTRAINED_MINIMIZATION_REGISTRY: dict[str, _ConstrainedMinimizationFn] = {
+    "openmm": _minimize_openmm_constrained,
+    "openmm_restrained": _minimize_openmm_torsion_restrained,
+    "geometric": _minimize_geometric_constrained,
+}
 
 
 def _run_minimization_constrained(

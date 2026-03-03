@@ -71,8 +71,8 @@ pyplot.style.use("ggplot")
 )
 @click.option(
     "--method",
-    default="openmm",
-    type=click.Choice(["openmm", "geometric"]),
+    default="openmm_restrained",
+    type=click.Choice(["openmm", "geometric", "openmm_restrained"]),
     help="Method to use for MM optimization.",
 )
 @click.option(
@@ -89,7 +89,7 @@ def main(
     output_metrics: str,
     output_minimized: str,
     plot_dir: str,
-    method: Literal["openmm", "geometric"] = "openmm",
+    method: Literal["openmm", "geometric", "openmm_restrained"] = "openmm",
     n_processes: int | None = None,
 ) -> None:
     """Run torsion drive comparisons using specified force fields and input data."""
@@ -121,11 +121,11 @@ def main(
             f.write(store.get_metrics().model_dump_json())
 
     # Plot!
-    plot_torsions(plot_dir, force_fields, store)
     plot_cdfs(force_fields, output_metrics, plot_dir)
     plot_rms_stats(force_fields, output_metrics, plot_dir)
     plot_mean_error_distribution(force_fields, output_metrics, plot_dir)
     plot_rms_js_distance(force_fields, output_metrics, plot_dir)
+    plot_torsions(plot_dir, force_fields, store)
 
 
 def get_torsion_image(torsion_id: int, store: TorsionStore) -> pyplot.Figure:

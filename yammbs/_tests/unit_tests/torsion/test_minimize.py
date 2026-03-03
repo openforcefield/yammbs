@@ -9,6 +9,7 @@ from openff.toolkit import ForceField, Molecule
 
 from yammbs.analysis import get_rmsd
 from yammbs.torsion._minimize import (
+    _CONSTRAINED_MINIMIZATION_REGISTRY,
     ConstrainedMinimizationInput,
     ConstrainedMinimizationResult,
     _run_minimization_constrained,
@@ -217,3 +218,190 @@ def test_failed_minimizations(tmp_path, capsys, failure_case):
 
     # caplog fixture is supposed to handle this, but capsys is more reliable
     assert failure_case in capsys.readouterr().err, capsys.readouterr().err
+
+
+def test_minimization_registry_complete():
+    """Test that the minimization registry contains all expected methods."""
+    expected_methods = {"openmm", "openmm_restrained", "geometric"}
+    assert set(_CONSTRAINED_MINIMIZATION_REGISTRY.keys()) == expected_methods
+
+    # Verify all values are callable
+    for method, func in _CONSTRAINED_MINIMIZATION_REGISTRY.items():
+        assert callable(func), f"Registry entry for {method} is not callable"
+
+
+@pytest.fixture
+def pentane_openmm_torsion_restrained_result(
+    base_minimization_input,
+) -> ConstrainedMinimizationResult:
+    """Fixture of torsion-restrained minimization with OpenMM."""
+    min_input_dict = base_minimization_input.model_dump()
+    min_input_dict["method"] = "openmm_restrained"
+
+    return _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
+
+
+@pytest.mark.parametrize(
+    "method",
+    ["openmm", "geometric", "openmm_restrained"],
+)
+def test_all_methods_complete_successfully(
+    method,
+    base_minimization_input,
+):
+    """Test that all minimization methods complete without errors."""
+    min_input_dict = base_minimization_input.model_dump()
+    min_input_dict["method"] = method
+
+    result = _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
+
+    assert result is not None
+    assert result.method == method
+    assert isinstance(result.energy, float)
+    assert numpy.isfinite(result.energy), f"Energy should be finite, got {result.energy}"
+    assert result.coordinates.shape == base_minimization_input.coordinates.shape
+
+
+def test_openmm_restrained_similar_energy_to_others(
+    pentane_openmm_unrestrained_result,
+    pentane_geometric_unrestrained_result,
+    pentane_openmm_torsion_restrained_result,
+):
+    """Test that openmm_restrained gives similar energies to other methods."""
+    # Compare with standard openmm
+    energy_diff_openmm = abs(
+        pentane_openmm_torsion_restrained_result.energy - pentane_openmm_unrestrained_result.energy,
+    )
+
+    # Compare with geometric
+    energy_diff_geometric = abs(
+        pentane_openmm_torsion_restrained_result.energy - pentane_geometric_unrestrained_result.energy,
+    )
+
+    # All methods should give energies within 1 kcal/mol
+    assert energy_diff_openmm < 1.0, f"openmm_restrained vs openmm: {energy_diff_openmm:.3f} kcal/mol"
+    assert energy_diff_geometric < 1.0, f"openmm_restrained vs geometric: {energy_diff_geometric:.3f} kcal/mol"
+
+
+def test_openmm_restrained_maintains_dihedral_angle(
+    base_minimization_input,
+    pentane_molecule,
+):
+    """Test that openmm_restrained maintains the target dihedral angle."""
+    import MDAnalysis as mda
+    from MDAnalysis.analysis.dihedrals import Dihedral
+
+    # Test at different angles
+    for target_angle in [60.0, 120.0, 180.0, -120.0]:
+        min_input_dict = base_minimization_input.model_dump()
+        min_input_dict["method"] = "openmm_restrained"
+        min_input_dict["grid_id"] = target_angle
+
+        result = _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
+
+        # Calculate the final dihedral angle using MDAnalysis
+        u = mda.Universe.empty(n_atoms=pentane_molecule.n_atoms, trajectory=True)
+        u.load_new(result.coordinates, order="fac")
+
+        dihedral_calc = Dihedral([u.atoms[list(result.dihedral_indices)]])
+        dihedral_calc.run()
+        final_angle = dihedral_calc.results.angles[0][0]
+
+        # Allow 5 degree tolerance for strong restraint
+        angle_diff = abs(final_angle - target_angle)
+        # Handle wrapping around ±180
+        if angle_diff > 180:
+            angle_diff = 360 - angle_diff
+
+        assert angle_diff < 5.0, f"Target: {target_angle}°, Final: {final_angle:.2f}°, Diff: {angle_diff:.2f}°"
+
+
+def test_openmm_restrained_allows_movement(
+    pentane_molecule,
+    pentane_openmm_unrestrained_result,
+    pentane_openmm_torsion_restrained_result,
+):
+    """Test that openmm_restrained allows atoms to move (unlike zero-mass method)."""
+    reference_coords = pentane_molecule.conformers[0].m_as("angstrom")
+
+    # Both methods should show some movement from initial structure
+    rmsd_openmm = get_rmsd(
+        pentane_molecule,
+        reference=reference_coords,
+        target=pentane_openmm_unrestrained_result.coordinates,
+    )
+
+    rmsd_restrained = get_rmsd(
+        pentane_molecule,
+        reference=reference_coords,
+        target=pentane_openmm_torsion_restrained_result.coordinates,
+    )
+
+    # Both should have moved (RMSD > 0)
+    assert rmsd_openmm > 0.0
+    assert rmsd_restrained > 0.0
+
+    # They should be reasonably similar (both optimized structures)
+    # but restrained might be slightly different
+    rmsd_diff = abs(rmsd_openmm - rmsd_restrained)
+    assert rmsd_diff < 0.5, (
+        f"RMSD difference too large: {rmsd_diff:.4f} Å "
+        f"(openmm: {rmsd_openmm:.4f} Å, restrained: {rmsd_restrained:.4f} Å)"
+    )
+
+
+@pytest.mark.parametrize("method", ["openmm", "geometric", "openmm_restrained"])
+def test_method_with_positional_restraints(
+    method,
+    base_minimization_input,
+    pentane_molecule,
+):
+    """Test that positional restraints work with all minimization methods."""
+    min_input_dict = base_minimization_input.model_dump()
+    min_input_dict["method"] = method
+    min_input_dict["restraint_k"] = 1.0  # Apply positional restraints
+
+    result = _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
+
+    assert result is not None
+
+    # Positional restraints should reduce RMSD from initial structure
+    reference_coords = pentane_molecule.conformers[0].m_as("angstrom")
+    rmsd = get_rmsd(
+        pentane_molecule,
+        reference=reference_coords,
+        target=result.coordinates,
+    )
+
+    # With restraints, RMSD should be relatively small
+    assert rmsd < 0.5, f"RMSD with restraints too large: {rmsd:.4f} Å"
+
+
+def test_openmm_restrained_sanity_check_logs(
+    base_minimization_input,
+    caplog,
+):
+    """Test that the sanity check logs the angle verification."""
+    import logging
+
+    caplog.set_level(logging.INFO)
+
+    min_input_dict = base_minimization_input.model_dump()
+    min_input_dict["method"] = "openmm_restrained"
+    min_input_dict["grid_id"] = 180.0
+
+    result = _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
+
+    assert result is not None
+
+    # Check that angle verification log messages appear
+    angle_messages = [record.message for record in caplog.records if "dihedral angle" in record.message.lower()]
+    assert len(angle_messages) >= 2, "Should log initial and final dihedral angles"
+
+    # Check for initial angle message
+    initial_messages = [msg for msg in angle_messages if "initial" in msg.lower()]
+    assert len(initial_messages) > 0, "Should log initial dihedral angle"
+
+    # Check for final angle message
+    final_messages = [msg for msg in angle_messages if "final" in msg.lower()]
+    assert len(final_messages) > 0, "Should log final dihedral angle"
