@@ -72,7 +72,7 @@ pyplot.style.use("ggplot")
 @click.option(
     "--method",
     default="openmm_restrained",
-    type=click.Choice(["openmm", "geometric", "openmm_restrained"]),
+    type=click.Choice(["openmm", "openmm_restrained"]),
     help="Method to use for MM optimization.",
 )
 @click.option(
@@ -89,7 +89,7 @@ def main(
     output_metrics: str,
     output_minimized: str,
     plot_dir: str,
-    method: Literal["openmm", "geometric", "openmm_restrained"] = "openmm",
+    method: Literal["openmm", "openmm_restrained"] = "openmm",
     n_processes: int | None = None,
 ) -> None:
     """Run torsion drive comparisons using specified force fields and input data."""
