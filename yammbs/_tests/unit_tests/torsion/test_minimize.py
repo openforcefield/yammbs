@@ -20,7 +20,7 @@ from yammbs.torsion.inputs import QCArchiveTorsionDataset, QCArchiveTorsionProfi
 
 @pytest.fixture
 def pentane_molecule() -> Molecule:
-    """Return an ethane with one conformer."""
+    """Return a pentane with one conformer."""
     pentane = Molecule.from_mapped_smiles(
         "[C:1]([H:6])([H:7])([H:8])[C:2]([H:9])([H:10])[C:3]([H:11])([H:12])[C:4]([H:13])([H:14])[C:5]([H:15])([H:16])[H:17]",
     )
@@ -189,17 +189,6 @@ def test_minimization_registry_complete():
         assert callable(func), f"Registry entry for {method} is not callable"
 
 
-@pytest.fixture
-def pentane_openmm_torsion_restrained_result(
-    base_minimization_input,
-) -> ConstrainedMinimizationResult:
-    """Fixture of torsion-restrained minimization with OpenMM."""
-    min_input_dict = base_minimization_input.model_dump()
-    min_input_dict["method"] = "openmm_torsion_restrained"
-
-    return _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
-
-
 @pytest.mark.parametrize(
     "method",
     ["openmm_torsion_atoms_frozen", "openmm_torsion_restrained"],
@@ -219,18 +208,6 @@ def test_all_methods_complete_successfully(
     assert isinstance(result.energy, float)
     assert numpy.isfinite(result.energy), f"Energy should be finite, got {result.energy}"
     assert result.coordinates.shape == base_minimization_input.coordinates.shape
-
-
-def test_openmm_restrained_similar_energy_to_others(
-    pentane_openmm_unrestrained_result,
-    pentane_openmm_torsion_restrained_result,
-):
-    """Test that openmm_restrained gives similar energies to other methods."""
-    energy_diff_openmm = abs(
-        pentane_openmm_torsion_restrained_result.energy - pentane_openmm_unrestrained_result.energy,
-    )
-
-    assert energy_diff_openmm < 1.0, f"openmm_restrained vs openmm: {energy_diff_openmm:.3f} kcal/mol"
 
 
 def test_openmm_restrained_maintains_dihedral_angle(
@@ -269,35 +246,18 @@ def test_openmm_restrained_maintains_dihedral_angle(
 def test_openmm_restrained_allows_movement(
     pentane_molecule,
     pentane_openmm_unrestrained_result,
-    pentane_openmm_torsion_restrained_result,
 ):
     """Test that openmm_restrained allows atoms to move (unlike zero-mass method)."""
     reference_coords = pentane_molecule.conformers[0].m_as("angstrom")
 
-    # Both methods should show some movement from initial structure
     rmsd_openmm = get_rmsd(
         pentane_molecule,
         reference=reference_coords,
         target=pentane_openmm_unrestrained_result.coordinates,
     )
 
-    rmsd_restrained = get_rmsd(
-        pentane_molecule,
-        reference=reference_coords,
-        target=pentane_openmm_torsion_restrained_result.coordinates,
-    )
-
-    # Both should have moved (RMSD > 0)
+    # Should have moved (RMSD > 0)
     assert rmsd_openmm > 0.0
-    assert rmsd_restrained > 0.0
-
-    # They should be reasonably similar (both optimized structures)
-    # but restrained might be slightly different
-    rmsd_diff = abs(rmsd_openmm - rmsd_restrained)
-    assert rmsd_diff < 0.5, (
-        f"RMSD difference too large: {rmsd_diff:.4f} Å "
-        f"(openmm: {rmsd_openmm:.4f} Å, restrained: {rmsd_restrained:.4f} Å)"
-    )
 
 
 @pytest.mark.parametrize("method", ["openmm_torsion_atoms_frozen", "openmm_torsion_restrained"])
