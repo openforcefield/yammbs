@@ -20,6 +20,8 @@ from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
 from yammbs._forcefields import build_omm_system
 
+_DEFAULT_ENERGY_MINIMIZATION_MAX_ITERATIONS = 10_000
+
 _AVAILABLE_FORCE_FIELDS = get_available_force_fields()
 
 logger = logging.getLogger(__name__)
@@ -146,7 +148,7 @@ def _minimize_openmm(
     openmm.LocalEnergyMinimizer.minimize(
         context=context,
         tolerance=_DEFAULT_ENERGY_MINIMIZATION_TOLERANCE.to_openmm(),
-        maxIterations=10_000,
+        maxIterations=_DEFAULT_ENERGY_MINIMIZATION_MAX_ITERATIONS,
     )
 
     final_positions = (

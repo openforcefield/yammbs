@@ -14,6 +14,7 @@ from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
 from yammbs._forcefields import build_omm_system
 from yammbs._minimize import (
+    _DEFAULT_ENERGY_MINIMIZATION_MAX_ITERATIONS,
     _DEFAULT_ENERGY_MINIMIZATION_TOLERANCE,
     _minimize_openmm,
 )
@@ -340,7 +341,7 @@ def _minimize_openmm_torsion_restrained(
     openmm.LocalEnergyMinimizer.minimize(
         context=context,
         tolerance=_DEFAULT_ENERGY_MINIMIZATION_TOLERANCE.to_openmm(),
-        maxIterations=10_000,
+        maxIterations=_DEFAULT_ENERGY_MINIMIZATION_MAX_ITERATIONS,
     )
 
     # Get final state excluding restraint force group
