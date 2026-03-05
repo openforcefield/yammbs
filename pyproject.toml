@@ -96,7 +96,6 @@ pydantic = "2.*"
 openff-toolkit-base = "0.18.*"
 openff-qcsubmit = "0.57.*"
 qcportal = "~=0.55"
-openeye-toolkits = "*"
 openmmforcefields = "*"
 rdkit = ">=2024,!=2024.03.6,!=2024.09.1"
 openmm = "8.4.*"
@@ -111,13 +110,18 @@ bokeh = "*"
 panel = "*"
 
 [tool.pixi.environments]
-py311 = [ "py311", "test", "typing" ]
-py312 = [ "py312", "test", "typing" ]
-dev = [ "py312", "test", "typing", "dev" ]
+py311 = [ "py311", "openeye", "test", "typing" ]
+py311rdkit = [ "py311", "test", "typing" ]
+py312 = [ "py312", "openeye", "test", "typing" ]
+dev = [ "py312", "openeye", "test", "typing", "dev" ]
+
 [tool.pixi.feature.dev.dependencies]
 pre-commit = "*"
 ipython = "*"
 ipdb = "*"
+
+[tool.pixi.feature.openeye.dependencies]
+openeye-toolkits = "*"
 
 [tool.pixi.feature.py311.dependencies]
 python = "3.11.*"

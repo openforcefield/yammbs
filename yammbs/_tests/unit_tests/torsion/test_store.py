@@ -6,6 +6,7 @@ import numpy
 import pytest
 from openff.qcsubmit.results import TorsionDriveResultCollection
 from openff.utilities import get_data_file_path
+from openff.toolkit import OpenEyeToolkitWrapper
 
 from yammbs.torsion._store import TorsionStore
 
@@ -82,6 +83,10 @@ class TestTorsionStore:
             assert torsion_id in torsion_ids
 
 
+requires_openeye = pytest.mark.skipif(
+    not OpenEyeToolkitWrapper.is_available(),
+    reason="Test requires OE toolkit for numerical reproducibility, though functionality can use RDKit",
+)
 def test_minimize_basic(single_torsion_dataset, tmp_path):
     """Test basic behavior of TorsionStore.optimize_mm()."""
     store = TorsionStore.from_torsion_dataset(

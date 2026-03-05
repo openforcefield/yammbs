@@ -4,6 +4,8 @@ import pytest
 from openff.toolkit import ForceField, Molecule, Quantity
 from openff.utilities import get_data_file_path
 
+from openff.toolkit.utils import OPENEYE_AVAILABLE
+
 from yammbs.analysis import (
     _get_rmsd_openeye,
     _get_rmsd_rdkit,
@@ -80,9 +82,10 @@ class TestAnalysis:
         # Should be insensitive to order
         assert last_first == pytest.approx(first_last)
 
-        # Rdkit and OpenEye should give similar numbers
-        first_last_openeye = _get_rmsd_openeye(allicin_0, allicin_last)
-        assert first_last_openeye == pytest.approx(first_last)
+        if OPENEYE_AVAILABLE:
+            # Rdkit and OpenEye should give similar numbers
+            first_last_openeye = _get_rmsd_openeye(allicin_0, allicin_last)
+            assert first_last_openeye == pytest.approx(first_last)
 
     def test_tfd(self, allicin, conformers):
         # Passing the same conformers should return 0.0
