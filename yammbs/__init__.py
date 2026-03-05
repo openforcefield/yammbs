@@ -9,4 +9,4 @@ __all__ = ("MoleculeStore",)
 
 __version__ = version("yammbs")
 
-multiprocessing.get_start_method("spawn")
+multiprocessing.set_start_method("spawn")
