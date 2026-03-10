@@ -456,11 +456,6 @@ def checkmol_code_to_environment(checkmol_code: str) -> ChemicalEnvironment:
 def analyze_functional_groups(smiles: str) -> dict[ChemicalEnvironment, int] | None:
     """Employs checkmol to determine which chemical moieties are encoded by a given smiles pattern.
 
-    Notes
-    -----
-    See https://homepage.univie.ac.at/norbert.haider/cheminf/fgtable.pdf
-    for information about the group numbers (i.e moiety types).
-
     Parameters
     ----------
     smiles: str
@@ -472,6 +467,11 @@ def analyze_functional_groups(smiles: str) -> dict[ChemicalEnvironment, int] | N
         A dictionary where each key corresponds to the `checkmol` defined group
         number, and each value if the number of instances of that moiety. If
         `checkmol` did not execute correctly, returns None.
+
+    Notes
+    -----
+    See https://homepage.univie.ac.at/norbert.haider/cheminf/fgtable.pdf
+    for information about the group numbers (i.e moiety types).
 
     """
     import subprocess
