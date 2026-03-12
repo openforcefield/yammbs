@@ -1,0 +1,72 @@
+[workspace]
+name = "yammbs"
+channels = [ "conda-forge", "openeye" ]
+platforms = [ "linux-64", "osx-arm64" ]
+
+[dependencies]
+pip = "*"
+numpy = "2.2.*"
+setuptools_scm = "*"
+pydantic = "2.*"
+openff-toolkit-base = "0.18.*"
+openff-qcsubmit = "0.57.*"
+qcportal = "~=0.55"
+openeye-toolkits = "*"
+openmmforcefields = "*"
+rdkit = ">=2024,!=2024.03.6,!=2024.09.1"
+openmm = "8.4.*"
+MDAnalysis = "*"
+# add back when merged https://github.com/openforcefield/smirnoff-plugins/pull/76
+# smirnoff-plugins
+# de-forcefields ~=1.0.3
+click = "*"
+scipy = "*"
+seaborn = "*"
+bokeh = "*"
+panel = "*"
+
+[environments]
+py311 = [ "py311", "test", "typing" ]
+py312 = [ "py312", "test", "typing" ]
+dev = [ "py312", "test", "typing", "dev" ]
+
+[feature.dev.dependencies]
+pre-commit = "*"
+ipython = "*"
+ipdb = "*"
+
+[feature.py311.dependencies]
+python = "3.11.*"
+[feature.py312.dependencies]
+python = "3.12.*"
+
+[feature.test.dependencies]
+pytest = "*"
+pytest-cov = "*"
+pytest-xdist = "*"
+pytest-randomly = "*"
+pytest-timeout = "*"
+
+[feature.typing.dependencies]
+mypy = "*"
+typing-extensions = "*"
+types-cffi = "*"
+types-click = "*"
+types-colorama = "*"
+types-docutils = "*"
+types-Pygments = "*"
+types-python-dateutil = "*"
+types-pytz = "*"
+types-pywin32 = "*"
+types-setuptools = "*"
+types-tqdm = "*"
+sqlalchemy-stubs = "*"
+pandas-stubs = "*"
+scipy-stubs = "*"
+
+[pypi-dependencies]
+yammbs = { path = ".", editable = true }
+
+[tasks]
+run_mypy = { cmd = "python -m mypy -p yammbs" }
+run_tests = { cmd = "python -m pytest yammbs -x --durations=20 -n logical" }
