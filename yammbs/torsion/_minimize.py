@@ -26,6 +26,12 @@ LOGGER = logging.getLogger(__name__)
 # same group as any existing forces in the system
 _POSITIONAL_RESTRAINT_FORCE_GROUP = 31
 
+_DEFAULT_TORSION_RESTRAINT_K: float = 100_000
+"""Default torsion restraint force constant in kcal/(mol·rad²)."""
+
+_DEFAULT_ANGLE_TOLERANCE: float = 0.1
+"""Default tolerance in degrees for the post-minimization dihedral sanity check."""
+
 _ConstrainedMinimizationFn = Callable[
     [
         Molecule,
@@ -207,6 +213,7 @@ def _add_torsion_restraint_to_omm_system(
     dihedral_indices: tuple[int, int, int, int],
     target_angle: float,
     force_group: int = 1,
+    torsion_restraint_k: float = _DEFAULT_TORSION_RESTRAINT_K,
 ) -> None:
     """Add a harmonic torsion restraint to maintain the target dihedral angle.
 
@@ -221,6 +228,7 @@ def _add_torsion_restraint_to_omm_system(
         dihedral_indices: The four atom indices defining the dihedral
         target_angle: Target dihedral angle in degrees
         force_group: Force group to assign the restraint to (default: 1)
+        torsion_restraint_k: Force constant for the torsion restraint in kcal/(mol*rad^2)
 
     """
     # Create CustomTorsionForce with periodic harmonic potential
@@ -230,11 +238,11 @@ def _add_torsion_restraint_to_omm_system(
         "0.5*k_torsion*dtheta^2; dtheta = atan2(sin(theta-theta0), cos(theta-theta0))",
     )
 
-    # Add force constant: 100,000 kcal/(mol*rad^2) to ensure that the angle is
+    # Add force constant in kcal/(mol*rad^2) to ensure that the angle is
     # ~ constrained during minimisation.
     torsion_restraint.addGlobalParameter(
         "k_torsion",
-        100_000 * openmm.unit.kilocalorie_per_mole / openmm.unit.radian**2,
+        torsion_restraint_k * openmm.unit.kilocalorie_per_mole / openmm.unit.radian**2,
     )
 
     # Add per-torsion parameter for target angle
@@ -323,6 +331,7 @@ def _minimize_openmm_torsion_restrained(
         dihedral_indices=dihedral_indices,
         target_angle=angle,
         force_group=restraint_force_group,
+        torsion_restraint_k=_DEFAULT_TORSION_RESTRAINT_K,
     )
 
     # Perform minimization with custom energy evaluation
@@ -389,15 +398,14 @@ def _minimize_openmm_torsion_restrained(
     # Calculate angle difference accounting for periodicity
     final_angle_diff = _angular_diff(final_angle, angle)
 
-    # Warn if restraint didn't maintain the angle within tolerance
-    if final_angle_diff > 5.0:
-        LOGGER.warning(
+    # Raise if restraint didn't maintain the angle within tolerance
+    if final_angle_diff > _DEFAULT_ANGLE_TOLERANCE:
+        raise ConstrainedMinimizationError(
             f"Torsion restraint sanity check failed: "
             f"initial={initial_angle:.2f}°, target={angle:.2f}°, final={final_angle:.2f}°, "
-            f"diff={final_angle_diff:.2f}° (tolerance: 5.0°)",
+            f"diff={final_angle_diff:.2f}° exceeds tolerance of {_DEFAULT_ANGLE_TOLERANCE:.2f}°",
         )
-    else:
-        LOGGER.info(f"Final dihedral angle: {final_angle:.2f}° (target: {angle:.2f}°, diff: {final_angle_diff:.2f}°)")
+    LOGGER.info(f"Final dihedral angle: {final_angle:.2f}° (target: {angle:.2f}°, diff: {final_angle_diff:.2f}°)")
 
     return final_positions, final_energy
 
