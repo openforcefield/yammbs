@@ -37,6 +37,22 @@ _ConstrainedMinimizationFn = Callable[
     tuple[numpy.ndarray, float],
 ]
 
+# Might be overkill to use a registry at present with only two methods,
+# but makes it more extensible
+_CONSTRAINED_MINIMIZATION_REGISTRY: dict[str, _ConstrainedMinimizationFn] = {}
+
+
+def _register_minimization_method(
+    name: str,
+) -> Callable[[_ConstrainedMinimizationFn], _ConstrainedMinimizationFn]:
+    """Register a constrained minimization function under the given method name."""
+
+    def decorator(fn: _ConstrainedMinimizationFn) -> _ConstrainedMinimizationFn:
+        _CONSTRAINED_MINIMIZATION_REGISTRY[name] = fn
+        return fn
+
+    return decorator
+
 
 class ConstrainedMinimizationInput(ImmutableModel):
     torsion_id: int = Field(
@@ -260,6 +276,7 @@ def _zero_masses_of_dihedral_atoms(
         system.setParticleMass(index, 0.0)
 
 
+@_register_minimization_method("openmm_torsion_atoms_frozen")
 def _minimize_openmm_atoms_frozen(
     mol: Molecule,
     system: openmm.System,
@@ -278,6 +295,7 @@ def _minimize_openmm_atoms_frozen(
     )
 
 
+@_register_minimization_method("openmm_torsion_restrained")
 def _minimize_openmm_torsion_restrained(
     mol: Molecule,
     system: openmm.System,
@@ -382,13 +400,6 @@ def _minimize_openmm_torsion_restrained(
         LOGGER.info(f"Final dihedral angle: {final_angle:.2f}° (target: {angle:.2f}°, diff: {final_angle_diff:.2f}°)")
 
     return final_positions, final_energy
-
-
-# Registry mapping method names to their implementation functions
-_CONSTRAINED_MINIMIZATION_REGISTRY: dict[str, _ConstrainedMinimizationFn] = {
-    "openmm_torsion_atoms_frozen": _minimize_openmm_atoms_frozen,
-    "openmm_torsion_restrained": _minimize_openmm_torsion_restrained,
-}
 
 
 def _run_minimization_constrained(
