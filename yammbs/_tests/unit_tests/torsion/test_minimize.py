@@ -238,7 +238,7 @@ def test_openmm_restrained_maintains_dihedral_angle(
         dihedral_calc.run()
         final_angle = dihedral_calc.results.angles[0][0]
 
-        # Allow 5 degree tolerance for strong restraint
+        # Allow small tolerance for strong restraints
         angle_diff = abs(final_angle - target_angle)
         # Handle wrapping around ±180
         if angle_diff > 180:

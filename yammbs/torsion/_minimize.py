@@ -245,6 +245,11 @@ def _add_torsion_restraint_to_omm_system(
     system.addForce(torsion_restraint)
 
 
+def _angular_diff(a: float, b: float) -> float:
+    """Smallest absolute difference between two angles in degrees, accounting for periodicity."""
+    return abs((a - b + 180.0) % 360.0 - 180.0)
+
+
 def _zero_masses_of_dihedral_atoms(
     system: openmm.System,
     dihedral_indices: tuple[int, int, int, int],
@@ -324,9 +329,7 @@ def _minimize_openmm_torsion_restrained(
     initial_angle = dihedral_calc_initial.results.angles[0][0]
 
     # Calculate initial angle difference accounting for periodicity
-    initial_angle_diff = abs(initial_angle - angle)
-    if initial_angle_diff > 180.0:
-        initial_angle_diff = 360.0 - initial_angle_diff
+    initial_angle_diff = _angular_diff(initial_angle, angle)
 
     LOGGER.info(
         f"Initial dihedral angle: {initial_angle:.2f}° (target: {angle:.2f}°, diff: {initial_angle_diff:.2f}°)",
@@ -366,9 +369,7 @@ def _minimize_openmm_torsion_restrained(
     final_angle = dihedral_calc_final.results.angles[0][0]
 
     # Calculate angle difference accounting for periodicity
-    final_angle_diff = abs(final_angle - angle)
-    if final_angle_diff > 180.0:
-        final_angle_diff = 360.0 - final_angle_diff
+    final_angle_diff = _angular_diff(final_angle, angle)
 
     # Warn if restraint didn't maintain the angle within tolerance
     if final_angle_diff > 5.0:
