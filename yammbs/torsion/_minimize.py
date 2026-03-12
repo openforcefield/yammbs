@@ -21,11 +21,6 @@ from yammbs._minimize import (
 
 LOGGER = logging.getLogger(__name__)
 
-# Set high force group number to avoid conflicts.
-# TODO: More rigorously avoid adding forces to the
-# same group as any existing forces in the system
-_POSITIONAL_RESTRAINT_FORCE_GROUP = 31
-
 _DEFAULT_TORSION_RESTRAINT_K: float = 100_000
 """Default torsion restraint force constant in kcal/(mol·rad²)."""
 
@@ -39,6 +34,7 @@ _ConstrainedMinimizationFn = Callable[
         numpy.ndarray,
         tuple[int, int, int, int],
         float,
+        int,
     ],
     tuple[numpy.ndarray, float],
 ]
@@ -175,13 +171,29 @@ class ConstrainedMinimizationError(Exception):
     pass
 
 
+def _find_unused_force_group(system: openmm.System) -> int:
+    """Return the highest-numbered force group not currently used by any force in the system.
+
+    OpenMM supports force groups 0–31.
+
+    Raises:
+        RuntimeError: If all 32 force groups are already in use.
+
+    """
+    used = {system.getForce(i).getForceGroup() for i in range(system.getNumForces())}
+    for group in range(31, -1, -1):
+        if group not in used:
+            return group
+    raise RuntimeError("All 32 force groups are already in use; cannot add restraint forces.")
+
+
 def _restrain_omm_system(
     mol: Molecule,
     system: openmm.System,
     positions: numpy.ndarray,
     dihedral_indices: tuple[int, int, int, int],
     restraint_k: float,
-    force_group: int = _POSITIONAL_RESTRAINT_FORCE_GROUP,
+    force_group: int = 31,
 ) -> None:
     """Add a restraint to all atoms except those in the dihedral."""
     restraint_force = openmm.CustomExternalForce("0.5*k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
@@ -291,6 +303,7 @@ def _minimize_openmm_atoms_frozen(
     positions: numpy.ndarray,
     dihedral_indices: tuple[int, int, int, int],
     angle: float,
+    restraint_force_group: int,
 ) -> tuple[numpy.ndarray, float]:
     """Minimize a molecule with OpenMM with 'constraints' on a dihedral."""
     # Add the "dihedral constraint" by zeroing the masses of the dihedral atoms
@@ -310,7 +323,7 @@ def _minimize_openmm_torsion_restrained(
     positions: numpy.ndarray,
     dihedral_indices: tuple[int, int, int, int],
     angle: float,
-    restraint_force_group: int = _POSITIONAL_RESTRAINT_FORCE_GROUP,
+    restraint_force_group: int,
 ) -> tuple[numpy.ndarray, float]:
     """Minimize a molecule with OpenMM with a strong harmonic restraint on a dihedral.
 
@@ -444,6 +457,8 @@ def _run_minimization_constrained(
     atom_indices = list(range(len(molecule.atoms)))
     atom_indices = sorted(set(atom_indices))  # - set([index - 0 for index in input.dihedral_indices]))
 
+    restraint_group = _find_unused_force_group(system)
+
     # Add the restraint force to the system
     _restrain_omm_system(
         mol=molecule,
@@ -451,6 +466,7 @@ def _run_minimization_constrained(
         positions=input.coordinates,
         dihedral_indices=input.dihedral_indices,
         restraint_k=input.restraint_k,
+        force_group=restraint_group,
     )
 
     LOGGER.debug("Trying to minimize energy")
@@ -461,6 +477,7 @@ def _run_minimization_constrained(
             input.coordinates,
             input.dihedral_indices,
             input.grid_id,
+            restraint_group,
         )
     except Exception as e:
         raise ConstrainedMinimizationError(f"Minimization failed for {input=} : {e}") from e

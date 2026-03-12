@@ -12,9 +12,9 @@ from yammbs._forcefields import build_omm_system
 from yammbs.analysis import get_rmsd
 from yammbs.torsion._minimize import (
     _CONSTRAINED_MINIMIZATION_REGISTRY,
-    _POSITIONAL_RESTRAINT_FORCE_GROUP,
     ConstrainedMinimizationInput,
     ConstrainedMinimizationResult,
+    _find_unused_force_group,
     _restrain_omm_system,
     _run_minimization_constrained,
 )
@@ -268,7 +268,7 @@ def test_positional_restraint_not_included_in_energy(base_minimization_input):
 
     A massive positional restraint contributes an enormous energy when atoms are
     displaced from their reference positions. The groups_mask must exclude
-    _POSITIONAL_RESTRAINT_FORCE_GROUP so the reported energy reflects only the
+    restraint force group so the reported energy reflects only the
     MM force field, not the restraint.
     """
     from openff.toolkit import Molecule
@@ -285,6 +285,8 @@ def test_positional_restraint_not_included_in_energy(base_minimization_input):
         molecule=mol,
     )
 
+    restraint_group = _find_unused_force_group(system)
+
     # Add a massive positional restraint anchored at reference_positions
     _restrain_omm_system(
         mol=mol,
@@ -292,7 +294,7 @@ def test_positional_restraint_not_included_in_energy(base_minimization_input):
         positions=reference_positions,
         dihedral_indices=base_minimization_input.dihedral_indices,
         restraint_k=1e10,
-        force_group=_POSITIONAL_RESTRAINT_FORCE_GROUP,
+        force_group=restraint_group,
     )
 
     context = openmm.Context(
@@ -308,7 +310,7 @@ def test_positional_restraint_not_included_in_energy(base_minimization_input):
     )
 
     # Energy excluding the restraint group — should be the pure MM energy
-    groups_mask = sum(1 << group for group in range(32) if group != _POSITIONAL_RESTRAINT_FORCE_GROUP)
+    groups_mask = sum(1 << group for group in range(32) if group != restraint_group)
     energy_excluding_restraint = (
         context.getState(getEnergy=True, groups=groups_mask)
         .getPotentialEnergy()
