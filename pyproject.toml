@@ -34,19 +34,6 @@ lint.select = [ "D", "E", "F", "I", "NPY", "RUF027", "UP", "W" ]
 lint.ignore = [ "D105", "D107" ]
 lint.preview = true
 
-[tool.pytest]
-ini_options.addopts = "--cov=yammbs/ --cov-report=xml --cov-config=pyproject.toml"
-
-[tool.coverage]
-run.omit = [
-  "yammbs/_tests/*",
-]
-report.exclude_lines = [
-  "if TYPE_CHECKING:",
-  "pragma: no cover",
-  "raise NotImplementedError",
-]
-
 [tool.mypy]
 exclude = [
   "scripts/",
@@ -83,3 +70,16 @@ module = [
   "panel",
 ]
 ignore_missing_imports = true
+
+[tool.pytest]
+ini_options.addopts = "--cov=yammbs/ --cov-report=xml --cov-config=pyproject.toml"
+
+[tool.coverage]
+run.omit = [
+  "yammbs/_tests/*",
+]
+report.exclude_lines = [
+  "if TYPE_CHECKING:",
+  "pragma: no cover",
+  "raise NotImplementedError",
+]
