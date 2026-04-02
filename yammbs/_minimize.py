@@ -1,67 +1,42 @@
-import functools
 import logging
-import re
-from collections.abc import Iterator
+from abc import ABC
+from collections.abc import Callable, Iterator
 from multiprocessing import Pool
+from typing import Literal
 
 import numpy
 import openmm
 import openmm.unit
-from openff.toolkit import ForceField, Molecule
+from openff.interchange.exceptions import UnassignedValenceError
+from openff.interchange.operations.minimize import (
+    _DEFAULT_ENERGY_MINIMIZATION_TOLERANCE,
+)
+from openff.toolkit import Molecule
 from openff.toolkit.typing.engines.smirnoff import get_available_force_fields
 from pydantic import Field
 from tqdm import tqdm
 
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
+from yammbs._forcefields import build_omm_system
+
+_DEFAULT_ENERGY_MINIMIZATION_MAX_ITERATIONS = 10_000
 
 _AVAILABLE_FORCE_FIELDS = get_available_force_fields()
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
 
-
-def _shorthand_to_full_force_field_name(
-    shorthand: str,
-    make_unconstrained: bool = True,
-) -> str:
-    """Make i.e. `openff-2.1.0` into `openff_unconstrained-2.1.0.offxml`."""
-    if make_unconstrained:
-        # Split on '-' immediately followed by a number;
-        # cannot split on '-' because of i.e. 'de-force-1.0.0'
-        prefix, version, _ = re.split(r"-([\d.]+)", shorthand, maxsplit=1)
-
-        return f"{prefix}_unconstrained-{version}.offxml"
-    else:
-        return shorthand + ".offxml"
-
-
-@functools.lru_cache(maxsize=1)
-def _lazy_load_force_field(force_field_name: str) -> ForceField:
-    """Attempt to load a force field from a shorthand string or a file path.
-
-    Caching is used to speed up loading; a single force field takes O(100 ms) to
-    load, but the cache takes O(10 ns) to access. The cache key is simply the
-    argument passed to this function; a hash collision should only occur when
-    two identical strings are expected to return different force fields, which
-    seems like an assumption that the toolkit has always made anyway.
-    """
-    if not force_field_name.endswith(".offxml"):
-        force_field_name = _shorthand_to_full_force_field_name(
-            force_field_name,
-            make_unconstrained=True,
-        )
-
-    return ForceField(
-        force_field_name,
-        allow_cosmetic_attributes=True,
-        load_plugins=True,
-    )
+_MinimizationFn = Callable[
+    [Molecule, openmm.System, numpy.ndarray],
+    tuple[numpy.ndarray, float],
+]
 
 
 def _minimize_blob(
     input: dict[str, list],
     force_field: str,
+    method: Literal["openmm"] = "openmm",
     n_processes: int = 2,
     chunksize=32,
 ) -> Iterator["MinimizationResult"]:
@@ -74,6 +49,7 @@ def _minimize_blob(
             force_field=force_field,
             mapped_smiles=row["mapped_smiles"],
             coordinates=row["coordinates"],
+            method=method,
         )
         for inchi_key in input
         for row in input[inchi_key]
@@ -82,7 +58,7 @@ def _minimize_blob(
     with Pool(processes=n_processes) as pool:
         for val in tqdm(
             pool.imap(
-                _run_openmm,
+                _run_minimization,
                 inputs,
                 chunksize=chunksize,
             ),
@@ -93,7 +69,7 @@ def _minimize_blob(
                 yield val
 
 
-class MinimizationInput(ImmutableModel):
+class MinimizationBase(ImmutableModel, ABC):
     inchi_key: str = Field(..., description="The InChI key of the molecule")
     qcarchive_id: int = Field(
         ...,
@@ -112,77 +88,30 @@ class MinimizationInput(ImmutableModel):
         description="The coordinates [Angstrom] of this conformer with shape=(n_atoms, 3).",
     )
 
+    method: Literal["openmm"] = Field(
+        "openmm",
+        description="The minimization method to use",
+    )
 
-class MinimizationResult(ImmutableModel):
-    # This could probably just subclass and add on the energy field?
-    inchi_key: str = Field(..., description="The InChI key of the molecule")
-    qcarchive_id: int
-    force_field: str
-    mapped_smiles: str
-    coordinates: Array
+    @property
+    def minimization_function(self) -> _MinimizationFn:
+        return _minimize_openmm
+
+
+class MinimizationInput(MinimizationBase):
+    pass
+
+
+class MinimizationResult(MinimizationBase):
     energy: float = Field(..., description="Minimized energy in kcal/mol")
 
 
-def _run_openmm(
-    input: MinimizationInput,
-) -> MinimizationResult | None:
-    from openff.interchange.exceptions import UnassignedValenceError
-
-    inchi_key: str = input.inchi_key
-    qcarchive_id: int = input.qcarchive_id
-    positions: numpy.ndarray = input.coordinates
-
-    molecule = Molecule.from_mapped_smiles(
-        input.mapped_smiles,
-        allow_undefined_stereo=True,
-    )
-
-    if input.force_field.startswith("gaff"):
-        from yammbs._forcefields import _gaff
-
-        system = _gaff(
-            molecule=molecule,
-            force_field_name=input.force_field,
-        )
-
-    elif input.force_field.startswith("espaloma"):
-        from yammbs._forcefields import _espaloma
-
-        system = _espaloma(
-            molecule=molecule,
-            force_field_name=input.force_field,
-        )
-
-    else:
-        try:
-            force_field = _lazy_load_force_field(input.force_field)
-        except KeyError:
-            # Attempt to load from local path
-            try:
-                force_field = ForceField(
-                    input.force_field,
-                    allow_cosmetic_attributes=True,
-                    load_plugins=True,
-                )
-            except Exception as error:
-                # The toolkit does a poor job of distinguishing between a string
-                # argument being a file that does not exist and a file that it should
-                # try to parse (polymorphic input), so just have to clobber whatever
-                raise NotImplementedError(
-                    f"Could not find or parse force field {input.force_field}",
-                ) from error
-
-        try:
-            system = force_field.create_interchange(molecule.to_topology()).to_openmm(
-                combine_nonbonded_forces=False,
-            )
-        except UnassignedValenceError:
-            logger.warning(f"Skipping record {qcarchive_id} with unassigned valence terms")
-            return None
-        except ValueError as e:  # charging error
-            logger.warning(f"Skipping record {qcarchive_id} with a value error (probably a charge failure): {e}")
-            return None
-
+def _minimize_openmm(
+    mol: Molecule,
+    system: openmm.System,
+    positions: numpy.ndarray,
+) -> tuple[numpy.ndarray, float]:
+    """Minimize a system using OpenMM's LocalEnergyMinimizer."""
     context = openmm.Context(
         system,
         openmm.VerletIntegrator(0.1 * openmm.unit.femtoseconds),
@@ -192,10 +121,83 @@ def _run_openmm(
     context.setPositions(
         (positions * openmm.unit.angstrom).in_units_of(openmm.unit.nanometer),
     )
+
+    # TODO: Remove this?
+    context.computeVirtualSites()
+
+    # Log the initial energy
+    initial_energy = (
+        context.getState(getEnergy=True)
+        .getPotentialEnergy()
+        .value_in_unit(
+            openmm.unit.kilocalorie_per_mole,
+        )
+    )
+    logger.info(f"Initial energy: {initial_energy} kcal/mol")
+
+    # Log initial positions
+    initial_positions = (
+        context.getState(getPositions=True)
+        .getPositions(
+            asNumpy=True,
+        )
+        .value_in_unit(openmm.unit.angstrom)
+    )
+    logger.debug(f"Initial positions (Angstrom): {initial_positions}")
+
     openmm.LocalEnergyMinimizer.minimize(
         context=context,
-        tolerance=10,
-        maxIterations=0,
+        tolerance=_DEFAULT_ENERGY_MINIMIZATION_TOLERANCE.to_openmm(),
+        maxIterations=_DEFAULT_ENERGY_MINIMIZATION_MAX_ITERATIONS,
+    )
+
+    final_positions = (
+        context.getState(getPositions=True)
+        .getPositions(
+            asNumpy=True,
+        )
+        .value_in_unit(openmm.unit.angstrom)
+    )
+
+    final_energy = (
+        context.getState(getEnergy=True)
+        .getPotentialEnergy()
+        .value_in_unit(
+            openmm.unit.kilocalorie_per_mole,
+        )
+    )
+
+    return final_positions, final_energy
+
+
+def _run_minimization(
+    input: MinimizationInput,
+) -> MinimizationResult | None:
+    inchi_key: str = input.inchi_key
+    qcarchive_id: int = input.qcarchive_id
+    positions: numpy.ndarray = input.coordinates
+
+    molecule = Molecule.from_mapped_smiles(
+        input.mapped_smiles,
+        allow_undefined_stereo=True,
+    )
+
+    try:
+        system = build_omm_system(
+            force_field=input.force_field,
+            molecule=molecule,
+        )
+    except UnassignedValenceError:
+        logger.warning(f"Skipping record {qcarchive_id} with unassigned valence terms")
+        return None
+    except ValueError as e:  # charging error
+        logger.warning(f"Skipping record {qcarchive_id} with a value error (probably a charge failure): {e}")
+        return None
+
+    final_positions, final_energy = input.minimization_function(
+        molecule,
+        system,
+        positions,
     )
 
     return MinimizationResult(
@@ -203,12 +205,7 @@ def _run_openmm(
         qcarchive_id=qcarchive_id,
         force_field=input.force_field,
         mapped_smiles=input.mapped_smiles,
-        coordinates=context.getState(getPositions=True).getPositions(asNumpy=True).value_in_unit(openmm.unit.angstrom),
-        energy=context.getState(
-            getEnergy=True,
-        )
-        .getPotentialEnergy()
-        .value_in_unit(
-            openmm.unit.kilocalorie_per_mole,
-        ),
+        coordinates=final_positions,
+        energy=final_energy,
+        method=input.method,
     )
