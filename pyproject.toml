@@ -66,6 +66,7 @@ module = [
   "qcelemental",
   "openff.qcsubmit.results",
   "MDAnalysis",
+  "MDAnalysis.analysis.dihedrals",
   "bokeh",
   "panel",
 ]

@@ -1,13 +1,22 @@
 """Tests torsion minimization."""
 
+import copy
+
+import numpy
+import openmm
+import openmm.unit
 import pytest
 from openff.toolkit import ForceField, Molecule
 
+from yammbs._forcefields import build_omm_system
 from yammbs.analysis import get_rmsd
 from yammbs.torsion._minimize import (
+    _CONSTRAINED_MINIMIZATION_REGISTRY,
     ConstrainedMinimizationInput,
     ConstrainedMinimizationResult,
-    _minimize_constrained,
+    _find_unused_force_group,
+    _restrain_omm_system,
+    _run_minimization_constrained,
 )
 from yammbs.torsion._store import TorsionStore
 from yammbs.torsion.inputs import QCArchiveTorsionDataset, QCArchiveTorsionProfile
@@ -15,65 +24,79 @@ from yammbs.torsion.inputs import QCArchiveTorsionDataset, QCArchiveTorsionProfi
 
 @pytest.fixture
 def pentane_molecule() -> Molecule:
-    """Create pentane molecule with a conformer."""
-    pentane = Molecule.from_smiles("CCCCC")
-    pentane.generate_conformers(n_conformers=1)
+    """Return a pentane with one conformer."""
+    pentane = Molecule.from_mapped_smiles(
+        "[C:1]([H:6])([H:7])([H:8])[C:2]([H:9])([H:10])[C:3]([H:11])([H:12])[C:4]([H:13])([H:14])[C:5]([H:15])([H:16])[H:17]",
+    )
+
+    positions = openmm.unit.Quantity(
+        numpy.array(
+            [
+                [-0.91508573, 0.29544935, -2.34612298],
+                [-0.71728516, -0.49414062, -1.06152344],
+                [0.11737061, 0.28637695, -0.04742432],
+                [0.31494141, -0.50927734, 1.24316406],
+                [1.13239932, 0.24814101, 2.24388671],
+                [-1.51401126, -0.27057582, -3.0674386],
+                [-1.43489695, 1.23460948, -2.13688302],
+                [0.0461266, 0.53576541, -2.81141567],
+                [-1.6965872, -0.73367834, -0.63261503],
+                [-0.224279, -1.44469547, -1.29724395],
+                [-0.3737793, 1.24023438, 0.18041992],
+                [1.09472656, 0.53173828, -0.48168945],
+                [0.8140077, -1.46017945, 1.02239442],
+                [-0.65867734, -0.74810833, 1.68678439],
+                [1.26303411, -0.33726859, 3.16079259],
+                [0.6256721, 1.18306684, 2.50701475],
+                [2.11578083, 0.49720106, 1.83249044],
+            ],
+        ),
+        openmm.unit.angstrom,
+    )
+
+    pentane.add_conformer(positions)
+
     return pentane
 
 
 @pytest.fixture
-def pentane_unrestrained_minimization_result(
-    pentane_molecule,
-) -> ConstrainedMinimizationResult:
-    """Create pentane input with restraint_k set to 0.0."""
-    min_input = ConstrainedMinimizationInput(
-        torsion_id=100,
+def base_minimization_input(pentane_molecule) -> ConstrainedMinimizationInput:
+    """Fixture for different pentane minimizations."""
+    return ConstrainedMinimizationInput(
+        torsion_id=100,  # Arbitrary
         mapped_smiles=pentane_molecule.to_smiles(mapped=True),
         dihedral_indices=[0, 1, 2, 3],
         force_field="openff-2.0.0",
         coordinates=pentane_molecule.conformers[0].m_as("angstrom"),
-        grid_id=15.0,  # arbitrary
-        restraint_k=0.0,
+        grid_id=180.0,
+        method="openmm_torsion_restrained",
     )
-
-    result = _minimize_constrained(min_input)
-
-    return result
 
 
 @pytest.fixture
-def pentane_restrained_minimization_result(
-    pentane_molecule,
+def pentane_openmm_unrestrained_result(
+    base_minimization_input,
 ) -> ConstrainedMinimizationResult:
-    """Create pentane input with restraint_k set to 5.0."""
-    min_input = ConstrainedMinimizationInput(
-        torsion_id=100,
-        mapped_smiles=pentane_molecule.to_smiles(mapped=True),
-        dihedral_indices=[0, 1, 2, 3],
-        force_field="openff-2.0.0",
-        coordinates=pentane_molecule.conformers[0].m_as("angstrom"),
-        grid_id=15.0,  # arbitrary
-        restraint_k=5.0,
-    )
-
-    result = _minimize_constrained(min_input)
-
-    return result
+    """Fixture of unrestrained minimization with OpenMM."""
+    return _run_minimization_constrained(base_minimization_input)
 
 
-def test_minimization_basic(pentane_restrained_minimization_result):
-    """Test basic functionality of constrained minimization, only inspecting fixture."""
-    # these models don't track the (MM) energy before the (constrained) minimization
-    # is there any reason to?
+@pytest.fixture
+def pentane_openmm_restrained_result(
+    base_minimization_input,
+) -> ConstrainedMinimizationResult:
+    """Fixture of restrained minimization with OpenMM."""
+    min_input = copy.deepcopy(base_minimization_input)
+    min_input_dict = min_input.model_dump()
+    min_input_dict["restraint_k"] = 1.0  # apply restraints
 
-    # just check the minimization succeeded and produced non-NaN
-    assert isinstance(pentane_restrained_minimization_result.energy, float)
+    return _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
 
 
 def test_restraining_reduces_rmsd(
     pentane_molecule,
-    pentane_unrestrained_minimization_result,
-    pentane_restrained_minimization_result,
+    pentane_openmm_restrained_result,
+    pentane_openmm_unrestrained_result,
 ):
     """Test that restraints reduce coordinate deviation from initial structure."""
     reference_coords = pentane_molecule.conformers[0].m_as("angstrom")
@@ -81,12 +104,12 @@ def test_restraining_reduces_rmsd(
     unrestrained_rmsd = get_rmsd(
         pentane_molecule,
         reference=reference_coords,
-        target=pentane_unrestrained_minimization_result.coordinates,
+        target=pentane_openmm_unrestrained_result.coordinates,
     )
     restrained_rmsd = get_rmsd(
         pentane_molecule,
         reference=reference_coords,
-        target=pentane_restrained_minimization_result.coordinates,
+        target=pentane_openmm_restrained_result.coordinates,
     )
     assert restrained_rmsd < unrestrained_rmsd
     print(
@@ -131,7 +154,11 @@ def test_failed_minimizations(tmp_path, capsys, failure_case):
     )
 
     assert len(store.get_qm_points_by_torsion_id(12345)) == 3
-    assert store.get_qm_energies_by_torsion_id(12345) == {-15.0: -100.0, 0.0: -110.0, 15.0: -105.0}
+    assert store.get_qm_energies_by_torsion_id(12345) == {
+        -15.0: -100.0,
+        0.0: -110.0,
+        15.0: -105.0,
+    }
 
     sage = ForceField("openff-2.0.0.offxml")
 
@@ -154,3 +181,167 @@ def test_failed_minimizations(tmp_path, capsys, failure_case):
 
     # caplog fixture is supposed to handle this, but capsys is more reliable
     assert failure_case in capsys.readouterr().err, capsys.readouterr().err
+
+
+def test_minimization_registry_complete():
+    """Test that the minimization registry contains all expected methods."""
+    expected_methods = {"openmm_torsion_atoms_frozen", "openmm_torsion_restrained"}
+    assert set(_CONSTRAINED_MINIMIZATION_REGISTRY.keys()) == expected_methods
+
+    # Verify all values are callable
+    for method, func in _CONSTRAINED_MINIMIZATION_REGISTRY.items():
+        assert callable(func), f"Registry entry for {method} is not callable"
+
+
+@pytest.mark.parametrize(
+    "method",
+    ["openmm_torsion_atoms_frozen", "openmm_torsion_restrained"],
+)
+def test_all_methods_complete_successfully(
+    method,
+    base_minimization_input,
+):
+    """Test that all minimization methods complete without errors."""
+    min_input_dict = base_minimization_input.model_dump()
+    min_input_dict["method"] = method
+
+    result = _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
+
+    assert result is not None
+    assert result.method == method
+    assert isinstance(result.energy, float)
+    assert numpy.isfinite(result.energy), f"Energy should be finite, got {result.energy}"
+    assert result.coordinates.shape == base_minimization_input.coordinates.shape
+
+
+def test_openmm_restrained_maintains_dihedral_angle(
+    base_minimization_input,
+    pentane_molecule,
+):
+    """Test that openmm_restrained maintains the target dihedral angle."""
+    import MDAnalysis as mda
+    from MDAnalysis.analysis.dihedrals import Dihedral
+
+    # Test at different angles
+    for target_angle in [60.0, 120.0, 180.0, -120.0]:
+        min_input_dict = base_minimization_input.model_dump()
+        min_input_dict["method"] = "openmm_torsion_restrained"
+        min_input_dict["grid_id"] = target_angle
+
+        result = _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
+
+        # Calculate the final dihedral angle using MDAnalysis
+        u = mda.Universe.empty(n_atoms=pentane_molecule.n_atoms, trajectory=True)
+        u.load_new(result.coordinates, order="fac")
+
+        dihedral_calc = Dihedral([u.atoms[list(result.dihedral_indices)]])
+        dihedral_calc.run()
+        final_angle = dihedral_calc.results.angles[0][0]
+
+        # Allow small tolerance for strong restraints
+        angle_diff = abs(final_angle - target_angle)
+        # Handle wrapping around ±180
+        if angle_diff > 180:
+            angle_diff = 360 - angle_diff
+
+        assert angle_diff < 0.001, f"Target: {target_angle}°, Final: {final_angle:.2f}°, Diff: {angle_diff:.2f}°"
+
+
+@pytest.mark.parametrize("method", ["openmm_torsion_atoms_frozen", "openmm_torsion_restrained"])
+def test_method_with_positional_restraints(
+    method,
+    base_minimization_input,
+    pentane_molecule,
+):
+    """Test that positional restraints work with all minimization methods."""
+    min_input_dict = base_minimization_input.model_dump()
+    min_input_dict["method"] = method
+    min_input_dict["restraint_k"] = 10.0  # Apply strong positional restraints
+
+    result = _run_minimization_constrained(ConstrainedMinimizationInput(**min_input_dict))
+
+    assert result is not None
+
+
+def test_positional_restraint_not_included_in_energy(base_minimization_input):
+    """Test that positional restraint forces are excluded from the reported energy.
+
+    A massive positional restraint contributes an enormous energy when atoms are
+    displaced from their reference positions. The groups_mask must exclude
+    restraint force group so the reported energy reflects only the
+    MM force field, not the restraint.
+    """
+    from openff.toolkit import Molecule
+
+    mol = Molecule.from_mapped_smiles(base_minimization_input.mapped_smiles, allow_undefined_stereo=True)
+
+    # Use the input coordinates as the restraint reference positions, then
+    # perturb slightly so the restraint has non-zero energy when evaluated.
+    reference_positions = base_minimization_input.coordinates
+    eval_positions = reference_positions * 1.05  # 5% displacement — restraint is non-zero
+
+    system = build_omm_system(
+        force_field=base_minimization_input.force_field,
+        molecule=mol,
+    )
+
+    restraint_group = _find_unused_force_group(system)
+
+    # Add a massive positional restraint anchored at reference_positions
+    _restrain_omm_system(
+        mol=mol,
+        system=system,
+        positions=reference_positions,
+        dihedral_indices=base_minimization_input.dihedral_indices,
+        restraint_k=1e10,
+        force_group=restraint_group,
+    )
+
+    context = openmm.Context(
+        system,
+        openmm.VerletIntegrator(0.1 * openmm.unit.femtoseconds),
+        openmm.Platform.getPlatformByName("Reference"),
+    )
+    context.setPositions((eval_positions * openmm.unit.angstrom).in_units_of(openmm.unit.nanometer))
+
+    # Energy including the restraint group — should be enormous
+    energy_all_groups = (
+        context.getState(getEnergy=True).getPotentialEnergy().value_in_unit(openmm.unit.kilocalorie_per_mole)
+    )
+
+    # Energy excluding the restraint group — should be the pure MM energy
+    groups_mask = sum(1 << group for group in range(32) if group != restraint_group)
+    energy_excluding_restraint = (
+        context.getState(getEnergy=True, groups=groups_mask)
+        .getPotentialEnergy()
+        .value_in_unit(openmm.unit.kilocalorie_per_mole)
+    )
+
+    # The restraint must contribute non-negligible energy when atoms are displaced
+    assert abs(energy_all_groups - energy_excluding_restraint) > 1.0, (
+        "Massive positional restraint had no effect on energy — was it assigned to the correct force group?"
+    )
+
+    # The MM energy (excluding restraint) must equal the energy from a system
+    # with no positional restraint at the same positions
+    system_no_restraint = build_omm_system(
+        force_field=base_minimization_input.force_field,
+        molecule=mol,
+    )
+    context_no_restraint = openmm.Context(
+        system_no_restraint,
+        openmm.VerletIntegrator(0.1 * openmm.unit.femtoseconds),
+        openmm.Platform.getPlatformByName("Reference"),
+    )
+    context_no_restraint.setPositions((eval_positions * openmm.unit.angstrom).in_units_of(openmm.unit.nanometer))
+    energy_no_restraint = (
+        context_no_restraint.getState(getEnergy=True)
+        .getPotentialEnergy()
+        .value_in_unit(openmm.unit.kilocalorie_per_mole)
+    )
+
+    assert energy_excluding_restraint == pytest.approx(energy_no_restraint, rel=1e-10), (
+        f"Positional restraint leaked into reported energy: "
+        f"excluding_restraint={energy_excluding_restraint}, "
+        f"no_restraint={energy_no_restraint}"
+    )
