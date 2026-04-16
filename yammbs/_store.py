@@ -587,7 +587,7 @@ class MoleculeStore:
         )
 
         _minimized_blob = _minimize_blob(
-            input=inchi_key_qm_conformer_mapping,
+            minimization_input=inchi_key_qm_conformer_mapping,
             force_field=force_field,
             method=method,
             n_processes=n_processes,

@@ -33,7 +33,7 @@ _MinimizationFn = Callable[
 
 
 def _minimize_blob(
-    input: dict[str, list],
+    minimization_input: dict[str, list],
     force_field: str,
     method: Literal["openmm"] = "openmm",
     n_processes: int = 2,
@@ -50,8 +50,8 @@ def _minimize_blob(
             coordinates=row["coordinates"],
             method=method,
         )
-        for inchi_key in input
-        for row in input[inchi_key]
+        for inchi_key in minimization_input
+        for row in minimization_input[inchi_key]
     ]
 
     with Pool(processes=n_processes) as pool:
@@ -170,20 +170,20 @@ def _minimize_openmm(
 
 
 def _run_minimization(
-    input: MinimizationInput,
+    minimization_input: MinimizationInput,
 ) -> MinimizationResult | None:
-    inchi_key: str = input.inchi_key
-    qcarchive_id: int = input.qcarchive_id
-    positions: numpy.ndarray = input.coordinates
+    inchi_key: str = minimization_input.inchi_key
+    qcarchive_id: int = minimization_input.qcarchive_id
+    positions: numpy.ndarray = minimization_input.coordinates
 
     molecule = Molecule.from_mapped_smiles(
-        input.mapped_smiles,
+        minimization_input.mapped_smiles,
         allow_undefined_stereo=True,
     )
 
     try:
         system = build_omm_system(
-            force_field=input.force_field,
+            force_field=minimization_input.force_field,
             molecule=molecule,
         )
     except UnassignedValenceError:
@@ -197,7 +197,7 @@ def _run_minimization(
         )
         return None
 
-    final_positions, final_energy = input.minimization_function(
+    final_positions, final_energy = minimization_input.minimization_function(
         molecule,
         system,
         positions,
@@ -211,9 +211,9 @@ def _run_minimization(
     return MinimizationResult(
         inchi_key=inchi_key,
         qcarchive_id=qcarchive_id,
-        force_field=input.force_field,
-        mapped_smiles=input.mapped_smiles,
+        force_field=minimization_input.force_field,
+        mapped_smiles=minimization_input.mapped_smiles,
         coordinates=final_positions,
         energy=final_energy,
-        method=input.method,
+        method=minimization_input.method,
     )

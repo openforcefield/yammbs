@@ -436,7 +436,7 @@ def _minimize_openmm_torsion_restrained(
 
 
 def _run_minimization_constrained(
-    input: ConstrainedMinimizationInput,
+    minimization_input: ConstrainedMinimizationInput,
 ) -> ConstrainedMinimizationResult | None:
     """Taken from openff-strike-team 10/31/24.
 
@@ -445,33 +445,32 @@ def _run_minimization_constrained(
     from openff.interchange.exceptions import UnassignedValenceError
     from openff.toolkit import Molecule
 
-    LOGGER.debug("Constrained minimization method: %s", input.method)
+    LOGGER.debug("Constrained minimization method: %s", minimization_input.method)
 
-    LOGGER.debug("Setting up constrained minimization for input=%s", input.model_dump())
+    LOGGER.debug("Setting up constrained minimization for input=%s", minimization_input.model_dump())
 
-    LOGGER.debug("Creating molecule from mapped_smiles=%s", input.mapped_smiles)
-    molecule = Molecule.from_mapped_smiles(input.mapped_smiles, allow_undefined_stereo=True)
-    # molecule.add_conformer(Quantity(input.coordinates, "angstrom"))
+    LOGGER.debug("Creating molecule from mapped_smiles=%s", minimization_input.mapped_smiles)
+    molecule = Molecule.from_mapped_smiles(minimization_input.mapped_smiles, allow_undefined_stereo=True)
 
-    LOGGER.debug("Creating OpenMM system with force field=%s", input.force_field)
+    LOGGER.debug("Creating OpenMM system with force field=%s", minimization_input.force_field)
     try:
         system = build_omm_system(
-            force_field=input.force_field,
+            force_field=minimization_input.force_field,
             molecule=molecule,
         )
     except UnassignedValenceError:
-        LOGGER.warning("Skipping record %s with unassigned valence terms", input.torsion_id)
+        LOGGER.warning("Skipping record %s with unassigned valence terms", minimization_input.torsion_id)
         return None
     except (RuntimeError, ValueError) as e:  # charging error
         LOGGER.warning(
             "Skipping record %s with a value error (probably a charge failure): %s",
-            input.torsion_id,
+            minimization_input.torsion_id,
             e,
         )
         return None
 
     atom_indices = list(range(len(molecule.atoms)))
-    atom_indices = sorted(set(atom_indices))  # - set([index - 0 for index in input.dihedral_indices]))
+    atom_indices = sorted(set(atom_indices))  # - set([index - 0 for index in minimization_input.dihedral_indices]))
 
     restraint_group = _find_unused_force_group(system)
 
@@ -479,42 +478,42 @@ def _run_minimization_constrained(
     _restrain_omm_system(
         mol=molecule,
         system=system,
-        positions=input.coordinates,
-        dihedral_indices=input.dihedral_indices,
-        restraint_k=input.restraint_k,
+        positions=minimization_input.coordinates,
+        dihedral_indices=minimization_input.dihedral_indices,
+        restraint_k=minimization_input.restraint_k,
         force_group=restraint_group,
     )
 
     LOGGER.debug("Trying to minimize energy")
     try:
-        final_positions, final_energy = input.constrained_minimization_function(
+        final_positions, final_energy = minimization_input.constrained_minimization_function(
             molecule,
             system,
-            input.coordinates,
-            input.dihedral_indices,
-            input.grid_id,
+            minimization_input.coordinates,
+            minimization_input.dihedral_indices,
+            minimization_input.grid_id,
             restraint_group,
         )
     except Exception as e:
         raise ConstrainedMinimizationError(
-            f"Minimization failed for torsion_id={input.torsion_id}, method={input.method}, "
-            f"force_field={input.force_field}: {e}",
+            f"Minimization failed for torsion_id={minimization_input.torsion_id}, method={minimization_input.method}, "
+            f"force_field={minimization_input.force_field}: {e}",
         ) from e
 
     LOGGER.debug(
         "Completed constrained minimization for torsion_id=%s with final energy=%s kcal/mol",
-        input.torsion_id,
+        minimization_input.torsion_id,
         final_energy,
     )
 
     LOGGER.debug("Returning result")
     return ConstrainedMinimizationResult(
-        torsion_id=input.torsion_id,
-        mapped_smiles=input.mapped_smiles,
-        dihedral_indices=input.dihedral_indices,
-        force_field=input.force_field,
+        torsion_id=minimization_input.torsion_id,
+        mapped_smiles=minimization_input.mapped_smiles,
+        dihedral_indices=minimization_input.dihedral_indices,
+        force_field=minimization_input.force_field,
         coordinates=final_positions,
         energy=final_energy,
-        grid_id=input.grid_id,
-        method=input.method,
+        grid_id=minimization_input.grid_id,
+        method=minimization_input.method,
     )
