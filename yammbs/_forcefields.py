@@ -47,8 +47,6 @@ def _lazy_load_force_field(force_field_name: str) -> ForceField:
 
 
 def _smirnoff(molecule: Molecule, force_field_path: str) -> openmm.System:
-    from openff.toolkit import ForceField
-
     try:
         force_field = _lazy_load_force_field(force_field_path)
     except KeyError:
