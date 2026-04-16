@@ -25,7 +25,6 @@ _DEFAULT_ENERGY_MINIMIZATION_MAX_ITERATIONS = 10_000
 _AVAILABLE_FORCE_FIELDS = get_available_force_fields()
 
 logger = logging.getLogger(__name__)
-logging.basicConfig()
 
 _MinimizationFn = Callable[
     [Molecule, openmm.System, numpy.ndarray],
@@ -132,7 +131,7 @@ def _minimize_openmm(
             openmm.unit.kilocalorie_per_mole,
         )
     )
-    logger.info(f"Initial energy: {initial_energy} kcal/mol")
+    logger.debug("Initial energy: %s kcal/mol", initial_energy)
 
     # Log initial positions
     initial_positions = (
@@ -142,7 +141,7 @@ def _minimize_openmm(
         )
         .value_in_unit(openmm.unit.angstrom)
     )
-    logger.debug(f"Initial positions (Angstrom): {initial_positions}")
+    logger.debug("Initial positions (Angstrom): %s", initial_positions)
 
     openmm.LocalEnergyMinimizer.minimize(
         context=context,
@@ -165,6 +164,7 @@ def _minimize_openmm(
             openmm.unit.kilocalorie_per_mole,
         )
     )
+    logger.debug("Final energy: %s kcal/mol", final_energy)
 
     return final_positions, final_energy
 
@@ -187,16 +187,25 @@ def _run_minimization(
             molecule=molecule,
         )
     except UnassignedValenceError:
-        logger.warning(f"Skipping record {qcarchive_id} with unassigned valence terms")
+        logger.warning("Skipping record %s with unassigned valence terms", qcarchive_id)
         return None
     except ValueError as e:  # charging error
-        logger.warning(f"Skipping record {qcarchive_id} with a value error (probably a charge failure): {e}")
+        logger.warning(
+            "Skipping record %s with a value error (probably a charge failure): %s",
+            qcarchive_id,
+            e,
+        )
         return None
 
     final_positions, final_energy = input.minimization_function(
         molecule,
         system,
         positions,
+    )
+    logger.debug(
+        "Completed minimization for qcarchive_id=%s with final energy=%s kcal/mol",
+        qcarchive_id,
+        final_energy,
     )
 
     return MinimizationResult(

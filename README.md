@@ -217,6 +217,10 @@ A range of OpenFF force fields will be run for comparison if no `--base-force-fi
 
 See [examples.ipynb](examples.ipynb) for some examples of interacting with benchmarking results and a starting point for custom analyses.
 
+## Developer notes
+
+For an overview of runtime logging behavior (what is logged, what is not, and log levels), see [docs/logging.md](docs/logging.md).
+
 ## How to cite
 
 Please cite YAMMBS using the [Zenodo record](https://doi.org/10.5281/zenodo.18350609) of the [latest release](https://doi.org/10.5281/zenodo.18350609) or the version that was used. The BibTeX reference of the latest release can be found at [this link](https://zenodo.org/records/18350609/export/bibtex).
