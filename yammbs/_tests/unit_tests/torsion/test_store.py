@@ -83,7 +83,7 @@ class TestTorsionStore:
 
 
 def test_minimize_basic(single_torsion_dataset, tmp_path):
-    """Test basic behavior of TorsionStore.optimize_mm()."""
+    """Test basic minimization behavior using OpenMM."""
     store = TorsionStore.from_torsion_dataset(
         single_torsion_dataset,
         database_name=tmp_path / "test.sqlite",
@@ -92,8 +92,11 @@ def test_minimize_basic(single_torsion_dataset, tmp_path):
     store.optimize_mm(
         force_field="openff-2.2.0",
         n_processes=os.cpu_count(),
+        method="openmm_torsion_atoms_frozen",
         restraint_k=1.0,
     )
+
+    torsion_id = store.get_torsion_ids()[0]
 
     assert store.get_force_fields() == ["openff-2.2.0"]
 
@@ -109,20 +112,19 @@ def test_minimize_basic(single_torsion_dataset, tmp_path):
     assert len(metrics["metrics"]) == 1
     assert len(metrics["metrics"]["openff-2.2.0"]) == 1
 
-    expected_metrics = {
+    EXPECTED_METRICS = {
         "rmsd": 0.07475493617511018,
         "rmse": 0.8193199571663233,
         "mean_error": -0.35170719027937586,
         "js_distance": (0.3168201337322116, 500.0),
     }
-    TORSION_ID = 119466834
 
-    assert len(expected_metrics) == len(metrics["metrics"]["openff-2.2.0"][TORSION_ID])
+    assert len(EXPECTED_METRICS) == len(metrics["metrics"]["openff-2.2.0"][torsion_id])
 
-    for metric in metrics["metrics"]["openff-2.2.0"][TORSION_ID]:
-        assert metric in expected_metrics
-        assert metrics["metrics"]["openff-2.2.0"][TORSION_ID][metric] == pytest.approx(
-            expected_metrics[metric],
+    for metric in metrics["metrics"]["openff-2.2.0"][torsion_id]:
+        assert metric in EXPECTED_METRICS
+        assert metrics["metrics"]["openff-2.2.0"][torsion_id][metric] == pytest.approx(
+            EXPECTED_METRICS[metric],
             rel=5e-2,
         )
 

@@ -2,7 +2,7 @@ import logging
 import pathlib
 from collections.abc import Generator, Iterable
 from contextlib import contextmanager
-from typing import Self
+from typing import Literal, Self
 
 import numpy
 import pandas as pd
@@ -13,7 +13,7 @@ from openff.toolkit.typing.engines.smirnoff.parameters import ProperTorsionHandl
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from yammbs._minimize import _lazy_load_force_field
+from yammbs._forcefields import _lazy_load_force_field
 from yammbs._molecule import _smiles_to_inchi_key
 from yammbs._types import Pathlike
 from yammbs.exceptions import DatabaseExistsError
@@ -282,6 +282,7 @@ class TorsionStore:
     def optimize_mm(
         self,
         force_field: str,
+        method: Literal["openmm_torsion_atoms_frozen", "openmm_torsion_restrained"] = "openmm_torsion_restrained",
         n_processes: int = 2,
         chunksize: int = 32,
         restraint_k: float = 0.0,
@@ -292,6 +293,16 @@ class TorsionStore:
         ----------
         force_field : str
             Force field to use for minimization.
+        method : Literal["openmm_torsion_atoms_frozen", "openmm_torsion_restrained"]
+            Minimization method to use. "openmm_torsion_atoms_frozen" freezes the positions
+            of all atoms in the torsion to their positions from the QM-optimized geometry (by
+            setting their masses to 0) and minimizes with OpenMM. "openmm_torsion_restrained"
+            applies a strong harmonic restraint (with force constant 100000 kcal/(mol·rad²)) to
+            keep the torsion angle at the QM-optimized value. The advantage of this is that, for a
+            torsion labelled i-j-k-l, the bond-angles (e.g. i-j-k and j-k-l) and bonds
+            (e.g. i-j, j-k, k-l) can relax during the minimization, which can help avoid issues due
+            to e.g. large clashes resulting from overly r^12 LJ terms at the initial geometry.
+
         n_processes : int
             Number of parallel processes.
         chunksize : int
@@ -362,7 +373,9 @@ class TorsionStore:
         minimization_results = _minimize_torsions(
             data=data,
             force_field=force_field,
+            method=method,
             n_processes=n_processes,
+            chunksize=chunksize,
             restraint_k=restraint_k,
         )
 

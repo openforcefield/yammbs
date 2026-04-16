@@ -65,7 +65,7 @@ module = [
   "sqlalchemy.org",
   "qcelemental",
   "openff.qcsubmit.results",
-  "MDAnalysis",
+  "MDAnalysis.*",
   "bokeh",
   "panel",
 ]

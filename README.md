@@ -126,6 +126,8 @@ for force_field in [
 
 This method short-circuits (i.e. does not run minimizations) if a force field's results are already stored. i.e. the Sage 2.1 optimizations in the loop will be skipped.
 
+Note: Any constraints specified in the force field are removed before optimization, so "openff-2.3.0.offxml" and "openff_unconstrained-2.3.0.offxml" will give equivalent results.
+
 There are "output" models that mirror the input models, basically storing MM-minimized geometries without needing to re-load or re-optimize the QM geometries. This can again be saved out to disk as JSON:
 
 ```python
@@ -214,6 +216,10 @@ A range of OpenFF force fields will be run for comparison if no `--base-force-fi
 ## Custom analyses
 
 See [examples.ipynb](examples.ipynb) for some examples of interacting with benchmarking results and a starting point for custom analyses.
+
+## Developer notes
+
+For an overview of runtime logging behavior (what is logged, what is not, and log levels), see [docs/logging.md](docs/logging.md).
 
 ## How to cite
 
