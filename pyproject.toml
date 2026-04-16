@@ -78,8 +78,7 @@ module = [
   "sqlalchemy.org",
   "qcelemental",
   "openff.qcsubmit.results",
-  "MDAnalysis",
-  "MDAnalysis.analysis.dihedrals",
+  "MDAnalysis.*",
   "bokeh",
   "panel",
 ]

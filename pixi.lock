@@ -13203,8 +13203,8 @@ packages:
   timestamp: 1753484079473
 - pypi: ./
   name: yammbs
-  version: 0.3.2.dev40+g39f820085.d20260312
-  sha256: 2289cf3feaef6a4ff9fd291713cc5184caf61eef604d4ef2e3ac81c6a2f4aedc
+  version: 0.3.2.dev53+gdf5579798.d20260416
+  sha256: 53655e10c9af9d5cf14aec36762bb52ba44b310ec06caf74b6743e6c33c2e893
   requires_python: '>=3.11'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/zeromq-4.3.5-h387f397_9.conda
   sha256: 47cfe31255b91b4a6fa0e9dbaf26baa60ac97e033402dbc8b90ba5fee5ffe184
