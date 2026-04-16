@@ -338,8 +338,7 @@ def _minimize_openmm_torsion_restrained(
     energy calculation, so the reported energy is the actual molecular mechanics
     energy without the artificial restraint contribution.
     """
-    import MDAnalysis as mda
-    from MDAnalysis.analysis.dihedrals import Dihedral
+    from MDAnalysis.lib.distances import calc_dihedrals
 
     # Add the torsion restraint to maintain the target angle
     _add_torsion_restraint_to_omm_system(
@@ -364,12 +363,13 @@ def _minimize_openmm_torsion_restrained(
     context.computeVirtualSites()
 
     # Sanity check: verify the initial dihedral angle
-    u_initial = mda.Universe.empty(n_atoms=len(positions), trajectory=True)
-    u_initial.load_new(positions, order="fac")
-
-    dihedral_calc_initial = Dihedral([u_initial.atoms[list(dihedral_indices)]])
-    dihedral_calc_initial.run()
-    initial_angle = dihedral_calc_initial.results.angles[0][0]
+    initial_angle_rad = calc_dihedrals(
+        positions[dihedral_indices[0]],
+        positions[dihedral_indices[1]],
+        positions[dihedral_indices[2]],
+        positions[dihedral_indices[3]],
+    )
+    initial_angle = numpy.degrees(initial_angle_rad)
 
     # Calculate initial angle difference accounting for periodicity
     initial_angle_diff = _angular_diff(initial_angle, angle)
@@ -407,12 +407,13 @@ def _minimize_openmm_torsion_restrained(
     LOGGER.debug("Final energy (excluding restraint): %s kcal/mol", final_energy)
 
     # Sanity check: verify the final dihedral angle matches the target
-    u_final = mda.Universe.empty(n_atoms=len(final_positions), trajectory=True)
-    u_final.load_new(final_positions, order="fac")
-
-    dihedral_calc_final = Dihedral([u_final.atoms[list(dihedral_indices)]])
-    dihedral_calc_final.run()
-    final_angle = dihedral_calc_final.results.angles[0][0]
+    final_angle_rad = calc_dihedrals(
+        final_positions[dihedral_indices[0]],
+        final_positions[dihedral_indices[1]],
+        final_positions[dihedral_indices[2]],
+        final_positions[dihedral_indices[3]],
+    )
+    final_angle = numpy.degrees(final_angle_rad)
 
     # Calculate angle difference accounting for periodicity
     final_angle_diff = _angular_diff(final_angle, angle)
