@@ -294,8 +294,15 @@ class TorsionStore:
         force_field : str
             Force field to use for minimization.
         method : Literal["openmm_torsion_atoms_frozen", "openmm_torsion_restrained"]
-            Minimization method to use. OpenMM constrains the positions of all
-            atoms which define the torsion.
+            Minimization method to use. "openmm_torsion_atoms_frozen" freezes the positions
+            of all atoms in the torsion to their positions from the QM-optimized geometry (by
+            setting their masses to 0) and minimizes with OpenMM. "openmm_torsion_restrained"
+            applies a strong harmonic restraint (with force constant 100000 kcal/(mol·rad²)) to
+            keep the torsion angle at the QM-optimized value. The advantage of this is that, for a
+            torsion labelled i-j-k-l, the bond-angles (e.g. i-j-k and j-k-l) and bonds
+            (e.g. i-j, j-k, k-l) can relax during the minimization, which can help avoid issues due
+            to e.g. large clashes resulting from overly r^12 LJ terms at the initial geometry.
+
         n_processes : int
             Number of parallel processes.
         chunksize : int
