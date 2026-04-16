@@ -122,7 +122,6 @@ def _minimize_openmm(
         (positions * openmm.unit.angstrom).in_units_of(openmm.unit.nanometer),
     )
 
-    # TODO: Remove this?
     context.computeVirtualSites()
 
     # Log the initial energy
