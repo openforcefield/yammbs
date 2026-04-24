@@ -414,7 +414,7 @@ class TorsionStore:
     def _get_energy_based_metric(
         self,
         force_field: str,
-        analysis_metric_collection: AnalysisMetricCollection,
+        analysis_metric_collection: type[AnalysisMetricCollection],
         torsion_ids: list[int] | None = None,
         skip_check: bool = False,
         restraint_k: float = 0.0,
@@ -464,7 +464,7 @@ class TorsionStore:
         skip_check: bool = False,
     ) -> RMSECollection:
         """Get the RMS RMSD over the torsion profile."""
-        return self._get_energy_based_metric(
+        return self._get_energy_based_metric(  # type: ignore[return-value]
             force_field=force_field,
             analysis_metric_collection=RMSECollection,
             torsion_ids=torsion_ids,
@@ -477,7 +477,7 @@ class TorsionStore:
         torsion_ids: list[int] | None = None,
         skip_check: bool = False,
     ) -> MeanErrorCollection:
-        return self._get_energy_based_metric(
+        return self._get_energy_based_metric(  # type: ignore[return-value]
             force_field=force_field,
             analysis_metric_collection=MeanErrorCollection,
             torsion_ids=torsion_ids,
@@ -492,7 +492,7 @@ class TorsionStore:
         temperature: float = 500.0,
     ) -> JSDistanceCollection:
         """Get the RMS RMSD over the torsion profile."""
-        return self._get_energy_based_metric(
+        return self._get_energy_based_metric(  # type: ignore[return-value]
             force_field=force_field,
             analysis_metric_collection=JSDistanceCollection,
             torsion_ids=torsion_ids,

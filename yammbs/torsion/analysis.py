@@ -59,8 +59,8 @@ class AnalysisMetricCollection[AnalysisMetric](ABC, list[AnalysisMetric]):
 
         return pandas.DataFrame(
             [element.__dict__ for element in self],
-            index=pandas.Index([element.id for element in self]),
-            columns=[field for field in item_type.model_fields.keys() if field != "id"],
+            index=pandas.Index([element.id for element in self]),  # type: ignore[attr-defined]
+            columns=[field for field in item_type.model_fields.keys() if field != "id"],  # type: ignore[attr-defined]
         )
 
     def to_csv(self, path: str):
