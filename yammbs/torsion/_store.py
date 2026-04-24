@@ -26,7 +26,7 @@ from yammbs.torsion._db import (
 from yammbs.torsion._session import TorsionDBSessionManager
 from yammbs.torsion.analysis import (
     RMSD,
-    AnalysisMetricCollectionTypeVar,
+    AnalysisMetricCollection,
     JSDistanceCollection,
     MeanErrorCollection,
     RMSDCollection,
@@ -414,12 +414,12 @@ class TorsionStore:
     def _get_energy_based_metric(
         self,
         force_field: str,
-        analysis_metric_collection: type[AnalysisMetricCollectionTypeVar],
+        analysis_metric_collection: AnalysisMetricCollection,
         torsion_ids: list[int] | None = None,
         skip_check: bool = False,
         restraint_k: float = 0.0,
         kwargs: dict | None = None,
-    ) -> AnalysisMetricCollectionTypeVar:
+    ) -> AnalysisMetricCollection:
         """Calculate energy-based metrics for the supplied analysis metric collection."""
         kwargs = kwargs if kwargs else dict()
 

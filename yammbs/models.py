@@ -1,6 +1,6 @@
 """Models used within YAMMBS."""
 
-from typing import Any, TypeVar
+from typing import Any
 
 import qcelemental
 from openff.toolkit import Molecule
@@ -11,8 +11,6 @@ from yammbs._base.base import ImmutableModel
 
 hartree2kcalmol = qcelemental.constants.hartree2kcalmol
 bohr2angstroms = qcelemental.constants.bohr2angstroms
-
-MR = TypeVar("MR", bound="MoleculeRecord")
 
 
 class Record(ImmutableModel):
@@ -51,13 +49,13 @@ class QMConformerRecord(Record):
     )
 
     @classmethod
-    def from_qcarchive_record(
-        cls,
+    def from_qcarchive_record[QMConformerRecord](
+        cls: type[QMConformerRecord],
         molecule_id: int,
         mapped_smiles: str,
         qc_record: Any,  # qcportal.optimization.OptimizationRecord ?
         coordinates,
-    ):
+    ) -> QMConformerRecord:
         """Create a QMConformerRecord from a QCArchive record."""
         return cls(
             molecule_id=molecule_id,
@@ -115,10 +113,10 @@ class MoleculeRecord(Record):
         return self.mapped_smiles
 
     @classmethod
-    def from_molecule(
-        cls: type[MR],
+    def from_molecule[MoleculeRecord](
+        cls: type[MoleculeRecord],
         molecule: Molecule,
-    ) -> MR:
+    ) -> MoleculeRecord:
         """Create a MoleculeRecord from an OpenFF Molecule."""
         assert molecule.n_conformers == 1
 
