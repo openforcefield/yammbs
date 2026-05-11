@@ -7,6 +7,7 @@ import openmm
 import openmm.unit
 import pytest
 from openff.toolkit import ForceField, Molecule
+from openff.units import Quantity, unit
 
 from yammbs._forcefields import build_omm_system
 from yammbs.analysis import get_rmsd
@@ -29,7 +30,7 @@ def pentane_molecule() -> Molecule:
         "[C:1]([H:6])([H:7])([H:8])[C:2]([H:9])([H:10])[C:3]([H:11])([H:12])[C:4]([H:13])([H:14])[C:5]([H:15])([H:16])[H:17]",
     )
 
-    positions = openmm.unit.Quantity(
+    positions = Quantity(
         numpy.array(
             [
                 [-0.91508573, 0.29544935, -2.34612298],
@@ -51,7 +52,7 @@ def pentane_molecule() -> Molecule:
                 [2.11578083, 0.49720106, 1.83249044],
             ],
         ),
-        openmm.unit.angstrom,
+        unit.angstrom,
     )
 
     pentane.add_conformer(positions)
