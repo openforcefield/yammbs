@@ -26,17 +26,14 @@ bokeh = "*"
 panel = "*"
 
 [environments]
-py311 = [ "py311", "test", "typing" ]
 py312 = [ "py312", "test", "typing" ]
 dev = [ "py312", "test", "typing", "dev" ]
 
-[feature.dev.dependencies]
+[feature.dev.pypi-dependencies]
 pre-commit = "*"
 ipython = "*"
 ipdb = "*"
 
-[feature.py311.dependencies]
-python = "3.11.*"
 [feature.py312.dependencies]
 python = "3.12.*"
 

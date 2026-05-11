@@ -1,18 +1,15 @@
 """Models used within YAMMBS."""
 
-from typing import Any, TypeVar
-
 import qcelemental
 from openff.toolkit import Molecule
 from pydantic import ConfigDict, Field
+from qcportal.optimization import OptimizationRecord
 
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
 
 hartree2kcalmol = qcelemental.constants.hartree2kcalmol
 bohr2angstroms = qcelemental.constants.bohr2angstroms
-
-MR = TypeVar("MR", bound="MoleculeRecord")
 
 
 class Record(ImmutableModel):
@@ -51,15 +48,15 @@ class QMConformerRecord(Record):
     )
 
     @classmethod
-    def from_qcarchive_record(
-        cls,
+    def from_qcarchive_record[QMConformerRecord](
+        cls: type[QMConformerRecord],
         molecule_id: int,
         mapped_smiles: str,
-        qc_record: Any,  # qcportal.optimization.OptimizationRecord ?
-        coordinates,
-    ):
+        qc_record: OptimizationRecord,
+        coordinates: Array,
+    ) -> QMConformerRecord:
         """Create a QMConformerRecord from a QCArchive record."""
-        return cls(
+        return cls(  # type: ignore[call-arg]
             molecule_id=molecule_id,
             qcarchive_id=qc_record.id,
             mapped_smiles=mapped_smiles,
@@ -115,14 +112,14 @@ class MoleculeRecord(Record):
         return self.mapped_smiles
 
     @classmethod
-    def from_molecule(
-        cls: type[MR],
+    def from_molecule[MoleculeRecord](
+        cls: type[MoleculeRecord],
         molecule: Molecule,
-    ) -> MR:
+    ) -> MoleculeRecord:
         """Create a MoleculeRecord from an OpenFF Molecule."""
         assert molecule.n_conformers == 1
 
-        return cls(
+        return cls(  # type: ignore[call-arg]
             mapped_smiles=molecule.to_smiles(
                 mapped=True,
                 isomeric=True,

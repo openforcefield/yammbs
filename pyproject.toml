@@ -11,10 +11,9 @@ description = "A tool for benchmarking force fields."
 readme = "README.md"
 license = { text = "MIT" }
 authors = [ { name = "Open Force Field Initiative", email = "info@openforcefield.org" } ]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 classifiers = [
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
@@ -29,23 +28,11 @@ packages.find = {}
 fallback_version = "0.0.0"
 
 [tool.ruff]
+target-version = "py312"
 line-length = 119
 lint.select = [ "D", "E", "F", "I", "NPY", "RUF027", "UP", "W" ]
 lint.ignore = [ "D105", "D107" ]
 lint.preview = true
-
-[tool.pytest]
-ini_options.addopts = "--cov=yammbs/ --cov-report=xml --cov-config=pyproject.toml"
-
-[tool.coverage]
-run.omit = [
-  "yammbs/_tests/*",
-]
-report.exclude_lines = [
-  "if TYPE_CHECKING:",
-  "pragma: no cover",
-  "raise NotImplementedError",
-]
 
 [tool.mypy]
 exclude = [
@@ -77,9 +64,23 @@ module = [
   "sqlalchemy",
   "sqlalchemy.org",
   "qcelemental",
+  "qcportal.optimization",
   "openff.qcsubmit.results",
   "MDAnalysis.*",
   "bokeh",
   "panel",
 ]
 ignore_missing_imports = true
+
+[tool.pytest]
+ini_options.addopts = "--cov=yammbs/ --cov-report=xml --cov-config=pyproject.toml"
+
+[tool.coverage]
+run.omit = [
+  "yammbs/_tests/*",
+]
+report.exclude_lines = [
+  "if TYPE_CHECKING:",
+  "pragma: no cover",
+  "raise NotImplementedError",
+]
