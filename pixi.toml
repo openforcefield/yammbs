@@ -14,7 +14,9 @@ qcportal = "~=0.55"
 openeye-toolkits = "*"
 openmmforcefields = "*"
 rdkit = ">=2024,!=2024.03.6,!=2024.09.1"
-openmm = "8.4.*"
+pytorch = "2.8.*"  # aimnet2 at least needs 2.8+, possibly more
+openmm = "8.5.*"
+openmm-ml = "*"
 MDAnalysis = "*"
 # add back when merged https://github.com/openforcefield/smirnoff-plugins/pull/76
 # smirnoff-plugins
@@ -62,6 +64,7 @@ pandas-stubs = "*"
 scipy-stubs = "*"
 
 [pypi-dependencies]
+aimnet = "==0.1.1"
 yammbs = { path = ".", editable = true }
 
 [tasks]
