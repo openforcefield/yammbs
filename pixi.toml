@@ -26,6 +26,7 @@ scipy = "*"
 seaborn = "*"
 bokeh = "*"
 panel = "*"
+rich = ">=12.1,<14.0" # solver would otherwise bring down 15.0.0, but rich >=12.1,<14.0 <- cached-path <- orb-models 0.6.x
 
 [environments]
 py312 = [ "py312", "test", "typing" ]
@@ -65,6 +66,7 @@ scipy-stubs = "*"
 
 [pypi-dependencies]
 aimnet = "==0.1.1"
+orb-models = "==0.6.*"
 yammbs = { path = ".", editable = true }
 
 [tasks]
