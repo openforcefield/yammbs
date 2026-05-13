@@ -128,11 +128,17 @@ def _openmm_ml(molecule: Molecule, force_field_name: str) -> openmm.System:
     """
     import openmmml
 
-    if not force_field_name.startswith("mlp"):
-        raise NotImplementedError(f"Force field {force_field_name} not implemented.")
+    _SUPPORTED_MLPS = {"aimnet2", "orb-v3-conservative-omol"}
+
+    if not force_field_name.startswith("mlp:"):
+        raise ValueError("MLP 'force field' name must be of the form 'mlp:potential_name', did not find ':'")
 
     # fragile, but somewhat intentionally so; very minimally-defined input, so minimal validation
     potential_name = force_field_name.split(":", 1)[1]
+
+    if potential_name not in _SUPPORTED_MLPS:
+        raise NotImplementedError(f"MLP {potential_name} not supported.")
+
     potential = openmmml.MLPotential(potential_name)
 
     # TODO: "charge-aware" models like an extra argument `charge=`, but this defaults to 0 if not specified

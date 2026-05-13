@@ -1,13 +1,16 @@
-import openmm
-import pytest
-from openff.toolkit import Molecule
+import math
 
-from yammbs._forcefields import _espaloma, _gaff, _smirnoff
+import openmm
+import openmm.unit
+import pytest
+from openff.interchange._tests import MoleculeWithConformer
+
+from yammbs._forcefields import _espaloma, _gaff, _openmm_ml, _smirnoff
 
 
 @pytest.fixture
 def molecule():
-    return Molecule.from_smiles("CCO")
+    return MoleculeWithConformer.from_smiles("CCO")
 
 
 def test_smirnoff_basic(molecule):
@@ -43,3 +46,31 @@ def test_espaloma_unsupported(molecule):
 
     with pytest.raises(NotImplementedError):
         _espaloma(molecule, "foo")
+
+
+@pytest.mark.parametrize("force_field_name", ["mlp:aimnet2", "mlp:orb-v3-conservative-omol"])
+def test_openmm_ml_mlps_have_energies(molecule, force_field_name):
+    system = _openmm_ml(molecule, force_field_name=force_field_name)
+
+    assert isinstance(system, openmm.System)
+    assert system.getNumParticles() == molecule.n_atoms
+
+    # minimizing with MLPs can be quite slow on generic hardware, so just make sure we can get an energy
+    context = openmm.Context(system, openmm.VerletIntegrator(0.001))
+    context.setPositions(molecule.conformers[0].to_openmm())
+
+    energy = context.getState(energy=True).getPotentialEnergy()
+
+    assert math.isfinite(energy.value_in_unit(openmm.unit.kilojoule_per_mole))
+
+
+@pytest.mark.parametrize(
+    "force_field_name,error",
+    [
+        ("mlp:magic", NotImplementedError),
+        ("aimnet2", ValueError),
+    ],
+)
+def test_unsupported_mlp(molecule, force_field_name, error):
+    with pytest.raises(error):
+        _openmm_ml(molecule, force_field_name=force_field_name)
