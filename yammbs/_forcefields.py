@@ -131,7 +131,7 @@ def _openmm_ml(molecule: Molecule, force_field_name: str) -> openmm.System:
     _SUPPORTED_MLPS = {"aimnet2", "orb-v3-conservative-omol"}
 
     if not force_field_name.startswith("mlp:"):
-        raise ValueError("MLP 'force field' name must be of the form 'mlp:potential_name', did not find ':'")
+        raise NotImplementedError("MLP 'force field' name must be of the form 'mlp:potential_name', did not find ':'")
 
     # fragile, but somewhat intentionally so; very minimally-defined input, so minimal validation
     potential_name = force_field_name.split(":", 1)[1]
@@ -139,6 +139,8 @@ def _openmm_ml(molecule: Molecule, force_field_name: str) -> openmm.System:
     if potential_name not in _SUPPORTED_MLPS:
         raise NotImplementedError(f"MLP {potential_name} not supported.")
 
+    # _loading_ the potential can be quite slow but this object is independent of the molecule it may be used on,
+    # for performance it might be useful to cache the loading process (only)
     potential = openmmml.MLPotential(potential_name)
 
     # TODO: "charge-aware" models like an extra argument `charge=`, but this defaults to 0 if not specified
@@ -153,12 +155,15 @@ def _openmm_ml(molecule: Molecule, force_field_name: str) -> openmm.System:
 NON_SMIRNOFF_SYSTEM_BUILDERS = {
     "gaff": _gaff,
     "espaloma": _espaloma,
-    "mlp": _openmm_ml,
+    "mlp:": _openmm_ml,  # theoretically somebody could name a force field mlp-whatever.offxml ...
 }
 
 
 def build_omm_system(force_field: str, molecule: Molecule) -> openmm.System:
     """Get an OpenMM System for a given force field and molecule."""
+    if molecule.total_charge.m != 0.0:
+        raise NotImplementedError("Only neutral molecules are currently supported.")
+
     for prefix, builder in NON_SMIRNOFF_SYSTEM_BUILDERS.items():
         if force_field.startswith(prefix):
             return builder(molecule, force_field)
