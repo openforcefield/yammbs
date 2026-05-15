@@ -131,7 +131,7 @@ def _openmm_ml(molecule: Molecule, force_field_name: str) -> openmm.System:
     _SUPPORTED_MLPS = {"aimnet2", "orb-v3-conservative-omol"}
 
     if not force_field_name.startswith("mlp:"):
-        raise NotImplementedError("MLP 'force field' name must be of the form 'mlp:potential_name', did not find ':'")
+        raise NotImplementedError("MLP 'force field' name must be of the form 'mlp:potential_name', did not find 'mlp:'")
 
     # fragile, but somewhat intentionally so; very minimally-defined input, so minimal validation
     potential_name = force_field_name.split(":", 1)[1]
