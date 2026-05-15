@@ -93,3 +93,28 @@ def test_openmm_ml_mlps_have_energies(molecule, force_field_name):
 def test_unsupported_mlp(molecule, force_field_name, error):
     with pytest.raises(error):
         _openmm_ml(molecule, force_field_name=force_field_name)
+
+
+@pytest.mark.parametrize(
+    "smiles",
+    [
+        ("CC(=O)[O-]"),
+        ("C[NH3+]"),
+    ],
+)
+@pytest.mark.parametrize(
+    "force_field_name",
+    [
+        ("openff-2.3.0.offxml"),
+        ("gaff-2.11"),
+        ("mlp:aimnet2"),
+    ],
+)
+def test_build_anions(smiles, force_field_name):
+    molecule = MoleculeWithConformer.from_smiles(smiles)
+
+    assert molecule.total_charge.m != 0
+
+    system = build_omm_system(force_field=force_field_name, molecule=molecule)
+
+    assert_energy_is_finite(system, molecule)
