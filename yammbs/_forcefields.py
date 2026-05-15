@@ -119,7 +119,10 @@ def _espaloma(molecule: Molecule, force_field_name: str) -> openmm.System:
     return espaloma.graphs.deploy.openmm_system_from_graph(mol_graph, forcefield=ff[0])
 
 
-def _openmm_ml(molecule: Molecule, force_field_name: str) -> openmm.System:
+def _openmm_ml(
+    molecule: Molecule,
+    force_field_name: str,
+) -> openmm.System:
     """Generate an OpenMM System for a molecule using a machine-learned potentials (MLP).
 
     This uses OpenMM-ML.
@@ -145,13 +148,11 @@ def _openmm_ml(molecule: Molecule, force_field_name: str) -> openmm.System:
     # for performance it might be useful to cache the loading process (only)
     potential = openmmml.MLPotential(potential_name)
 
-    # TODO: "charge-aware" models like an extra argument `charge=`, but this defaults to 0 if not specified
-    #       so it should probably only be relevant with charged molecules?
-    #       https://github.com/cole-group/presto-benchmarking/blob/baced3ba63646811d1eb50abc7c7035b60711b6c/convenience_functions/analyse_folmsbee.py#L613-L616
+    total_charge = molecule.total_charge.m
     # TODO: In general there are heterogeneous options for different MLPs, need to cleanly validate
     #       the ones we care about and validate those
     #       https://openmm.github.io/openmm-ml/dev/userguide.html#introduction
-    return potential.createSystem(molecule.to_topology().to_openmm())
+    return potential.createSystem(molecule.to_topology().to_openmm(), charge=total_charge)
 
 
 NON_SMIRNOFF_SYSTEM_BUILDERS = {
@@ -163,9 +164,6 @@ NON_SMIRNOFF_SYSTEM_BUILDERS = {
 
 def build_omm_system(force_field: str, molecule: Molecule) -> openmm.System:
     """Get an OpenMM System for a given force field and molecule."""
-    if molecule.total_charge.m != 0.0:
-        raise NotImplementedError("Only neutral molecules are currently supported.")
-
     for prefix, builder in NON_SMIRNOFF_SYSTEM_BUILDERS.items():
         if force_field.startswith(prefix):
             return builder(molecule, force_field)
