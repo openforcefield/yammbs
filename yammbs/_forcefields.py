@@ -119,9 +119,46 @@ def _espaloma(molecule: Molecule, force_field_name: str) -> openmm.System:
     return espaloma.graphs.deploy.openmm_system_from_graph(mol_graph, forcefield=ff[0])
 
 
+def _openmm_ml(
+    molecule: Molecule,
+    force_field_name: str,
+) -> openmm.System:
+    """Generate an OpenMM System for a molecule using a machine-learned potentials (MLP).
+
+    This uses OpenMM-ML.
+
+    The name of the `force_field_name` argument should be prefixed with "mlp", i.e. "mlp:aimnet2".
+    """
+    import openmmml
+
+    _SUPPORTED_MLPS = {"aimnet2", "orb-v3-conservative-omol"}
+
+    if not force_field_name.startswith("mlp:"):
+        raise NotImplementedError(
+            "MLP 'force field' name must be of the form 'mlp:potential_name', did not find 'mlp:'",
+        )
+
+    # fragile, but somewhat intentionally so; very minimally-defined input, so minimal validation
+    potential_name = force_field_name.split(":", 1)[1]
+
+    if potential_name not in _SUPPORTED_MLPS:
+        raise NotImplementedError(f"MLP {potential_name} not supported.")
+
+    # _loading_ the potential can be quite slow but this object is independent of the molecule it may be used on,
+    # for performance it might be useful to cache the loading process (only)
+    potential = openmmml.MLPotential(potential_name)
+
+    total_charge = molecule.total_charge.m
+    # TODO: In general there are heterogeneous options for different MLPs, need to cleanly validate
+    #       the ones we care about and validate those
+    #       https://openmm.github.io/openmm-ml/dev/userguide.html#introduction
+    return potential.createSystem(molecule.to_topology().to_openmm(), charge=total_charge)
+
+
 NON_SMIRNOFF_SYSTEM_BUILDERS = {
     "gaff": _gaff,
     "espaloma": _espaloma,
+    "mlp:": _openmm_ml,  # theoretically somebody could name a force field mlp-whatever.offxml ...
 }
 
 

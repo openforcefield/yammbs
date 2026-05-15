@@ -60,6 +60,7 @@ module = [
   "openmm.*",
   "openmm.app",
   "openmm.unit",
+  "openmmml",
   "openmmforcefields.generators",
   "sqlalchemy",
   "sqlalchemy.org",
