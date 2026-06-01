@@ -41,35 +41,35 @@ exclude = [
   "yammbs/scripts",
 ]
 python_version = "3.12"
-plugins = [ "pydantic.mypy", "sqlmypy" ]
-warn_unused_configs = true
 warn_unused_ignores = true
+plugins = [ "pydantic.mypy", "sqlmypy" ]
 warn_incomplete_stub = true
+warn_unused_configs = true
 show_error_codes = true
 
 [[tool.mypy.overrides]]
 module = [
+  "bokeh",
+  "espaloma",
+  "MDAnalysis.*",
   "openeye",
+  "openff.nagl.toolkits.openff",
+  "openff.qcsubmit.results",
+  "openff.toolkit.*",
+  "openmm.*",
+  "openmm.app",
+  "openmm.unit",
+  "openmmforcefields.generators",
+  "openmmml",
+  "panel",
+  "qcelemental",
+  "qcportal.optimization",
   "rdkit.Chem",
   "rdkit.Chem.Draw",
   "rdkit.Chem.rdMolAlign",
   "rdkit.Chem.rdmolops",
-  "openff.toolkit.*",
-  "openff.nagl.toolkits.openff",
-  "espaloma",
-  "openmm.*",
-  "openmm.app",
-  "openmm.unit",
-  "openmmml",
-  "openmmforcefields.generators",
   "sqlalchemy",
   "sqlalchemy.org",
-  "qcelemental",
-  "qcportal.optimization",
-  "openff.qcsubmit.results",
-  "MDAnalysis.*",
-  "bokeh",
-  "panel",
 ]
 ignore_missing_imports = true
 
