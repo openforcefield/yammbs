@@ -525,37 +525,39 @@ class MoleculeStore:
         return store
 
     def _map_inchi_keys_to_qm_conformers(self, force_field: str) -> dict[str, list]:
-        inchi_keys = self.get_inchi_keys()
+        mapping_by_molecule_id = defaultdict(list)
 
-        mapping = defaultdict(list)
+        with self._get_session() as db:
+            qm_conformers = [
+                {
+                    "molecule_id": record.parent_id,
+                    "qcarchive_id": record.qcarchive_id,
+                    "mapped_smiles": record.mapped_smiles,
+                    "coordinates": record.coordinates,
+                }
+                for record in db.db.query(
+                    DBQMConformerRecord,
+                ).all()
+            ]
+            existing_mm_qcarchive_ids = [
+                record.qcarchive_id
+                for record in db.db.query(
+                    DBMMConformerRecord,
+                )
+                .filter_by(force_field=force_field)
+                .all()
+            ]
+        for record in qm_conformers:
+            if record["qcarchive_id"] in existing_mm_qcarchive_ids:
+                continue
 
-        for inchi_key in inchi_keys:
-            molecule_id = self.get_molecule_id_by_inchi_key(inchi_key)
+            molecule_id = record.pop("molecule_id")
+            mapping_by_molecule_id[molecule_id].append(record)
 
-            # TODO: Should the session be inside or outside of the inchi loop?
-            with self._get_session() as db:
-                qm_conformers = [
-                    {
-                        "qcarchive_id": record.qcarchive_id,
-                        "mapped_smiles": record.mapped_smiles,
-                        "coordinates": record.coordinates,
-                    }
-                    for record in db.db.query(
-                        DBQMConformerRecord,
-                    )
-                    .filter_by(parent_id=molecule_id)
-                    .all()
-                ]
-
-                for qm_conformer in qm_conformers:
-                    if not db._mm_conformer_already_exists(
-                        qcarchive_id=qm_conformer["qcarchive_id"],
-                        force_field=force_field,
-                    ):
-                        mapping[inchi_key].append(qm_conformer)
-                    else:
-                        pass
-
+        mapping = {
+            self.get_inchi_key_by_molecule_id(molecule_id): conformers
+            for molecule_id, conformers in mapping_by_molecule_id.items()
+        }
         return mapping
 
     def optimize_mm(
