@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Sphinx configuration file for yammbs documentation."""
 #
-# yammbs documentation build configuration file, created by
-# sphinx-quickstart on Sun Dec  3 23:12:54 2017.
+# yammbs documentation build configuration file.
 #
 # This file is execfile()d with the current directory set to its
 # containing dir.

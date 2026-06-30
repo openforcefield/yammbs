@@ -19,6 +19,7 @@ caption: Getting Started
 Overview <self>
 installation
 examples.ipynb
+logging
 Frequently Asked Questions (FAQ) <https://docs.openforcefield.org/faq>
 :::
 
