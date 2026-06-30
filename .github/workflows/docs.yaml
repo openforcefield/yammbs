@@ -1,0 +1,61 @@
+name: Build Documentation
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash -l {0}
+
+jobs:
+  docs:
+    name: Build documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up conda environment
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: docs/environment.yml
+          create-args: >-
+            python=3.12
+
+      - name: Install PASCAL Compiler
+        run: sudo apt-get install fp-compiler
+
+      - name: Install checkmol
+        run: |
+          curl https://homepage.univie.ac.at/norbert.haider/download/chemistry/checkmol/checkmol.pas > checkmol.pas
+          fpc checkmol.pas -S2
+          echo $(pwd) >> $GITHUB_PATH
+
+      - name: Install package
+        run: python -m pip install -e .
+
+      - name: Environment Information
+        run: |
+          micromamba info
+          micromamba list
+          pip list
+
+      - name: Build documentation
+        run: |
+          rm -rf docs/_autosummary docs/api/generated docs/_build/html
+          sphinx-build -b html -j auto docs docs/_build/html
+
+      - name: Upload documentation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: docs/_build/html
+          retention-days: 7

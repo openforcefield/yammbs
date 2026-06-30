@@ -1,0 +1,51 @@
+name: openff-toolkit-docs
+channels:
+    # Avoids crashing RTD machines by pulling an empty cudatoolkit pacakge
+    - jaimergp/label/unsupported-cudatoolkit-shim
+    - conda-forge
+    - defaults
+dependencies:
+    - pip
+    # readthedocs dependencies
+    - myst-nb=1
+    - myst-parser
+    - docutils
+    - sphinx-notfound-page
+    - sphinx=6
+    # conda build dependencies
+    - python <3.13
+    - setuptools
+    - numpy <2.3  # because parmed is broken
+    - openmm
+    - networkx
+    - parmed
+    - rdkit
+    - ambertools
+    - packaging
+    - openff-toolkit
+    - openff-interchange =0.4
+    - openmmforcefields
+    - openff-units
+    - openff-utilities
+    - cachetools
+    - python-constraint
+    - mdtraj
+    - qcportal
+    - nglview
+    # Serialization: Should these be optional?
+    - toml
+    - bson
+    - msgpack-python
+    - xmltodict
+    - pyyaml
+    - cairo >=1.16
+    - geometric =1
+    - pydantic =2
+    - click
+    - scipy
+    - seaborn
+  
+    - qcportal ~=0.55
+    # Theme
+    - pip:
+        - git+https://github.com/openforcefield/openff-sphinx-theme.git@main
