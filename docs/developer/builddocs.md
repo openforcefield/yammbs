@@ -11,10 +11,9 @@ In these cases, the docs can be built locally by doing the following:
 ```bash
 git clone https://github.com/openforcefield/yammbs.git
 cd yammbs
-conda env create --name yammbs-docs --file docs/environment.yml
-conda activate yammbs-docs
-python -m pip install -e .
-rm -rf docs/api/generated docs/_build/html && sphinx-build -b html -j auto docs docs/_build/html
+pixi install -e docs
+rm -rf docs/api/generated docs/_build/html
+pixi run -e docs build_docs
 ```
 
 The above will yield a new directory named `docs/_build/html` which will
