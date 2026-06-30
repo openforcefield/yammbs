@@ -44,7 +44,7 @@ dependencies:
     - click
     - scipy
     - seaborn
-  
+
     - qcportal ~=0.55
     # Theme
     - pip:

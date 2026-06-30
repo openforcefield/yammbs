@@ -191,7 +191,7 @@ todo_include_todos = False
 html_theme = "openff_sphinx_theme"
 
 # (Optional) Logo and favicon
-#html_logo = "_static/images/logos/"
+# html_logo = "_static/images/logos/"
 html_favicon = "_static/images/favicon.svg"
 
 # Theme options are theme-specific and customize the look and feel of a
@@ -272,9 +272,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    (master_doc, "yammbs", "YAMMBS Documentation", [author], 1)
-]
+man_pages = [(master_doc, "yammbs", "YAMMBS Documentation", [author], 1)]
 
 
 # -- Options for Texinfo output -------------------------------------------
