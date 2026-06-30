@@ -75,7 +75,7 @@ class QCArchiveDataset(QMDataset):
                     final_energy=qcarchive_record.energies[-1] * hartree2kcalmol,
                 )
                 for id, (qcarchive_record, molecule) in enumerate(
-                    collection.to_records(),
+                    collection.to_records(include=["energies", "id"]),
                 )
             ],
         )

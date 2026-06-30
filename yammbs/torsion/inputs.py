@@ -102,6 +102,14 @@ class QCArchiveTorsionDataset(TorsionDataset):
                         for grid_id, optimization in record.minimum_optimizations.items()
                     },
                 )
-                for record, molecule in collection.to_records()
+                for record, molecule in collection.to_records(
+                    include=[
+                        "id",
+                        "minimum_optimizations",
+                        "final_molecule",
+                        "specification",
+                        "energies",
+                    ],
+                )
             ],
         )

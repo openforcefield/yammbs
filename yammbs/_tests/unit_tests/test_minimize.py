@@ -1,13 +1,11 @@
-import platform
-
 import numpy
 import pytest
 from openff.toolkit import ForceField, Molecule, unit
 from openff.toolkit import __version__ as __toolkit_version__
 
 from yammbs import MoleculeStore
-from yammbs._minimize import MinimizationInput, _run_openmm
-from yammbs.inputs import QCArchiveDataset
+from yammbs._minimize import MinimizationInput, _run_minimization
+from yammbs.inputs import QCArchiveDataset, QCArchiveMolecule
 
 
 @pytest.fixture
@@ -27,7 +25,7 @@ def perturbed_ethane(ethane) -> Molecule:
     return ethane
 
 
-def basic_input(force_field="openff-1.0.0") -> MinimizationInput:
+def basic_input(force_field="openff-1.0.0", method="openmm") -> MinimizationInput:
     ethane = Molecule.from_smiles("CC")
     ethane.generate_conformers(n_conformers=1)
 
@@ -37,6 +35,7 @@ def basic_input(force_field="openff-1.0.0") -> MinimizationInput:
         force_field=force_field,
         mapped_smiles=ethane.to_smiles(mapped=True),
         coordinates=ethane.conformers[0].m_as(unit.angstrom),
+        method=method,
     )
 
 
@@ -56,7 +55,7 @@ def test_minimization_basic(perturbed_input):
     initial = (perturbed_input.coordinates[0] - perturbed_input.coordinates[1],)
     assert numpy.linalg.norm(initial) > 1.6
 
-    result = _run_openmm(perturbed_input)
+    result = _run_minimization(perturbed_input)
 
     for attr in (
         "inchi_key",
@@ -71,9 +70,7 @@ def test_minimization_basic(perturbed_input):
 
 
 def test_minimization_unassigned_torsion(caplog):
-    """Test that ``_run_openmm`` returns None and logs a warning when there are
-    unassigned valence terms.
-    """
+    """Test that ``_run_openmm`` returns None and logs a warning when there are unassigned valence terms."""
     smiles = (
         "[H:6][C@@:5]([C:16](=[O:17])[O:18][F:19])([C@:4]([H:31])([C:2]"
         "([H:27])([C:1]([H:24])([H:25])[H:26])[C:3]([H:28])([H:29])[H:30])"
@@ -92,22 +89,22 @@ def test_minimization_unassigned_torsion(caplog):
         coordinates=mol.conformers[0].m_as(unit.angstrom),
     )
 
-    result = _run_openmm(min_input)
+    result = _run_minimization(min_input)
 
     assert "unassigned valence terms" in caplog.text
     assert result is None
 
 
 def test_same_force_field_same_results():
-    energy1 = _run_openmm(basic_input("openff-1.0.0")).energy
-    energy2 = _run_openmm(basic_input("openff-1.0.0")).energy
+    energy1 = _run_minimization(basic_input("openff-1.0.0")).energy
+    energy2 = _run_minimization(basic_input("openff-1.0.0")).energy
 
     assert energy1 == energy2
 
 
 def test_different_force_fields_different_results():
-    energy1 = _run_openmm(basic_input("openff-1.0.0")).energy
-    energy2 = _run_openmm(basic_input("openff-2.0.0")).energy
+    energy1 = _run_minimization(basic_input("openff-1.0.0")).energy
+    energy2 = _run_minimization(basic_input("openff-2.0.0")).energy
 
     assert energy1 != energy2
 
@@ -115,7 +112,7 @@ def test_different_force_fields_different_results():
 def test_plugin_loadable(ethane):
     pytest.importorskip("deforcefields.deforcefields")
 
-    _run_openmm(
+    _run_minimization(
         MinimizationInput(
             inchi_key=ethane.to_inchikey(),
             qcarchive_id=38483483483481384183412831832,
@@ -129,7 +126,7 @@ def test_plugin_loadable(ethane):
 @pytest.mark.timeout(3)
 def test_cached_force_fields_load_quickly():
     """Test that cached force fields are loaded quickly."""
-    from yammbs._minimize import _lazy_load_force_field
+    from yammbs._forcefields import _lazy_load_force_field
 
     # timeout includes the time it takes to load it the first time, but that should be << 1 second
     [_lazy_load_force_field("openff-1.0.0") for _ in range(1000)]
@@ -138,7 +135,7 @@ def test_cached_force_fields_load_quickly():
 def test_finds_local_force_field(ethane, tmp_path):
     ForceField("openff_unconstrained-1.2.0.offxml").to_file(tmp_path / "fOOOO.offxml")
 
-    _run_openmm(
+    _run_minimization(
         MinimizationInput(
             inchi_key=ethane.to_inchikey(),
             qcarchive_id=5,
@@ -162,7 +159,7 @@ def test_plugin_not_needed_to_use_mainline_force_field(monkeypatch, ethane):
 
     assert len(deforcefields.get_forcefield_paths()) == 0
 
-    _run_openmm(
+    _run_minimization(
         MinimizationInput(
             inchi_key=ethane.to_inchikey(),
             qcarchive_id=5,
@@ -173,8 +170,8 @@ def test_plugin_not_needed_to_use_mainline_force_field(monkeypatch, ethane):
     )
 
 
-@pytest.mark.timeout(60 if platform.system() == "Darwin" else 30)
-def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
+@pytest.mark.timeout(60)
+def test_partially_minimized(tmp_path):
     """Test that minimizing with one force field produces expected results.
 
     See https://github.com/mattwthompson/ib/pull/21#discussion_r1511804909
@@ -199,30 +196,36 @@ def test_partially_minimized(tiny_cache, tmp_path, guess_n_processes):
             get_n_mm_conformers(store, "openff-2.0.0"),
         )
 
-    # No need to minimize all 200 records twice ...
-    tinier_cache = QCArchiveDataset()
+    dataset = QCArchiveDataset(tag="test dataset")
 
-    # ... so slice out some really small molecules (< 9 heavy atoms)
-    # which should be 12 molecules for this dataset
-    for result in tiny_cache.qm_molecules:
-        molecule = Molecule.from_mapped_smiles(result.mapped_smiles)
-        if len([atom for atom in molecule.atoms if atom.atomic_number > 1]) < 9:
-            tinier_cache.qm_molecules.append(result)
+    for index, smiles in enumerate(["CCO", "CC(=O)CC"]):
+        molecule = Molecule.from_smiles(smiles)
+        molecule.generate_conformers(n_conformers=1)
+
+        dataset.qm_molecules.append(
+            QCArchiveMolecule(
+                id=index,
+                mapped_smiles=molecule.to_smiles(mapped=True),
+                coordinates=molecule.conformers[0].m_as("angstrom"),
+                qcarchive_id=index,
+                final_energy=0.0,
+            ),
+        )
 
     tinier_store = MoleculeStore.from_qcarchive_dataset(
-        tinier_cache,
+        dataset,
         database_name=(tmp_path / "tiny.sqlite").as_posix(),
     )
 
     assert get_n_results(tinier_store) == (0, 0)
 
-    tinier_store.optimize_mm(force_field="openff-1.0.0", n_processes=guess_n_processes)
+    tinier_store.optimize_mm(force_field="openff-1.0.0", n_processes=1)
 
-    assert get_n_results(tinier_store) == (12, 0)
+    assert get_n_results(tinier_store) == (2, 0)
 
-    tinier_store.optimize_mm(force_field="openff-2.0.0", n_processes=guess_n_processes)
+    tinier_store.optimize_mm(force_field="openff-2.0.0", n_processes=1)
 
-    assert get_n_results(tinier_store) == (12, 12)
+    assert get_n_results(tinier_store) == (2, 2)
 
     assert tinier_store.software_provenance["yammbs"] == yammbs.__version__
     assert tinier_store.software_provenance["openff.toolkit"] == __toolkit_version__

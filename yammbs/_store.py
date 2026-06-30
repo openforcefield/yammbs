@@ -3,6 +3,7 @@ import pathlib
 from collections import defaultdict
 from collections.abc import Generator, Iterable
 from contextlib import contextmanager
+from typing import Literal, Self
 
 import numpy
 from numpy.typing import NDArray
@@ -10,7 +11,6 @@ from openff.qcsubmit.results import OptimizationResultCollection
 from openff.toolkit import Molecule
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from typing_extensions import Self
 
 from yammbs._db import (
     DBBase,
@@ -204,6 +204,11 @@ class MoleculeStore:
 
     # TODO: Allow by multiple selectors (smiles: list[str])
     def get_molecule_id_by_smiles(self, smiles: str) -> int:
+        """Get all molecule IDs having a given mapped SMILES.
+
+        Input mapped smiles must match an existing string in the database exactly.
+        No chemical similarity check is performed.
+        """
         with self._get_session() as db:
             return next(id for (id,) in db.db.query(DBMoleculeRecord.id).filter_by(mapped_smiles=smiles).all())
 
@@ -556,6 +561,7 @@ class MoleculeStore:
     def optimize_mm(
         self,
         force_field: str,
+        method: Literal["openmm"] = "openmm",
         n_processes: int = 2,
         chunksize=32,
     ):
@@ -581,8 +587,9 @@ class MoleculeStore:
         )
 
         _minimized_blob = _minimize_blob(
-            input=inchi_key_qm_conformer_mapping,
+            minimization_input=inchi_key_qm_conformer_mapping,
             force_field=force_field,
+            method=method,
             n_processes=n_processes,
             chunksize=chunksize,
         )

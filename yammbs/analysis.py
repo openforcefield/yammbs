@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy
 from openff.toolkit import Molecule, Quantity
+from openff.toolkit.utils import LicenseError
 
 from yammbs._base.array import Array
 from yammbs._base.base import ImmutableModel
@@ -126,8 +127,6 @@ def get_rmsd(
     target: Array,
 ) -> float:
     """Compute the RMSD between two sets of coordinates."""
-    from openeye import oechem
-
     molecule1 = Molecule(molecule)
     molecule2 = Molecule(molecule)
 
@@ -138,6 +137,19 @@ def get_rmsd(
     molecule1.add_conformer(Quantity(reference, "angstrom"))
 
     molecule2.add_conformer(Quantity(target, "angstrom"))
+
+    try:
+        return _get_rmsd_openeye(molecule1, molecule2)
+    except (ImportError, LicenseError):
+        return _get_rmsd_rdkit(molecule1, molecule2)
+
+
+def _get_rmsd_openeye(
+    molecule1: Molecule,
+    molecule2: Molecule,
+) -> float:
+    """Compute the RMSD between two molecules with OpenEye."""
+    from openeye import oechem
 
     # oechem appears to not support named arguments, but it's hard to tell
     # since the Python API is not documented
@@ -150,13 +162,27 @@ def get_rmsd(
     )
 
 
+def _get_rmsd_rdkit(
+    molecule1: Molecule,
+    molecule2: Molecule,
+) -> float:
+    """Compute the RMSD between two molecules with RDKit."""
+    from rdkit.Chem.rdMolAlign import GetBestRMS
+    from rdkit.Chem.rdmolops import RemoveHs
+
+    rdmol1 = RemoveHs(molecule1.to_rdkit(), updateExplicitCount=True)
+    rdmol2 = RemoveHs(molecule2.to_rdkit(), updateExplicitCount=True)
+
+    return GetBestRMS(rdmol1, rdmol2)
+
+
 def get_internal_coordinates(
     molecule: Molecule,
     reference: Array,
     target: Array,
     _types: tuple[str, ...] = ("Bond", "Angle", "Dihedral", "Improper"),
-) -> dict[str, dict[tuple[int, ...], tuple[int, int]]]:
-    """Get internal coordinates of two conformers of the same molecule using geomeTRIC.
+) -> dict[str, dict[tuple[int, ...], tuple[float, float]]]:
+    """Get internal coordinates of two conformers of the same molecule using MDAnalysis.
 
     The return value is keyed by valence type (Bond, Angle, Dihedral, Improper). Each
     value is itself a dictionary containing key-val pairs of relevant atom indices and a
@@ -189,94 +215,43 @@ def get_internal_coordinates(
         second to the "target" conformer.
 
     """
-    from geometric.internal import (
-        Angle,
-        Dihedral,
-        Distance,
-        OutOfPlane,
-        PrimitiveInternalCoordinates,
-    )
+    from yammbs._mdanalysis import get_angles, get_bonds, get_improper_torsions, get_proper_torsions
 
-    from yammbs._molecule import _to_geometric_molecule
+    reference_molecule = Molecule(molecule)
+    target_molecule = Molecule(molecule)
 
-    if isinstance(reference, Quantity):
-        reference = reference.m_as("angstrom")
+    reference_molecule.clear_conformers()
+    target_molecule.clear_conformers()
 
-    if isinstance(target, Quantity):
-        target = target.m_as("angstrom")
+    reference_molecule.add_conformer(Quantity(reference, "angstrom"))
+    target_molecule.add_conformer(Quantity(target, "angstrom"))
 
-    _generator = PrimitiveInternalCoordinates(
-        _to_geometric_molecule(molecule=molecule, coordinates=target),
-    )
+    internal_coordinates: dict[str, dict[tuple[int, ...], tuple[float, float]]] = dict()
 
-    _mapping = {
-        "Bond": Distance,
-        "Angle": Angle,
-        "Dihedral": Dihedral,
-        "Improper": OutOfPlane,
+    key_func_mapping = {
+        "Bond": get_bonds,
+        "Angle": get_angles,
+        "Dihedral": get_proper_torsions,
+        "Improper": get_improper_torsions,
     }
-    types: dict[str, type] = {_type: _mapping[_type] for _type in _types}
 
-    internal_coordinates: dict[str, dict[tuple[int, ...], tuple[int, int]]] = dict()
+    for _type in _types:
+        try:
+            reference_values: dict = key_func_mapping[_type](reference_molecule)  # type: ignore[assignment]
+            target_values: dict = key_func_mapping[_type](target_molecule)  # type: ignore[assignment]
 
-    for label, internal_coordinate_class in types.items():
-        internal_coordinates[label] = dict()
+            assert reference_values.keys() == target_values.keys()
 
-        for internal_coordinate in _generator.Internals:
-            if not isinstance(internal_coordinate, internal_coordinate_class):
-                continue
+            internal_coordinates[_type] = dict()
 
-            if isinstance(internal_coordinate, Distance):
-                key = tuple(
-                    (
-                        internal_coordinate.a,
-                        internal_coordinate.b,
-                    ),
+            for key in reference_values:
+                internal_coordinates[_type][key] = (
+                    reference_values[key],
+                    target_values[key],
                 )
 
-            if isinstance(internal_coordinate, Angle):
-                key = tuple(
-                    (
-                        internal_coordinate.a,
-                        internal_coordinate.b,
-                        internal_coordinate.c,
-                    ),
-                )
-
-            if isinstance(internal_coordinate, Dihedral):
-                key = tuple(
-                    (
-                        internal_coordinate.a,
-                        internal_coordinate.b,
-                        internal_coordinate.c,
-                        internal_coordinate.d,
-                    ),
-                )
-
-            if isinstance(internal_coordinate, OutOfPlane):
-                # geomeTRIC lists the central atom FIRST, but SMIRNOFF force fields list
-                # the central atom SECOND. Re-ordering here to be consistent with SMIRNOFF
-                # see PR #109 for more
-
-                key = tuple(
-                    (
-                        internal_coordinate.b,  # NOTE!
-                        internal_coordinate.a,  # NOTE!
-                        internal_coordinate.c,
-                        internal_coordinate.d,
-                    ),
-                )
-
-            key = tuple(int(index) for index in key)
-
-            internal_coordinates[label].update(
-                {
-                    key: (
-                        internal_coordinate.value(reference),
-                        internal_coordinate.value(target),
-                    ),
-                },
-            )
+        except KeyError:
+            raise ValueError(f"Unknown internal coordinate type: {_type}")
 
     return internal_coordinates
 

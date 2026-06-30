@@ -33,3 +33,10 @@ In [5]: with open('y.json', 'w') as f:
 
 In [6]: !cp y.json yammbs/_tests/data/yammbs/torsiondrive-data.json
 ```
+
+# `36966574-qm.sdf` and `36966574-mm.sdf`
+
+Taken from a YAMMBS-dataset-submission (re-)run of Sage 2.1.0. The QCArchive ID of the molecule is 36966574. The QM molecule comes from QCArchive and the MM molecule is optimized (with YAMMBS) using Sage 2.1.0. This molecule was notable because of poor phosphate geometry. For more context see
+* [YDS run](https://github.com/openforcefield/yammbs-dataset-submission/issues/68)
+* [Files from YDS run](https://zenodo.org/records/17404618)
+* [Bug reported in Issue #174](https://github.com/openforcefield/yammbs/issues/174)

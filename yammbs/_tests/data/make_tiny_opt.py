@@ -1,3 +1,5 @@
+"""Script used to make `yammbs/_tests/data/tiny-opt.json`."""
+
 import logging
 import sys
 
@@ -9,6 +11,7 @@ logging.getLogger("openff").setLevel(logging.ERROR)
 
 
 def main():
+    """Make `yammbs/_tests/data/tiny-opt.json`."""
     print("loading collection", file=sys.stderr)
     opt = OptimizationResultCollection.parse_raw(sys.stdin.read())
     print("caching records", file=sys.stderr)

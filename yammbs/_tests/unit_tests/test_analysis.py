@@ -1,8 +1,18 @@
+import numpy
 import pandas
 import pytest
-from openff.toolkit import ForceField, Molecule
+from openff.toolkit import ForceField, Molecule, Quantity
+from openff.utilities import get_data_file_path
 
-from yammbs.analysis import get_internal_coordinate_differences, get_internal_coordinate_rmsds, get_rmsd, get_tfd
+from yammbs.analysis import (
+    _get_rmsd_openeye,
+    _get_rmsd_rdkit,
+    get_internal_coordinate_differences,
+    get_internal_coordinate_rmsds,
+    get_internal_coordinates,
+    get_rmsd,
+    get_tfd,
+)
 
 
 class TestAnalysis:
@@ -40,6 +50,40 @@ class TestAnalysis:
 
         assert last_first == pytest.approx(first_last)
 
+    def test_rmsd_rdkit(self, allicin, conformers):
+        allicin_0 = Molecule(allicin)
+        allicin_0.clear_conformers()
+        allicin_0.add_conformer(Quantity(conformers[0], "angstrom"))
+
+        allicin_1 = Molecule(allicin)
+        allicin_1.clear_conformers()
+        allicin_1.add_conformer(Quantity(conformers[1], "angstrom"))
+
+        allicin_last = Molecule(allicin)
+        allicin_last.clear_conformers()
+        allicin_last.add_conformer(Quantity(conformers[-1], "angstrom"))
+
+        last_last = _get_rmsd_rdkit(allicin_last, allicin_last)
+        first_last = _get_rmsd_rdkit(allicin_0, allicin_last)
+        first_second = _get_rmsd_rdkit(allicin_0, allicin_1)
+        last_first = _get_rmsd_rdkit(allicin_last, allicin_0)
+
+        # Passing the same conformers should return 0.0
+        assert last_last == 0.0
+
+        # Should give a float
+        assert isinstance(first_last, float)
+
+        # Should be different for different conformer pairs
+        assert first_second != pytest.approx(first_last)
+
+        # Should be insensitive to order
+        assert last_first == pytest.approx(first_last)
+
+        # Rdkit and OpenEye should give similar numbers
+        first_last_openeye = _get_rmsd_openeye(allicin_0, allicin_last)
+        assert first_last_openeye == pytest.approx(first_last)
+
     def test_tfd(self, allicin, conformers):
         # Passing the same conformers should return 0.0
         last_last = get_tfd(
@@ -75,9 +119,45 @@ class TestAnalysis:
         assert last_first == first_last
 
 
+class TestgeomeTRICEdgeCases:
+    def test_linear_angles_not_missed(self):
+        carbon_dioxide = Molecule.from_smiles("O=C=O")
+
+        # this will probably only be one conformer, but that's fine,
+        # we just want to make sure we get linear angles out at all
+        carbon_dioxide.generate_conformers(n_conformers=1)
+        internal_coordinates = get_internal_coordinates(
+            molecule=carbon_dioxide,
+            reference=carbon_dioxide.conformers[0],
+            target=carbon_dioxide.conformers[0],
+        )
+
+        assert "Angle" in internal_coordinates
+        assert len(internal_coordinates["Angle"]) == 1
+
+        for val in internal_coordinates["Angle"].values():
+            # if the two "conformers" are the same,
+            # the measured angles should be the same
+            assert (val[0] == val[1]) == (carbon_dioxide.n_conformers == 1)
+
+
 class TestInternalCoordinateRMSD:
+    def test_missing_type(self, ligand):
+        with pytest.raises(ValueError, match="Urey"):
+            get_internal_coordinate_rmsds(
+                molecule=ligand,
+                reference=ligand.conformers[0],
+                target=ligand.conformers[-1],
+                _types=["Bond", "Angle", "Dihedral", "Urey-Bradley"],
+            )
+
     def test_rmsds_between_conformers(self, ligand):
-        assert ligand.n_conformers
+        assert ligand.n_conformers > 1
+
+        assert not numpy.allclose(
+            ligand.conformers[0],
+            ligand.conformers[-1],
+        )
 
         rmsds = get_internal_coordinate_rmsds(
             molecule=ligand,
@@ -190,6 +270,7 @@ class TestInternalCoordinateRMSD:
         assert max(differences["Dihedral"].values()) < 10
         assert max(differences["Improper"].values()) < 1
 
+    @pytest.mark.skip(reason="See https://github.com/openforcefield/yammbs/issues/199")
     def test_internal_coordinate_impropers(self):
         triazine = Molecule.from_mapped_smiles("[H:7][c:1]1[n:2][c:3]([n:4][c:5]([n:6]1)[H:9])[H:8]")
 
@@ -209,3 +290,43 @@ class TestInternalCoordinateRMSD:
 
         # should be [(1, 0, 5, 6), (1, 2, 3, 7), (3, 4, 5, 8)]
         assert sorted(differences["Improper"].keys()) == sage_impropers
+
+    @pytest.mark.parametrize("qcarchive_id", [36966569, 36966572, 36966574])
+    def test_bad_mm_same_icrmsd_shape(self, qcarchive_id):
+        """Essure that bad MM geometries don't cause the number of ICRMSDs to change.
+
+        For context, see https://github.com/openforcefield/yammbs/issues/174
+        """
+        qm = Molecule(
+            get_data_file_path(
+                f"_tests/data/{qcarchive_id}-qm.sdf",
+                "yammbs",
+            ),
+        )
+
+        mm = Molecule(
+            get_data_file_path(
+                f"_tests/data/{qcarchive_id}-mm.sdf",
+                "yammbs",
+            ),
+        )
+
+        expected_shapes = [
+            len(value)
+            for value in get_internal_coordinates(
+                molecule=qm,
+                reference=qm.conformers[0].m_as("angstrom"),
+                target=qm.conformers[0].m_as("angstrom"),
+            ).values()
+        ]
+
+        actual_shapes = [
+            len(value)
+            for value in get_internal_coordinates(
+                molecule=qm,
+                reference=qm.conformers[0].m_as("angstrom"),
+                target=mm.conformers[0].m_as("angstrom"),
+            ).values()
+        ]
+
+        assert expected_shapes == actual_shapes

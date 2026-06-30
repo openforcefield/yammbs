@@ -2,7 +2,7 @@
 
 import logging
 from abc import ABC
-from typing import TYPE_CHECKING, Generic, Self, TypeVar
+from typing import TYPE_CHECKING, Self
 
 import numpy
 
@@ -39,17 +39,14 @@ class AnalysisMetric(ABC, ImmutableModel):
     id: int
 
 
-AnalysisMetricTypeVar = TypeVar("AnalysisMetricTypeVar", bound=AnalysisMetric)
-
-
-class AnalysisMetricCollection(ABC, Generic[AnalysisMetricTypeVar], list[AnalysisMetricTypeVar]):
+class AnalysisMetricCollection[AnalysisMetric](ABC, list[AnalysisMetric]):
     """A generic collection class for typed lists of analysis metrics."""
 
-    item_type: type[AnalysisMetricTypeVar]  # This must be set in subclasses
+    item_type: type[AnalysisMetric]  # This must be set in subclasses
 
     @classmethod
-    def get_item_type(cls) -> type[AnalysisMetricTypeVar]:
-        """Retrieve the type of items in the collection (AnalysisMetricTypeVar)."""
+    def get_item_type(cls) -> type[AnalysisMetric]:
+        """Retrieve the type of items in the collection (probably a subclass of AnalysisMetric)."""
         if not hasattr(cls, "item_type") or cls.item_type is None:
             raise NotImplementedError(f"{cls.__name__} must define the 'item_type' class variable.")
         return cls.item_type
@@ -59,18 +56,16 @@ class AnalysisMetricCollection(ABC, Generic[AnalysisMetricTypeVar], list[Analysi
         import pandas
 
         item_type = self.get_item_type()
+
         return pandas.DataFrame(
             [element.__dict__ for element in self],
-            index=pandas.Index([element.id for element in self]),
-            columns=[field for field in item_type.model_fields.keys() if field != "id"],
+            index=pandas.Index([element.id for element in self]),  # type: ignore[attr-defined]
+            columns=[field for field in item_type.model_fields.keys() if field != "id"],  # type: ignore[attr-defined]
         )
 
     def to_csv(self, path: str):
         """Save the collection to a CSV file."""
         self.to_dataframe().to_csv(path)
-
-
-AnalysisMetricCollectionTypeVar = TypeVar("AnalysisMetricCollectionTypeVar", bound=AnalysisMetricCollection)
 
 
 class Minima(AnalysisMetric):

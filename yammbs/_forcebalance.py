@@ -49,11 +49,11 @@ def compute_rmsd(
     v_periodic: float | None = None,
 ) -> float:
     """Compute the RMSD between two arrays, supporting periodic difference."""
-    assert len(ref) == len(tar), "array length must match"
+    assert len(ref) == len(tar), "array lengths must match"
 
     if len(ref) == 0:
         return 0.0
 
     diff = ref - tar if v_periodic is None else periodic_diff(ref, tar, v_periodic)
 
-    return numpy.sqrt(numpy.sum(diff**2) / len(ref))
+    return numpy.sqrt(numpy.mean(numpy.square(diff)))
