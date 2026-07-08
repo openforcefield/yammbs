@@ -41,5 +41,7 @@ caption: Developer Documentation
 ---
 
 developer/builddocs
+developer/contributing
+developer/code-of-conduct
 releasehistory
 :::
