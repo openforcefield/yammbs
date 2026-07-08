@@ -11,7 +11,7 @@ build:
     python: "3.12"
   jobs:
     pre_build:
-      - bash -c 'curl https://homepage.univie.ac.at/norbert.haider/download/chemistry/checkmol/checkmol.pas > /tmp/checkmol.pas'
+      - curl -o /tmp/checkmol.pas https://homepage.univie.ac.at/norbert.haider/download/chemistry/checkmol/checkmol.pas
       - bash -c 'cd /tmp && fpc checkmol.pas -S2 && cp checkmol /usr/local/bin/'
     create_environment:
       - asdf plugin add pixi
