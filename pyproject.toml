@@ -30,6 +30,7 @@ fallback_version = "0.0.0"
 [tool.ruff]
 target-version = "py312"
 line-length = 119
+exclude = [ "docs/conf.py", "yammbs/_tests/**/*.py" ]
 lint.select = [ "D", "E", "F", "I", "NPY", "RUF027", "UP", "W" ]
 lint.ignore = [ "D105", "D107" ]
 lint.preview = true

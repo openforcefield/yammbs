@@ -1,11 +1,11 @@
-# How to contribute
+# How to Contribute
 
 We welcome contributions from external contributors, and this document
 describes how to merge code changes into YAMMBS.
 
 ## Code of Conduct
 
-Please note that this project is governed by the [OMSF Code of Conduct](CODE_OF_CONDUCT.md). We are committed to providing a welcoming and inclusive environment for all contributors.
+Please note that this project is governed by the [OMSF Code of Conduct](https://omsf.io/resources/conduct/). We are committed to providing a welcoming and inclusive environment for all contributors.
 
 ## Getting Started
 
@@ -36,7 +36,7 @@ Please note that this project is governed by the [OMSF Code of Conduct](CODE_OF_
   integration returns checkmarks,
   and multiple core developers give "Approved" reviews.
 
-# Additional Resources
+## Additional Resources
 
 * [General GitHub documentation](https://help.github.com/)
 * [PR best practices](http://codeinthehole.com/writing/pull-requests-and-other-good-practices-for-teams-using-github/)
