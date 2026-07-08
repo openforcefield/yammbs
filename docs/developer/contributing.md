@@ -1,4 +1,4 @@
 # Contributing
 
-```{include} ../CONTRIBUTING.md
+```{include} ../../CONTRIBUTING.md
 ```
