@@ -5,7 +5,7 @@ describes how to merge code changes into YAMMBS.
 
 ## Code of Conduct
 
-Please note that this project is governed by the [OMSF Code of Conduct](CODE_OF_CONDUCT.md). We are committed to providing a welcoming and inclusive environment for all contributors.
+Please note that this project is governed by the [OMSF Code of Conduct](https://omsf.io/resources/conduct/). We are committed to providing a welcoming and inclusive environment for all contributors.
 
 ## Getting Started
 

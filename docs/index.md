@@ -35,7 +35,7 @@ api
 
 :::{toctree}
 ---
-maxdepth: 2
+maxdepth: 1
 hidden: True
 caption: Developer Documentation
 ---
