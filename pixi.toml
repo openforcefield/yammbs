@@ -31,6 +31,7 @@ rich = ">=12.1,<14.0" # solver would otherwise bring down 15.0.0, but rich >=12.
 [environments]
 py312 = [ "py312", "test", "typing" ]
 dev = [ "py312", "test", "typing", "dev" ]
+docs = [ "py312", "docs" ]
 
 [feature.dev.pypi-dependencies]
 pre-commit = "*"
@@ -64,6 +65,26 @@ sqlalchemy-stubs = "*"
 pandas-stubs = "*"
 scipy-stubs = "*"
 
+[feature.docs.dependencies]
+sphinx = "6.*"
+myst-nb = "1.*"
+myst-parser = "*"
+docutils = "*"
+sphinx-notfound-page = "*"
+libsass = "*"  # Pre-built libsass to avoid compilation issues
+# Additional packages needed for building docs
+openff-toolkit = "*"  # Full toolkit instead of base for docs
+openff-interchange = "0.4.*"
+openff-units = "*"
+openff-utilities = "*"
+geometric = "1.*"
+networkx = "*"
+mdtraj = "*"
+nglview = "*"
+
+[feature.docs.pypi-dependencies]
+openff-sphinx-theme = { git = "https://github.com/openforcefield/openff-sphinx-theme.git", branch = "main" }
+
 [pypi-dependencies]
 aimnet = "==0.1.1"
 orb-models = "==0.6.*"
@@ -72,3 +93,4 @@ yammbs = { path = ".", editable = true }
 [tasks]
 run_mypy = { cmd = "python -m mypy -p yammbs" }
 run_tests = { cmd = "python -m pytest yammbs -x --durations=20 -n logical" }
+build_docs = { cmd = "sphinx-build -b html -j auto docs docs/_build/html" }

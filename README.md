@@ -237,6 +237,10 @@ For an overview of runtime logging behavior (what is logged, what is not, and lo
 
 Please cite YAMMBS using the [Zenodo record](https://doi.org/10.5281/zenodo.18350609) of the [latest release](https://doi.org/10.5281/zenodo.18350609) or the version that was used. The BibTeX reference of the latest release can be found at [this link](https://zenodo.org/records/18350609/export/bibtex).
 
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to this project. All contributors are expected to adhere to the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ### License
 
 YAMMBS is open-source software distrubuted under the MIT license (see LICENSE). It derives from

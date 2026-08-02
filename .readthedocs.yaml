@@ -1,21 +1,21 @@
 version: 2
 
 build:
-  os: ubuntu-24.04
+  os: ubuntu-22.04
+  apt_packages:
+    - fp-compiler  # PASCAL compiler for checkmol
   tools:
-    python: "mambaforge-4.10"
-
-python:
-  install:
-    - method: pip
-      path: .
-
-conda:
-  environment: docs/environment.yml
-
-sphinx:
-  configuration: docs/conf.py
-  fail_on_warning: true
-
-formats:
-- pdf
+    python: "3.12"
+  jobs:
+    pre_build:
+      - curl -o /tmp/checkmol.pas https://homepage.univie.ac.at/norbert.haider/download/chemistry/checkmol/checkmol.pas
+      - bash -c 'cd /tmp && fpc checkmol.pas -S2 && cp checkmol /usr/local/bin/'
+    create_environment:
+      - asdf plugin add pixi
+      - asdf install pixi latest
+      - asdf global pixi latest
+    install:
+      - pixi install -e docs
+    build:
+       html:
+          - pixi run -e docs sphinx-build -T -b html docs $READTHEDOCS_OUTPUT/html

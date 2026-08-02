@@ -1,0 +1,31 @@
+/* Scrollable output cells for Jupyter notebooks */
+
+/* Limit height of cell output containers and add scrolling */
+div.cell_output {
+    max-height: 500px !important;
+    overflow-y: auto !important;
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 4px !important;
+    background-color: #f9f9f9 !important;
+    padding: 10px !important;
+    margin: 10px 0 !important;
+}
+
+/* Ensure scrollbar is visible for scrollable areas */
+div.cell_output::-webkit-scrollbar {
+    width: 8px;
+}
+
+div.cell_output::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+div.cell_output::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+div.cell_output::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
