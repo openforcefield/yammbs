@@ -19,11 +19,11 @@ To start a subshell with the environment activated, run `pixi shell`.
 ## Supported force fields
 
 * SMIRNOFF force fields (likely all found in [this table](https://github.com/openforcefield/openff-forcefields#how-to-cite))
-  * Use the conventional force field name, e.g. `force_field="openff-2.3.0.offxml")`
+  * Use the conventional force field name, e.g. `force_field="openff-2.3.0.offxml"`
 * GAFF via [`openmmforcefields`](https://github.com/openmm/openmmforcefields#using-amber-gaff-1x-and-2x-for-small-molecules)
 * Espaloma via [`openmmforcefields`](https://github.com/openmm/openmmforcefields#using-amber-gaff-1x-and-2x-for-small-molecules)
 * Machine-learned potentials (MLPs) via [OpenMM-ML](https://openmm.github.io/openmm-ml/dev/index.html)
-  * Pre-pend the MLP name with `"mlp:"`, e.g. `force_field="mlp:aimnet2"`
+  * Prepend the MLP name with `"mlp:"`, e.g. `force_field="mlp:aimnet2"`
 
 ## Getting started
 
