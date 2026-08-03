@@ -9,16 +9,27 @@ YAMMBS is currently developed for internal use at Open Force Field. It is not cu
 
 Clone the repo and install with `pixi`:
 ```
-git clone https://github.com/openforcefield/yammbs.githttps://github.com/openforcefield/yammbs.git
+git clone https://github.com/openforcefield/yammbs.git
 cd yammbs
 pixi install
 ```
 
 To start a subshell with the environment activated, run `pixi shell`.
 
+## Supported force fields
+
+* SMIRNOFF force fields (likely all found in [this table](https://github.com/openforcefield/openff-forcefields#how-to-cite))
+  * Use the conventional force field name, e.g. `force_field="openff-2.3.0.offxml"`
+* GAFF via [`openmmforcefields`](https://github.com/openmm/openmmforcefields#using-amber-gaff-1x-and-2x-for-small-molecules)
+* Espaloma via [`openmmforcefields`](https://github.com/openmm/openmmforcefields#using-amber-gaff-1x-and-2x-for-small-molecules)
+* Machine-learned potentials (MLPs) via [OpenMM-ML](https://openmm.github.io/openmm-ml/dev/index.html)
+  * Prepend the MLP name with `"mlp:"`, e.g. `force_field="mlp:aimnet2"`
+
 ## Getting started
 
-See the file [run.py](run.py) for a start-to-finish example. Note that the pattern in the script
+See the file [run.py](run.py) for a start-to-finish example.
+
+Note that the pattern in the script
 
 ```python
 from multiprocessing import freeze_support
@@ -109,7 +120,7 @@ This object is the focal point of running benchmarks; it stores the inputs (QM s
 Run MM optimizations of all molecules using a particular force field(s) using `optimize_mm`:
 
 ```python
-store.optimize_mm(force_field="openff-2.1.0.offxml")
+store.optimize_mm(force_field="openff-2.3.0.offxml")
 
 # can also iterate over multiple force fields, and use more processors
 for force_field in [
@@ -212,6 +223,7 @@ yammbs_analyse_torsions --qcarchive-torsion-data input.json \
     --extra-force-fields my_unconstrained_ff.offxml
 ```
 A range of OpenFF force fields will be run for comparison if no `--base-force-fields` are specified.
+
 
 ## Custom analyses
 
