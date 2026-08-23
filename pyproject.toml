@@ -9,7 +9,8 @@ requires = [
 name = "yammbs"
 description = "A tool for benchmarking force fields."
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
+license-files = [ "LICENSE" ]
 authors = [ { name = "Open Force Field Initiative", email = "info@openforcefield.org" } ]
 requires-python = ">=3.12"
 classifiers = [
