@@ -108,7 +108,7 @@ class MoleculeRecord(Record):
 
     @property
     def smiles(self):
-        """Return the (mapped) SMILES string of this molecule."""
+        """The (mapped) SMILES string of this molecule."""
         return self.mapped_smiles
 
     @classmethod
