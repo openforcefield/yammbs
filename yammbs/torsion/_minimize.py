@@ -93,7 +93,7 @@ class ConstrainedMinimizationInput(ImmutableModel):
 
     @property
     def constrained_minimization_function(self) -> _ConstrainedMinimizationFn:
-        """Get the minimization function from the registry."""
+        """The minimization function from the registry."""
         return _CONSTRAINED_MINIMIZATION_REGISTRY[self.method]
 
 
