@@ -230,3 +230,51 @@ def test_partially_minimized(tmp_path):
     assert tinier_store.software_provenance["yammbs"] == yammbs.__version__
     assert tinier_store.software_provenance["openff.toolkit"] == __toolkit_version__
     assert tinier_store.software_provenance["qcfractal"] is None
+
+
+def test_minimization_with_virtual_sites(tmp_path):
+    """Test that minimization works with a force field with virtual sites."""
+    from yammbs._forcefields import build_omm_system
+
+    force_field = ForceField("openff_unconstrained-2.0.0.offxml")
+    # Taken from Lily's example FF, but details irrelevant for testing
+    force_field.get_parameter_handler("VirtualSites").add_parameter(
+        {
+            "smirks": "[#6A:2]-[#17:1]",
+            "type": "BondCharge",
+            "match": "all_permutations",
+            "distance": 1.5044175386428833 * unit.angstrom,
+            "charge_increment1": -0.05829751491546631 * unit.elementary_charge,
+            "charge_increment2": 0.0 * unit.elementary_charge,
+            "sigma": 1.0 * unit.angstrom,
+            "epsilon": 0.0 * unit.kilojoule_per_mole,
+            "name": "EP1",
+        },
+    )
+    force_field_path = (tmp_path / "vsite.offxml").as_posix()
+    force_field.to_file(force_field_path)
+
+    molecule = Molecule.from_smiles("CCl")
+    molecule.generate_conformers(n_conformers=1)
+    # Perturb conformer so minimizer has something to fix
+    molecule._conformers[0] *= 1.1
+
+    # Make sure this force field actually adds virtual sites
+    assert build_omm_system(force_field_path, molecule).getNumParticles() > molecule.n_atoms
+
+    result = _run_minimization(
+        MinimizationInput(
+            inchi_key=molecule.to_inchikey(),
+            qcarchive_id=1,
+            force_field=force_field_path,
+            mapped_smiles=molecule.to_smiles(mapped=True),
+            coordinates=molecule.conformers[0].m_as(unit.angstrom),
+        ),
+    )
+
+    assert result is not None
+    assert result.coordinates.shape == (molecule.n_atoms, 3)
+    assert numpy.isfinite(result.energy)
+
+    # Check that the C-Cl bond distance has settled to a sensible value
+    assert 1.6 < numpy.linalg.norm(result.coordinates[0] - result.coordinates[1]) < 2.0

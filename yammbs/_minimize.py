@@ -117,8 +117,18 @@ def _minimize_openmm(
         openmm.Platform.getPlatformByName("Reference"),
     )
 
+    # The system may contain virtual sites, which have no input positions, so
+    # pad them with zeros and let OpenMM place them
+    is_virtual_site = numpy.array(
+        [system.isVirtualSite(index) for index in range(system.getNumParticles())],
+        dtype=bool,
+    )
+
+    all_positions = numpy.zeros((system.getNumParticles(), 3))
+    all_positions[~is_virtual_site] = positions
+
     context.setPositions(
-        (positions * openmm.unit.angstrom).in_units_of(openmm.unit.nanometer),
+        (all_positions * openmm.unit.angstrom).in_units_of(openmm.unit.nanometer),
     )
 
     context.computeVirtualSites()
@@ -166,7 +176,7 @@ def _minimize_openmm(
     )
     logger.debug("Final energy: %s kcal/mol", final_energy)
 
-    return final_positions, final_energy
+    return final_positions[~is_virtual_site], final_energy
 
 
 def _run_minimization(
