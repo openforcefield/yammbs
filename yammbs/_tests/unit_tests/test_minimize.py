@@ -276,5 +276,10 @@ def test_minimization_with_virtual_sites(tmp_path):
     assert result.coordinates.shape == (molecule.n_atoms, 3)
     assert numpy.isfinite(result.energy)
 
-    # Check that the C-Cl bond distance has settled to a sensible value
-    assert 1.6 < numpy.linalg.norm(result.coordinates[0] - result.coordinates[1]) < 2.0
+    # Check that the C-Cl bond has relaxed to (close to) its equilibrium length.
+    # In practice it ends up within ~1e-4 Angstrom of it.
+    equilibrium_length = force_field["Bonds"].get_parameter({"smirks": "[#6X4:1]-[#17:2]"})[0].length
+    assert numpy.linalg.norm(result.coordinates[0] - result.coordinates[1]) == pytest.approx(
+        equilibrium_length.m_as(unit.angstrom),
+        abs=0.01,
+    )
