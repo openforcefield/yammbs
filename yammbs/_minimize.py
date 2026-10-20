@@ -134,8 +134,9 @@ def _minimize_openmm(
 ) -> tuple[numpy.ndarray, float]:
     """Minimize a system using OpenMM's LocalEnergyMinimizer.
 
-    This accounts for virtual sites during the minimization, but
-    takes and returns only atom positions.
+    This accounts for the physics of any virtual sites
+    during the minimization, but takes and returns only
+    atom positions.
 
     Parameters
     ----------
