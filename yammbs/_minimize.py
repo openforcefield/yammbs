@@ -39,6 +39,28 @@ def _minimize_blob(
     n_processes: int = 2,
     chunksize=32,
 ) -> Iterator["MinimizationResult"]:
+    """Minimize a set of molecules in parallel.
+
+    Parameters
+    ----------
+    minimization_input : dict[str, list]
+        A dictionary mapping InChI keys to lists of dictionaries containing the necessary
+        information for each molecule.
+    force_field : str
+        The name of the force field to use for the minimization.
+    method : Literal["openmm"], optional
+        The minimization method to use, by default "openmm".
+    n_processes : int, optional
+        The number of processes to use for the parallel minimization, by default 2.
+    chunksize : int, optional
+        The number of molecules to process in each chunk, by default 32.
+
+    Yields
+    ------
+    MinimizationResult
+        The result of each minimization.
+
+    """
     inputs = list()
 
     inputs = [
@@ -110,15 +132,46 @@ def _minimize_openmm(
     system: openmm.System,
     positions: numpy.ndarray,
 ) -> tuple[numpy.ndarray, float]:
-    """Minimize a system using OpenMM's LocalEnergyMinimizer."""
+    """Minimize a system using OpenMM's LocalEnergyMinimizer.
+
+    This accounts for the physics of any virtual sites
+    during the minimization, but takes and returns only
+    atom positions.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to minimize.
+    system : openmm.System
+        The OpenMM system to minimize.
+    positions : numpy.ndarray
+        The initial positions of the atoms in the system, in Angstroms.
+
+    Returns
+    -------
+    tuple[numpy.ndarray, float]
+        The minimized positions of the atoms in the system, in Angstroms,
+        and the final energy in kcal/mol.
+
+    """
     context = openmm.Context(
         system,
         openmm.VerletIntegrator(0.1 * openmm.unit.femtoseconds),
         openmm.Platform.getPlatformByName("Reference"),
     )
 
+    # The system may contain virtual sites, which have no input positions, so
+    # pad them with zeros and let OpenMM place them
+    is_virtual_site = numpy.array(
+        [system.isVirtualSite(index) for index in range(system.getNumParticles())],
+        dtype=bool,
+    )
+
+    all_positions = numpy.zeros((system.getNumParticles(), 3))
+    all_positions[~is_virtual_site] = positions
+
     context.setPositions(
-        (positions * openmm.unit.angstrom).in_units_of(openmm.unit.nanometer),
+        (all_positions * openmm.unit.angstrom).in_units_of(openmm.unit.nanometer),
     )
 
     context.computeVirtualSites()
@@ -166,12 +219,27 @@ def _minimize_openmm(
     )
     logger.debug("Final energy: %s kcal/mol", final_energy)
 
-    return final_positions, final_energy
+    return final_positions[~is_virtual_site], final_energy
 
 
 def _run_minimization(
     minimization_input: MinimizationInput,
 ) -> MinimizationResult | None:
+    """Run a minimization.
+
+    Parameters
+    ----------
+    minimization_input : MinimizationInput
+        The input for the minimization.
+
+    Returns
+    -------
+    MinimizationResult | None
+        The result of the minimization, or None if the minimization
+        failed due to unassigned valence terms or a ValueError
+        (likely due to a charge failure).
+
+    """
     inchi_key: str = minimization_input.inchi_key
     qcarchive_id: int = minimization_input.qcarchive_id
     positions: numpy.ndarray = minimization_input.coordinates
